@@ -23,6 +23,7 @@ import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
+import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,13 +39,13 @@ public interface TargetFilterQueryManagement {
      *
      * @param create
      *            to create
-     * 
+     *
      * @return the new {@link TargetFilterQuery}
-     * 
+     *
      * @throws ConstraintViolationException
      *             if fields are not filled as specified. Check
      *             {@link TargetFilterQueryCreate} for field constraints.
-     * 
+     *
      * @throws QuotaExceededException
      *             if the maximum number of targets that is addressed by the
      *             given query is exceeded (auto-assignments only)
@@ -57,7 +58,7 @@ public interface TargetFilterQueryManagement {
      *
      * @param targetFilterQueryId
      *            IDs of target filter query to be deleted
-     * 
+     *
      * @throws EntityNotFoundException
      *             if filter with given ID does not exist
      */
@@ -66,16 +67,16 @@ public interface TargetFilterQueryManagement {
 
     /**
      * Verifies the provided filter syntax.
-     * 
+     *
      * @param query
      *            to verify
-     * 
+     *
      * @return <code>true</code> if syntax is valid
-     * 
+     *
      * @throws RSQLParameterUnsupportedFieldException
      *             if a field in the RSQL string is used but not provided by the
      *             given {@code fieldNameProvider}
-     * 
+     *
      * @throws RSQLParameterSyntaxException
      *             if the RSQL syntax is wrong
      */
@@ -95,7 +96,7 @@ public interface TargetFilterQueryManagement {
 
     /**
      * Counts all {@link TargetFilterQuery}s.
-     * 
+     *
      * @return the number of all target filter queries
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
@@ -150,7 +151,7 @@ public interface TargetFilterQueryManagement {
      * @param rsqlParam
      *            RSQL filter
      * @return the page with the found {@link TargetFilterQuery}s
-     * 
+     *
      * @throws EntityNotFoundException
      *             if DS with given ID does not exist
      */
@@ -194,17 +195,17 @@ public interface TargetFilterQueryManagement {
      *
      * @param update
      *            to be updated
-     * 
+     *
      * @return the updated {@link TargetFilterQuery}
-     * 
+     *
      * @throws EntityNotFoundException
      *             if either {@link TargetFilterQuery} and/or autoAssignDs are
      *             provided but not found
-     * 
+     *
      * @throws ConstraintViolationException
      *             if fields are not filled as specified. Check
      *             {@link TargetFilterQueryUpdate} for field constraints.
-     * 
+     *
      * @throws QuotaExceededException
      *             if the update contains a new query which addresses too many
      *             targets (auto-assignments only)
@@ -220,18 +221,18 @@ public interface TargetFilterQueryManagement {
      *            of the target filter query to be updated
      * @param dsId
      *            to be updated or <code>null</code> in order to remove it
-     * 
+     *
      * @return the updated {@link TargetFilterQuery}
-     * 
+     *
      * @throws EntityNotFoundException
      *             if either {@link TargetFilterQuery} and/or autoAssignDs are
      *             provided but not found
-     * 
+     *
      * @throws QuotaExceededException
      *             if the query that is already associated with this filter
      *             query addresses too many targets (auto-assignments only)
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_TARGET)
-    TargetFilterQuery updateAutoAssignDS(long queryId, Long dsId);
+    TargetFilterQuery updateAutoAssignDS(long queryId, Long dsId, ActionType actionType);
 
 }

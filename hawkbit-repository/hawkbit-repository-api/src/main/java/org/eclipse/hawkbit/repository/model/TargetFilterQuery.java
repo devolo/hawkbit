@@ -7,10 +7,11 @@
  * http://www.eclipse.org/legal/epl-v10.html
  */
 package org.eclipse.hawkbit.repository.model;
+import org.eclipse.hawkbit.repository.model.Action.ActionType;
 
 /**
  * Managed filter entity.
- * 
+ *
  * Supported operators.
  * <ul>
  * <li>Equal to : ==</li>
@@ -52,5 +53,10 @@ public interface TargetFilterQuery extends TenantAwareBaseEntity {
      * @return the auto assign {@link DistributionSet} if given.
      */
     DistributionSet getAutoAssignDistributionSet();
+
+    /**
+     * @return the action type for auto assignments
+     */
+    ActionType getAutoAssignActionType();
 
 }

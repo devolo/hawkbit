@@ -9,7 +9,9 @@
 package org.eclipse.hawkbit.ui.management.miscs;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
@@ -40,23 +42,26 @@ public class ActionTypeOptionGroupLayout extends HorizontalLayout {
 
     private final VaadinMessageSource i18n;
 
+    private final List<ActionTypeOption> allowedOptions;
+
     private FlexibleOptionGroup actionTypeOptionGroup;
 
     private DateField forcedTimeDateField;
 
-    /**
-     * Constructor
-     * 
-     * @param i18n
-     *            VaadinMessageSource
-     */
-    public ActionTypeOptionGroupLayout(final VaadinMessageSource i18n) {
+    public ActionTypeOptionGroupLayout(final VaadinMessageSource i18n, ActionTypeOption... allowedOptions) {
         this.i18n = i18n;
+        this.allowedOptions = Arrays.asList(allowedOptions);
 
         createOptionGroup();
-        addValueChangeListener();
+        if (this.allowedOptions.contains(ActionTypeOption.AUTO_FORCED)) {
+            addValueChangeListener();
+        }
         setStyleName("dist-window-actiontype-horz-layout");
         setSizeUndefined();
+    }
+
+    public ActionTypeOptionGroupLayout(final VaadinMessageSource i18n) {
+        this(i18n, ActionTypeOption.values());
     }
 
     private void addValueChangeListener() {
@@ -78,63 +83,69 @@ public class ActionTypeOptionGroupLayout extends HorizontalLayout {
 
     private void createOptionGroup() {
         actionTypeOptionGroup = new FlexibleOptionGroup();
-        actionTypeOptionGroup.addItem(ActionTypeOption.SOFT);
-        actionTypeOptionGroup.addItem(ActionTypeOption.FORCED);
-        actionTypeOptionGroup.addItem(ActionTypeOption.AUTO_FORCED);
+        for (ActionTypeOption option : allowedOptions) {
+            actionTypeOptionGroup.addItem(option);
+        }
         selectDefaultOption();
 
-        final FlexibleOptionGroupItemComponent forceItem = actionTypeOptionGroup
-                .getItemComponent(ActionTypeOption.FORCED);
-        forceItem.setStyleName(STYLE_DIST_WINDOW_ACTIONTYPE);
-        forceItem.setId("save.action.radio.forced");
-        addComponent(forceItem);
-        final Label forceLabel = new Label();
-        forceLabel.setStyleName("statusIconPending");
-        forceLabel.setIcon(FontAwesome.BOLT);
-        forceLabel.setCaption("Forced");
-        forceLabel.setDescription(i18n.getMessage("tooltip.forced.item"));
-        forceLabel.setStyleName("padding-right-style");
-        addComponent(forceLabel);
+        if (allowedOptions.contains(ActionTypeOption.FORCED)) {
+            final FlexibleOptionGroupItemComponent forceItem = actionTypeOptionGroup
+                    .getItemComponent(ActionTypeOption.FORCED);
+            forceItem.setStyleName(STYLE_DIST_WINDOW_ACTIONTYPE);
+            forceItem.setId("save.action.radio.forced");
+            addComponent(forceItem);
+            final Label forceLabel = new Label();
+            forceLabel.setStyleName("statusIconPending");
+            forceLabel.setIcon(FontAwesome.BOLT);
+            forceLabel.setCaption("Forced");
+            forceLabel.setDescription(i18n.getMessage("tooltip.forced.item"));
+            forceLabel.setStyleName("padding-right-style");
+            addComponent(forceLabel);
+        }
 
-        final FlexibleOptionGroupItemComponent softItem = actionTypeOptionGroup.getItemComponent(ActionTypeOption.SOFT);
-        softItem.setId(UIComponentIdProvider.ACTION_DETAILS_SOFT_ID);
-        softItem.setStyleName(STYLE_DIST_WINDOW_ACTIONTYPE);
-        addComponent(softItem);
-        final Label softLabel = new Label();
-        softLabel.setSizeFull();
-        softLabel.setCaption("Soft");
-        softLabel.setDescription(i18n.getMessage("tooltip.soft.item"));
-        softLabel.setStyleName("padding-right-style");
-        addComponent(softLabel);
+        if (allowedOptions.contains(ActionTypeOption.SOFT)) {
+            final FlexibleOptionGroupItemComponent softItem = actionTypeOptionGroup.getItemComponent(ActionTypeOption.SOFT);
+            softItem.setId(UIComponentIdProvider.ACTION_DETAILS_SOFT_ID);
+            softItem.setStyleName(STYLE_DIST_WINDOW_ACTIONTYPE);
+            addComponent(softItem);
+            final Label softLabel = new Label();
+            softLabel.setSizeFull();
+            softLabel.setCaption("Soft");
+            softLabel.setDescription(i18n.getMessage("tooltip.soft.item"));
+            softLabel.setStyleName("padding-right-style");
+            addComponent(softLabel);
+        }
 
-        final FlexibleOptionGroupItemComponent autoForceItem = actionTypeOptionGroup
-                .getItemComponent(ActionTypeOption.AUTO_FORCED);
-        autoForceItem.setStyleName(STYLE_DIST_WINDOW_ACTIONTYPE);
-        autoForceItem.setId(UIComponentIdProvider.ACTION_TYPE_OPTION_GROUP_SAVE_TIMEFORCED);
-        addComponent(autoForceItem);
-        final Label autoForceLabel = new Label();
-        autoForceLabel.setStyleName("statusIconPending");
-        autoForceLabel.setIcon(FontAwesome.HISTORY);
-        autoForceLabel.setCaption("Time Forced");
-        autoForceLabel.setDescription(i18n.getMessage("tooltip.timeforced.item"));
-        autoForceLabel.setStyleName(STYLE_DIST_WINDOW_ACTIONTYPE);
-        addComponent(autoForceLabel);
+        if (allowedOptions.contains(ActionTypeOption.AUTO_FORCED)) {
+            final FlexibleOptionGroupItemComponent autoForceItem = actionTypeOptionGroup
+                    .getItemComponent(ActionTypeOption.AUTO_FORCED);
+            autoForceItem.setStyleName(STYLE_DIST_WINDOW_ACTIONTYPE);
+            autoForceItem.setId(UIComponentIdProvider.ACTION_TYPE_OPTION_GROUP_SAVE_TIMEFORCED);
+            addComponent(autoForceItem);
+            final Label autoForceLabel = new Label();
+            autoForceLabel.setStyleName("statusIconPending");
+            autoForceLabel.setIcon(FontAwesome.HISTORY);
+            autoForceLabel.setCaption("Time Forced");
+            autoForceLabel.setDescription(i18n.getMessage("tooltip.timeforced.item"));
+            autoForceLabel.setStyleName(STYLE_DIST_WINDOW_ACTIONTYPE);
+            addComponent(autoForceLabel);
 
-        forcedTimeDateField = new DateField();
-        forcedTimeDateField.setInvalidAllowed(false);
-        forcedTimeDateField.setInvalidCommitted(false);
-        forcedTimeDateField.setEnabled(false);
-        forcedTimeDateField.setStyleName("dist-window-forcedtime");
+            forcedTimeDateField = new DateField();
+            forcedTimeDateField.setInvalidAllowed(false);
+            forcedTimeDateField.setInvalidCommitted(false);
+            forcedTimeDateField.setEnabled(false);
+            forcedTimeDateField.setStyleName("dist-window-forcedtime");
 
-        final TimeZone tz = SPDateTimeUtil.getBrowserTimeZone();
-        forcedTimeDateField.setValue(
-                Date.from(LocalDateTime.now().plusWeeks(2).atZone(SPDateTimeUtil.getTimeZoneId(tz)).toInstant()));
-        forcedTimeDateField.setImmediate(true);
-        forcedTimeDateField.setTimeZone(tz);
-        forcedTimeDateField.setLocale(HawkbitCommonUtil.getLocale());
-        forcedTimeDateField.setResolution(Resolution.MINUTE);
-        forcedTimeDateField.addStyleName(ValoTheme.DATEFIELD_SMALL);
-        addComponent(forcedTimeDateField);
+            final TimeZone tz = SPDateTimeUtil.getBrowserTimeZone();
+            forcedTimeDateField.setValue(
+                    Date.from(LocalDateTime.now().plusWeeks(2).atZone(SPDateTimeUtil.getTimeZoneId(tz)).toInstant()));
+            forcedTimeDateField.setImmediate(true);
+            forcedTimeDateField.setTimeZone(tz);
+            forcedTimeDateField.setLocale(HawkbitCommonUtil.getLocale());
+            forcedTimeDateField.setResolution(Resolution.MINUTE);
+            forcedTimeDateField.addStyleName(ValoTheme.DATEFIELD_SMALL);
+            addComponent(forcedTimeDateField);
+        }
     }
 
     /**

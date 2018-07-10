@@ -13,6 +13,7 @@ import java.io.Serializable;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
+import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.CommonDialogWindow;
@@ -21,11 +22,15 @@ import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
 import org.eclipse.hawkbit.ui.decorators.SPUIButtonStyleNoBorderWithIcon;
 import org.eclipse.hawkbit.ui.distributions.state.ManageDistUIState;
 import org.eclipse.hawkbit.ui.filtermanagement.event.CustomFilterUIEvent;
+import org.eclipse.hawkbit.ui.management.miscs.ActionTypeOptionGroupLayout;
+import org.eclipse.hawkbit.ui.management.miscs.ActionTypeOptionGroupLayout.ActionTypeOption;
 import org.eclipse.hawkbit.ui.utils.SPUIDefinitions;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.hene.flexibleoptiongroup.FlexibleOptionGroup;
 import org.vaadin.spring.events.EventBus;
 import org.vaadin.spring.events.EventBus.UIEventBus;
+
 
 import com.vaadin.data.Property;
 import com.vaadin.server.FontAwesome;
@@ -48,6 +53,8 @@ public class DistributionSetSelectWindow
 
     private static final long serialVersionUID = 4752345414134989396L;
 
+    private final ActionTypeOptionGroupLayout actionTypeOptionGroupLayout;
+
     private final VaadinMessageSource i18n;
 
     private final DistributionSetSelectTable dsTable;
@@ -61,9 +68,9 @@ public class DistributionSetSelectWindow
     private CheckBox checkBox;
     private Long tfqId;
 
-    DistributionSetSelectWindow(final VaadinMessageSource i18n, final UIEventBus eventBus,
-            final TargetManagement targetManagement, final TargetFilterQueryManagement targetFilterQueryManagement,
-            final ManageDistUIState manageDistUIState) {
+    DistributionSetSelectWindow(final VaadinMessageSource i18n, final UIEventBus eventBus, final TargetManagement targetManagement,
+            final TargetFilterQueryManagement targetFilterQueryManagement, final ManageDistUIState manageDistUIState) {
+        this.actionTypeOptionGroupLayout = new ActionTypeOptionGroupLayout(i18n, ActionTypeOption.FORCED, ActionTypeOption.SOFT);
         this.i18n = i18n;
         this.dsTable = new DistributionSetSelectTable(i18n, eventBus, manageDistUIState);
         this.eventBus = eventBus;
@@ -79,12 +86,14 @@ public class DistributionSetSelectWindow
         checkBox.setImmediate(true);
         checkBox.addValueChangeListener(this);
 
+        actionTypeOptionGroupLayout.getActionTypeOptionGroup().select(null);
         setTableEnabled(false);
 
         final VerticalLayout verticalLayout = new VerticalLayout();
         verticalLayout.addComponent(label);
         verticalLayout.addComponent(checkBox);
         verticalLayout.addComponent(dsTable);
+        verticalLayout.addComponent(actionTypeOptionGroupLayout);
 
         return verticalLayout;
     }
@@ -159,11 +168,17 @@ public class DistributionSetSelectWindow
     }
 
     private boolean isFormularValid() {
-        return isAutoAssignmentDisabled() || isAutoAssignmentEnabledAndDistributionSetSelected();
+        return isAutoAssignmentDisabled() || (isAutoAssignmentEnabledAndDistributionSetSelected()
+            && isAutoAssignmentEnabledAndValidActionTypeSelected());
     }
 
     private boolean isAutoAssignmentEnabledAndDistributionSetSelected() {
         return checkBox.getValue() && dsTable.getValue() != null;
+    }
+
+    private boolean isAutoAssignmentEnabledAndValidActionTypeSelected() {
+        FlexibleOptionGroup optionGroup = actionTypeOptionGroupLayout.getActionTypeOptionGroup();
+        return checkBox.getValue() && (optionGroup.isSelected(ActionTypeOption.FORCED) || optionGroup.isSelected(ActionTypeOption.SOFT));
     }
 
     private boolean isAutoAssignmentDisabled() {
@@ -177,35 +192,38 @@ public class DistributionSetSelectWindow
     @Override
     public void saveOrUpdate() {
         if (checkBox.getValue() && dsTable.getValue() != null) {
-            updateTargetFilterQueryDS(tfqId, (Long) dsTable.getValue());
+            final ActionType actionType = ((ActionTypeOptionGroupLayout.ActionTypeOption) actionTypeOptionGroupLayout
+                .getActionTypeOptionGroup().getValue()).getActionType();
+
+            updateTargetFilterQueryDS(tfqId, (Long) dsTable.getValue(), actionType);
 
         } else if (!checkBox.getValue()) {
-            updateTargetFilterQueryDS(tfqId, null);
+            updateTargetFilterQueryDS(tfqId, null, ActionType.FORCED);
 
         }
 
     }
 
-    private void updateTargetFilterQueryDS(final Long targetFilterQueryId, final Long dsId) {
+    private void updateTargetFilterQueryDS(final Long targetFilterQueryId, final Long dsId, ActionType actionType) {
         final TargetFilterQuery tfq = targetFilterQueryManagement.get(targetFilterQueryId)
                 .orElseThrow(() -> new EntityNotFoundException(TargetFilterQuery.class, targetFilterQueryId));
 
         if (dsId != null) {
-            confirmWithConsequencesDialog(tfq, dsId);
+            confirmWithConsequencesDialog(tfq, dsId, actionType);
         } else {
-            targetFilterQueryManagement.updateAutoAssignDS(targetFilterQueryId, null);
+            targetFilterQueryManagement.updateAutoAssignDS(targetFilterQueryId, null, actionType);
             eventBus.publish(this, CustomFilterUIEvent.UPDATED_TARGET_FILTER_QUERY);
         }
 
     }
 
-    private void confirmWithConsequencesDialog(final TargetFilterQuery tfq, final Long dsId) {
+    private void confirmWithConsequencesDialog(final TargetFilterQuery tfq, final Long dsId, ActionType actionType) {
 
         final ConfirmConsequencesDialog dialog = new ConfirmConsequencesDialog(tfq, dsId, new ConfirmCallback() {
             @Override
             public void onConfirmResult(final boolean accepted) {
                 if (accepted) {
-                    targetFilterQueryManagement.updateAutoAssignDS(tfq.getId(), dsId);
+                    targetFilterQueryManagement.updateAutoAssignDS(tfq.getId(), dsId, actionType);
                     eventBus.publish(this, CustomFilterUIEvent.UPDATED_TARGET_FILTER_QUERY);
                 }
             }

@@ -26,6 +26,7 @@ import org.eclipse.hawkbit.repository.event.remote.entity.TargetFilterQueryUpdat
 import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.NamedEntity;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
+import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.eclipse.persistence.descriptors.DescriptorEvent;
 
@@ -57,13 +58,16 @@ public class JpaTargetFilterQuery extends AbstractJpaTenantAwareBaseEntity
     @JoinColumn(name = "auto_assign_distribution_set", nullable = true, foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT, name = "fk_filter_auto_assign_ds"))
     private JpaDistributionSet autoAssignDistributionSet;
 
+    @Column(name = "auto_assign_action_type", nullable = false)
+    private ActionType autoAssignActionType;
+
     public JpaTargetFilterQuery() {
         // Default constructor for JPA.
     }
 
     /**
      * Construct a Target filter query with auto assign distribution set
-     * 
+     *
      * @param name
      *            of the {@link TargetFilterQuery}.
      * @param query
@@ -76,6 +80,25 @@ public class JpaTargetFilterQuery extends AbstractJpaTenantAwareBaseEntity
         this.name = name;
         this.query = query;
         this.autoAssignDistributionSet = (JpaDistributionSet) autoAssignDistributionSet;
+        this.autoAssignActionType = ActionType.FORCED;
+    }
+
+    /**
+     * Construct a Target filter query with auto assign distribution set and action type
+     *
+     * @param name
+     *            of the {@link TargetFilterQuery}.
+     * @param query
+     *            of the {@link TargetFilterQuery}.
+     * @param autoAssignDistributionSet
+     *            of the {@link TargetFilterQuery}.
+     * @param autoAssignActionType
+     *            of the {@link TargetFilterQuery}.
+     */
+    public JpaTargetFilterQuery(final String name, final String query,
+            final DistributionSet autoAssignDistributionSet, final ActionType autoAssignActionType) {
+        this(name, query, autoAssignDistributionSet);
+        this.autoAssignActionType = autoAssignActionType;
     }
 
     @Override
@@ -103,6 +126,15 @@ public class JpaTargetFilterQuery extends AbstractJpaTenantAwareBaseEntity
 
     public void setAutoAssignDistributionSet(final JpaDistributionSet distributionSet) {
         this.autoAssignDistributionSet = distributionSet;
+    }
+
+    @Override
+    public ActionType getAutoAssignActionType() {
+        return autoAssignActionType;
+    }
+
+    public void setAutoAssignActionType(final ActionType actionType) {
+        this.autoAssignActionType = actionType;
     }
 
     @Override

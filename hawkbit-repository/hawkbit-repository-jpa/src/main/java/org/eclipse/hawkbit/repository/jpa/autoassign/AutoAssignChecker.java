@@ -179,7 +179,7 @@ public class AutoAssignChecker {
                 .findByTargetFilterQueryAndNonDS(new PageRequest(0, count), dsId, targetFilterQuery);
 
         return targets.getContent().stream().map(t -> new TargetWithActionType(t.getControllerId(),
-                Action.ActionType.FORCED, RepositoryModelConstants.NO_FORCE_TIME)).collect(Collectors.toList());
+                Action.ActionType.SOFT, RepositoryModelConstants.NO_FORCE_TIME)).collect(Collectors.toList());
     }
 
 }
