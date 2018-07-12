@@ -1,0 +1,1 @@
+ALTER TABLE sp_target_filter_query ADD column auto_assign_action_type INTEGER NOT NULL;
