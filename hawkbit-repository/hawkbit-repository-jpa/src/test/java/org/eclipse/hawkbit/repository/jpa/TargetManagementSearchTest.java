@@ -15,10 +15,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.repository.FilterParams;
+import org.eclipse.hawkbit.repository.UpdateMode;
 import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.Action.Status;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
@@ -95,6 +98,12 @@ public class TargetManagementSearchTest extends AbstractJpaIntegrationTest {
         final String installedC = targCs.iterator().next().getControllerId();
         final Long actionId = assignDistributionSet(installedSet.getId(), assignedC).getActions().get(0);
 
+        // add an attribute for one
+        final Map<String, String> attributes = new HashMap<>();
+        attributes.put("key", "targ-C-attribute-value");
+        final Target targAttribute = controllerManagement.updateControllerAttributes(targCs.get(0).getControllerId(),
+                attributes, UpdateMode.REPLACE);
+
         // set one installed DS also
         controllerManagement.addUpdateActionStatus(
                 entityFactory.actionStatus().create(actionId).status(Status.FINISHED).message("message"));
@@ -114,6 +123,7 @@ public class TargetManagementSearchTest extends AbstractJpaIntegrationTest {
 
         // try to find several targets with different filter settings
         verifyThat1TargetHasNameAndId("targ-A-special", targSpecialName.getControllerId());
+        verifyThat1TargetHasAttributeValue("%c-attribute%", targAttribute.getControllerId());
         verifyThatRepositoryContains400Targets();
         verifyThat200TargetsHaveTagD(targTagW, concat(targBs, targCs));
         verifyThat100TargetsContainsGivenTextAndHaveTagAssigned(targTagY, targTagW, targBs);
@@ -490,6 +500,14 @@ public class TargetManagementSearchTest extends AbstractJpaIntegrationTest {
                 .getContent()).as("has number of elements").hasSize(1).as("that number is also returned by count query")
                         .hasSize(Ints.saturatedCast(
                                 targetManagement.countByFilters(null, null, controllerId, null, Boolean.FALSE)));
+    }
+
+    @Step
+    private void verifyThat1TargetHasAttributeValue(final String value, final String controllerId) {
+        assertThat(targetManagement.findByFilters(PAGE, new FilterParams(null, null, value, null, Boolean.FALSE))
+                .getContent()).as("has number of elements").hasSize(1).as("that number is also returned by count query")
+                        .hasSize(Ints.saturatedCast(
+                                targetManagement.countByFilters(null, null, value, null, Boolean.FALSE)));
     }
 
     @Step
