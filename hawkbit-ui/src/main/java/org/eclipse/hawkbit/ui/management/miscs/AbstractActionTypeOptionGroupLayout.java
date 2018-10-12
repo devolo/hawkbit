@@ -101,7 +101,7 @@ public abstract class AbstractActionTypeOptionGroupLayout extends HorizontalLayo
      * To Set Default option for save.
      */
     public void selectDefaultOption() {
-        actionTypeOptionGroup.select(ActionTypeOption.FORCED);
+        actionTypeOptionGroup.select(ActionTypeOption.SOFT);
     }
 
     /**
