@@ -38,7 +38,7 @@ public class ActionTypeOptionGroupAssignmentLayout extends AbstractActionTypeOpt
 
     /**
      * Constructor
-     * 
+     *
      * @param i18n
      *            VaadinMessageSource
      */
