@@ -176,7 +176,7 @@ public class AutoAssignChecker {
                 targetFilterQuery);
         // the action type is set to FORCED per default (when not explicitly
         // specified)
-        final ActionType autoAssignActionType = type == null ? ActionType.FORCED : type;
+        final ActionType autoAssignActionType = type == null ? ActionType.SOFT : type;
 
         return targets.getContent().stream().map(t -> DeploymentManagement.deploymentRequest(t.getControllerId(), dsId)
                 .setActionType(autoAssignActionType).setWeight(weight).build()).collect(Collectors.toList());
