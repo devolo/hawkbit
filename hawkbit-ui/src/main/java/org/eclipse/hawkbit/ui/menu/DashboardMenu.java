@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.HawkbitServerProperties;
+import org.eclipse.hawkbit.im.authentication.MultitenancyIndicator;
 import org.eclipse.hawkbit.im.authentication.PermissionService;
 import org.eclipse.hawkbit.ui.UiProperties;
 import org.eclipse.hawkbit.ui.common.UserDetailsFormatter;
@@ -79,6 +80,8 @@ public final class DashboardMenu extends CustomComponent {
 
     private final List<DashboardMenuItem> dashboardVaadinViews;
 
+    private final MultitenancyIndicator multiTenancyIndicator;
+
     private String initialViewName;
 
     private boolean accessibleViewsEmpty;
@@ -86,12 +89,13 @@ public final class DashboardMenu extends CustomComponent {
     @Autowired
     DashboardMenu(final VaadinMessageSource i18n, final UiProperties uiProperties,
             final HawkbitServerProperties serverProperties, final PermissionService permissionService,
-            final List<DashboardMenuItem> dashboardVaadinViews) {
+            final List<DashboardMenuItem> dashboardVaadinViews, final MultitenancyIndicator multiTenancyIndicator) {
         this.i18n = i18n;
         this.uiProperties = uiProperties;
         this.serverProperties = serverProperties;
         this.permissionService = permissionService;
         this.dashboardVaadinViews = dashboardVaadinViews;
+        this.multiTenancyIndicator = multiTenancyIndicator;
     }
 
     /**
@@ -198,13 +202,22 @@ public final class DashboardMenu extends CustomComponent {
 
         final MenuItem settingsItem = settings.addItem("", getImage(uiProperties.isGravatar()), null);
 
-        final String formattedTenant = UserDetailsFormatter.formatCurrentTenant();
-        if (!StringUtils.isEmpty(formattedTenant)) {
-            settingsItem.setText(formattedTenant);
-            UserDetailsFormatter.getCurrentTenant().ifPresent(tenant -> settingsItem.setDescription(i18n
-                    .getMessage("menu.user.description", tenant, UserDetailsFormatter.getCurrentUser().getUsername())));
+        if (multiTenancyIndicator.isMultiTenancySupported()) {
+            final String formattedTenant = UserDetailsFormatter.formatCurrentTenant();
+            if (!StringUtils.isEmpty(formattedTenant)) {
+                settingsItem.setText(formattedTenant);
+                UserDetailsFormatter.getCurrentTenant()
+                        .ifPresent(tenant -> settingsItem.setDescription(i18n.getMessage("menu.user.description",
+                                tenant, UserDetailsFormatter.getCurrentUser().getUsername())));
+            } else {
+                settingsItem.setText("...");
+            }
         } else {
-            settingsItem.setText("...");
+            final String currentUsername = UserDetailsFormatter.getCurrentUser().getUsername();
+            final String formattedUsername = UserDetailsFormatter.loadAndFormatUsername(currentUsername);
+            if (!StringUtils.isEmpty(formattedUsername)) {
+                settingsItem.setText(formattedUsername);
+            }
         }
 
         settingsItem.setStyleName("user-menuitem");
