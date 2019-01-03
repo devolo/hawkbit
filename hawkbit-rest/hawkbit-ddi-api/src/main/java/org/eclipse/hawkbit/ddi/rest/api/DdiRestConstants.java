@@ -50,6 +50,8 @@ public final class DdiRestConstants {
      */
     public static final String NO_ACTION_HISTORY = "0";
 
+    public static final String MEDIA_TYPE_CBOR = "application/cbor";
+
     private DdiRestConstants() {
         // constant class, private constructor.
     }

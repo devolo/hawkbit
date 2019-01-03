@@ -38,7 +38,7 @@ public interface DdiRootControllerRestApi {
 
     /**
      * Returns all artifacts of a given software module and target.
-     * 
+     *
      * @param tenant
      *            of the client
      * @param controllerId
@@ -48,7 +48,7 @@ public interface DdiRootControllerRestApi {
      * @return the response
      */
     @RequestMapping(method = RequestMethod.GET, value = "/{controllerId}/softwaremodules/{softwareModuleId}/artifacts", produces = {
-            MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
+            MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE, DdiRestConstants.MEDIA_TYPE_CBOR })
     ResponseEntity<List<DdiArtifact>> getSoftwareModulesArtifacts(@PathVariable("tenant") final String tenant,
             @PathVariable("controllerId") final String controllerId,
             @PathVariable("softwareModuleId") final Long softwareModuleId);
@@ -65,7 +65,7 @@ public interface DdiRootControllerRestApi {
      * @return the response
      */
     @RequestMapping(method = RequestMethod.GET, value = "/{controllerId}", produces = { MediaTypes.HAL_JSON_VALUE,
-            MediaType.APPLICATION_JSON_VALUE })
+            MediaType.APPLICATION_JSON_VALUE, DdiRestConstants.MEDIA_TYPE_CBOR })
     ResponseEntity<DdiControllerBase> getControllerBase(@PathVariable("tenant") final String tenant,
             @PathVariable("controllerId") final String controllerId);
 
@@ -153,7 +153,7 @@ public interface DdiRootControllerRestApi {
      */
     @RequestMapping(value = "/{controllerId}/" + DdiRestConstants.DEPLOYMENT_BASE_ACTION
             + "/{actionId}", method = RequestMethod.GET, produces = { MediaTypes.HAL_JSON_VALUE,
-                    MediaType.APPLICATION_JSON_VALUE })
+                    MediaType.APPLICATION_JSON_VALUE, DdiRestConstants.MEDIA_TYPE_CBOR })
     ResponseEntity<DdiDeploymentBase> getControllerBasedeploymentAction(@PathVariable("tenant") final String tenant,
             @PathVariable("controllerId") @NotEmpty final String controllerId,
             @PathVariable("actionId") @NotEmpty final Long actionId,
@@ -217,7 +217,7 @@ public interface DdiRootControllerRestApi {
      */
     @RequestMapping(value = "/{controllerId}/" + DdiRestConstants.CANCEL_ACTION
             + "/{actionId}", method = RequestMethod.GET, produces = { MediaTypes.HAL_JSON_VALUE,
-                    MediaType.APPLICATION_JSON_VALUE })
+                    MediaType.APPLICATION_JSON_VALUE, DdiRestConstants.MEDIA_TYPE_CBOR })
     ResponseEntity<DdiCancel> getControllerCancelAction(@PathVariable("tenant") final String tenant,
             @PathVariable("controllerId") @NotEmpty final String controllerId,
             @PathVariable("actionId") @NotEmpty final Long actionId);
