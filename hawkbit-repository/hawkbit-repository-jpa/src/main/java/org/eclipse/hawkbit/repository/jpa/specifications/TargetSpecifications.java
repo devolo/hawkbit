@@ -14,11 +14,11 @@ import java.util.List;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.ListJoin;
+import javax.persistence.criteria.MapJoin;
 import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.SetJoin;
-import javax.persistence.criteria.MapJoin;
 import javax.validation.constraints.NotNull;
 
 import org.eclipse.hawkbit.repository.jpa.model.JpaAction;
@@ -131,6 +131,13 @@ public final class TargetSpecifications {
     public static Specification<JpaTarget> isOverdue(final long overdueTimestamp) {
         return (targetRoot, query, cb) -> cb.lessThanOrEqualTo(targetRoot.get(JpaTarget_.lastTargetQuery),
                 overdueTimestamp);
+    }
+
+    public static Specification<JpaTarget> likeId(final String searchText) {
+        return (targetRoot, query, cb) -> {
+            final String searchTextToLower = searchText.toLowerCase();
+            return cb.like(cb.lower(targetRoot.get(JpaTarget_.controllerId)), searchTextToLower);
+        };
     }
 
     /**

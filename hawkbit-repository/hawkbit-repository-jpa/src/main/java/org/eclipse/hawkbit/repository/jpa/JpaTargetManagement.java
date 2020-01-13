@@ -449,6 +449,13 @@ public class JpaTargetManagement implements TargetManagement {
 
     @Override
     public Slice<Target> findByFilters(final Pageable pageable, final FilterParams filterParams) {
+        if (filterParams.isSearchTextOnly()) {
+            final Specification<JpaTarget> spec = TargetSpecifications.likeId(filterParams.getFilterBySearchText());
+            final Page<JpaTarget> res = targetRepository.findAll(spec, pageable);
+            if (res.hasContent())
+                return convertPage(res, pageable);
+        }
+
         final List<Specification<JpaTarget>> specList = buildSpecificationList(filterParams);
         return findByCriteriaAPI(pageable, specList);
     }
