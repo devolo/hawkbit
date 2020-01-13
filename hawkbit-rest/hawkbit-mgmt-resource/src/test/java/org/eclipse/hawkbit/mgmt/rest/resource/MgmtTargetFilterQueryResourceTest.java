@@ -261,6 +261,19 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     }
 
     @Test
+    @Description("Ensures that results for a single target filter query can be retrieved via its id.")
+    public void getSingleResults() throws Exception {
+        final String knownTarget = "test1";
+        final TargetFilterQuery tfq = createSingleTargetFilterQuery("results", "controllerId==" + knownTarget);
+        testdataFactory.createTarget(knownTarget);
+        testdataFactory.createTarget("test2");
+        mvc.perform(get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + tfq.getId() + "/results"))
+                .andDo(print()).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0]", equalTo(knownTarget)));
+    }
+
+    @Test
     @Description("Ensures that the retrieval of a non-existing target filter query results in a HTTP Not found error (404).")
     public void getSingleTargetNoExistsResponseNotFound() throws Exception {
         final String targetIdNotExists = "546546";
