@@ -58,6 +58,11 @@ public class FilterParams {
         this.filterByTagNames = filterByTagNames;
     }
 
+    public boolean isSearchTextOnly() {
+        return filterByDistributionId == null && filterByStatus == null && overdueState == null
+                && filterBySearchText != null && selectTargetWithNoTag == null && filterByTagNames == null;
+    }
+
     /**
      * Gets {@link DistributionSet#getId()} to filter the result. <br>
      * If set to <code>null</code> this filter is disabled.
