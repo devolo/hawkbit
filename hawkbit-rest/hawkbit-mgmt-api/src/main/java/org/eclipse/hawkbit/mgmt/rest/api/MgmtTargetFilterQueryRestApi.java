@@ -8,6 +8,8 @@
  */
 package org.eclipse.hawkbit.mgmt.rest.api;
 
+import java.util.List;
+
 import org.eclipse.hawkbit.mgmt.json.model.PagedList;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtDistributionSet;
 import org.eclipse.hawkbit.mgmt.json.model.targetfilter.MgmtDistributionSetAutoAssignment;
@@ -115,6 +117,18 @@ public interface MgmtTargetFilterQueryRestApi {
      */
     @DeleteMapping(value = "/{filterId}", produces = { MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<Void> deleteFilter(@PathVariable("filterId") Long filterId);
+
+    /**
+     * Handles the GET request of retrieving the targets returned by the target
+     * filter query.
+     *
+     * @param filterId
+     *            the ID of the target filter to be queried
+     * @return list of controller IDs matching the target filter criteria.
+     */
+    @GetMapping(value = "/{filterId}/results", produces = { MediaTypes.HAL_JSON_VALUE,
+            MediaType.APPLICATION_JSON_VALUE })
+    ResponseEntity<List<String>> getResults(@PathVariable("filterId") Long filterId);
 
     /**
      * Handles the GET request of retrieving the distribution set for auto

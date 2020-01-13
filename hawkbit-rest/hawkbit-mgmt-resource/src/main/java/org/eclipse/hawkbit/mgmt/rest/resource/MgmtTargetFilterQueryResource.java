@@ -9,6 +9,7 @@
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.mgmt.json.model.PagedList;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtDistributionSet;
@@ -20,8 +21,10 @@ import org.eclipse.hawkbit.mgmt.rest.api.MgmtTargetFilterQueryRestApi;
 import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
+import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
+import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,13 +47,15 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
     private static final Logger LOG = LoggerFactory.getLogger(MgmtTargetFilterQueryResource.class);
 
     private final TargetFilterQueryManagement filterManagement;
+    private final TargetManagement targetManagement;
 
     private final EntityFactory entityFactory;
 
     MgmtTargetFilterQueryResource(final TargetFilterQueryManagement filterManagement,
-            final EntityFactory entityFactory) {
+            final EntityFactory entityFactory, final TargetManagement targetManagement) {
         this.filterManagement = filterManagement;
         this.entityFactory = entityFactory;
+        this.targetManagement = targetManagement;
     }
 
     @Override
@@ -165,6 +170,12 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
     private TargetFilterQuery findFilterWithExceptionIfNotFound(final Long filterId) {
         return filterManagement.get(filterId)
                 .orElseThrow(() -> new EntityNotFoundException(TargetFilterQuery.class, filterId));
+    }
+
+    @Override
+    public ResponseEntity<List<String>> getResults(@PathVariable("filterId") final Long filterId) {
+        final List<Target> findAll = this.targetManagement.findAllByTargetFilterQuery(filterId);
+        return ResponseEntity.ok(findAll.stream().map(target -> target.getControllerId()).collect(Collectors.toList()));
     }
 
 }
