@@ -60,7 +60,7 @@ public class FilterParams {
 
     public boolean isSearchTextOnly() {
         return filterByDistributionId == null && filterByStatus == null && overdueState == null
-                && filterBySearchText != null && selectTargetWithNoTag == null && filterByTagNames == null;
+                && filterBySearchText != null && (selectTargetWithNoTag == null || selectTargetWithNoTag == false);
     }
 
     /**

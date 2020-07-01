@@ -65,6 +65,8 @@ import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.eclipse.hawkbit.repository.rsql.VirtualPropertyReplacer;
 import org.eclipse.hawkbit.tenancy.TenantAware;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -89,6 +91,7 @@ import com.google.common.collect.Lists;
 @Transactional(readOnly = true)
 @Validated
 public class JpaTargetManagement implements TargetManagement {
+    private static final Logger LOGGER = LoggerFactory.getLogger(JpaTargetManagement.class);
 
     private final EntityManager entityManager;
 
@@ -450,7 +453,10 @@ public class JpaTargetManagement implements TargetManagement {
     @Override
     public Slice<Target> findByFilters(final Pageable pageable, final FilterParams filterParams) {
         if (filterParams.isSearchTextOnly()) {
-            final Specification<JpaTarget> spec = TargetSpecifications.likeId(filterParams.getFilterBySearchText());
+            String exactId = filterParams.getFilterBySearchText();
+            if (exactId.startsWith("%") && exactId.endsWith("%"))
+                exactId = exactId.substring(1, exactId.length()-1);
+            final Specification<JpaTarget> spec = TargetSpecifications.equalId(exactId);
             final Page<JpaTarget> res = targetRepository.findAll(spec, pageable);
             if (res.hasContent())
                 return convertPage(res, pageable);
