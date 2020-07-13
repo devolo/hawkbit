@@ -91,7 +91,6 @@ public class TargetSearchConfigurationView extends BaseConfigurationView
     @Override
     public void undo() {
         this.targetSearchConfigurationItem.undo();
-        this.attributeSearchCheckbox.setValue(targetSearchConfigurationItem.isConfigEnabled());
     }
 
     @Override
