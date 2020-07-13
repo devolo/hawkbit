@@ -8,38 +8,24 @@
  */
 package org.eclipse.hawkbit.repository.jpa;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.eclipse.hawkbit.repository.FilterParams;
-import org.eclipse.hawkbit.repository.UpdateMode;
-import org.eclipse.hawkbit.repository.model.Action;
-import org.eclipse.hawkbit.repository.model.Action.Status;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
-import org.eclipse.hawkbit.repository.model.TargetTag;
-import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
-import org.eclipse.hawkbit.repository.model.TenantAwareBaseEntity;
-import org.junit.Test;
-import org.springframework.data.domain.Slice;
-
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
-
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
 import io.qameta.allure.Story;
+import org.eclipse.hawkbit.repository.FilterParams;
+import org.eclipse.hawkbit.repository.UpdateMode;
+import org.eclipse.hawkbit.repository.model.*;
+import org.eclipse.hawkbit.repository.model.Action.Status;
+import org.junit.Test;
+import org.springframework.data.domain.Slice;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Feature("Component Tests - Repository")
 @Story("Target Management Searches")
