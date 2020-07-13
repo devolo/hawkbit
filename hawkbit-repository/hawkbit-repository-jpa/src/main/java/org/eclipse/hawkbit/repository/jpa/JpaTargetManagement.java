@@ -33,6 +33,7 @@ import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
@@ -77,9 +78,8 @@ public class JpaTargetManagement implements TargetManagement {
 
     private final TargetTagRepository targetTagRepository;
 
-    private TenantConfigurationManagement tenantConfigurationManagement;
-
-    private final SystemSecurityContext systemSecurityContext;
+    @Autowired
+    private TenantConfigurationRepository tenantConfigurationRepository;
 
     private final NoCountPagingRepository criteriaNoCountDao;
 
@@ -98,6 +98,7 @@ public class JpaTargetManagement implements TargetManagement {
             final RolloutGroupRepository rolloutGroupRepository,
             final DistributionSetRepository distributionSetRepository,
             final TargetFilterQueryRepository targetFilterQueryRepository,
+//            final TenantConfigurationRepository tenantConfigurationRepository,
             final TargetTagRepository targetTagRepository, final NoCountPagingRepository criteriaNoCountDao,
             final EventPublisherHolder eventPublisherHolder, final TenantAware tenantAware,
             final AfterTransactionCommitExecutor afterCommit, final VirtualPropertyReplacer virtualPropertyReplacer,
@@ -113,6 +114,7 @@ public class JpaTargetManagement implements TargetManagement {
         this.targetFilterQueryRepository = targetFilterQueryRepository;
         this.tenantConfigurationManagement = tenantConfigurationManagement;
         this.systemSecurityContext = systemSecurityContext;
+//        this.tenantConfigurationRepository = tenantConfigurationRepository;
         this.targetTagRepository = targetTagRepository;
         this.criteriaNoCountDao = criteriaNoCountDao;
         this.eventPublisherHolder = eventPublisherHolder;
@@ -473,11 +475,10 @@ public class JpaTargetManagement implements TargetManagement {
                     .hasInstalledOrAssignedDistributionSet(filterParams.getFilterByDistributionId()));
         }
         if (!StringUtils.isEmpty(filterParams.getFilterBySearchText())) {
-
-            if(isAttributeSearchEnabled()){
+            if(tenantConfigurationRepository.findByKey(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED).getValue().equalsIgnoreCase("true")){
                 specList.add(TargetSpecifications
                         .likeIdOrNameOrDescriptionOrAttributeValue(filterParams.getFilterBySearchText()));
-            } else {
+            }else{
                 specList.add(TargetSpecifications
                         .likeIdOrNameOrDescription(filterParams.getFilterBySearchText()));
             }
