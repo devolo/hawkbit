@@ -140,6 +140,12 @@ public final class TargetSpecifications {
         };
     }
 
+    public static Specification<JpaTarget> equalId(final String id) {
+        return (targetRoot, query, cb) -> {
+            return cb.equal(targetRoot.get(JpaTarget_.controllerId), id);
+        };
+    }
+
     /**
      * {@link Specification} for retrieving {@link Target}s by "like
      * controllerId or like name or like description".
