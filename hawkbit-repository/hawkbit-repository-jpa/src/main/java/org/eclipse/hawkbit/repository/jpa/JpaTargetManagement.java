@@ -32,7 +32,6 @@ import org.eclipse.hawkbit.repository.rsql.VirtualPropertyReplacer;
 import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
@@ -77,7 +76,7 @@ public class JpaTargetManagement implements TargetManagement {
 
     private final TargetTagRepository targetTagRepository;
 
-    private final TenantConfigurationRepository tenantConfigurationRepository;
+    private TenantConfigurationManagement tenantConfigurationManagement;
 
     private final NoCountPagingRepository criteriaNoCountDao;
 
@@ -99,7 +98,9 @@ public class JpaTargetManagement implements TargetManagement {
             final TargetTagRepository targetTagRepository, final NoCountPagingRepository criteriaNoCountDao,
             final EventPublisherHolder eventPublisherHolder, final TenantAware tenantAware,
             final AfterTransactionCommitExecutor afterCommit, final VirtualPropertyReplacer virtualPropertyReplacer,
-            final Database database, TenantConfigurationRepository tenantConfigurationRepository) {
+            final Database database,
+            final TenantConfigurationManagement tenantConfigurationManagement)
+    {
         this.entityManager = entityManager;
         this.quotaManagement = quotaManagement;
         this.targetRepository = targetRepository;
@@ -107,7 +108,7 @@ public class JpaTargetManagement implements TargetManagement {
         this.rolloutGroupRepository = rolloutGroupRepository;
         this.distributionSetRepository = distributionSetRepository;
         this.targetFilterQueryRepository = targetFilterQueryRepository;
-        this.tenantConfigurationRepository = tenantConfigurationRepository;
+        this.tenantConfigurationManagement = tenantConfigurationManagement;
         this.targetTagRepository = targetTagRepository;
         this.criteriaNoCountDao = criteriaNoCountDao;
         this.eventPublisherHolder = eventPublisherHolder;
@@ -446,6 +447,11 @@ public class JpaTargetManagement implements TargetManagement {
         return countByCriteriaAPI(specList);
     }
 
+    private boolean isAttributeSearchEnabled() {
+        final TenantConfigurationValue<Boolean> isEnabled = tenantConfigurationManagement.getConfigurationValue(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED);
+        return isEnabled != null ? isEnabled.getValue() : true;
+    }
+
     private List<Specification<JpaTarget>> buildSpecificationList(final FilterParams filterParams) {
         final List<Specification<JpaTarget>> specList = new ArrayList<>();
         if ((filterParams.getFilterByStatus() != null) && !filterParams.getFilterByStatus().isEmpty()) {
@@ -461,7 +467,8 @@ public class JpaTargetManagement implements TargetManagement {
                     .hasInstalledOrAssignedDistributionSet(filterParams.getFilterByDistributionId()));
         }
         if (!StringUtils.isEmpty(filterParams.getFilterBySearchText())) {
-            if(tenantConfigurationRepository.findByKey(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED).getValue().equalsIgnoreCase("true")){
+
+            if(isAttributeSearchEnabled()){
                 specList.add(TargetSpecifications
                         .likeIdOrNameOrDescriptionOrAttributeValue(filterParams.getFilterBySearchText()));
             }else{
