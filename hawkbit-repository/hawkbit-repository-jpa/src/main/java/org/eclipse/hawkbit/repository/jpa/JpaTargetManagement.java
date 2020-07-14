@@ -78,8 +78,7 @@ public class JpaTargetManagement implements TargetManagement {
 
     private final TargetTagRepository targetTagRepository;
 
-    @Autowired
-    private TenantConfigurationRepository tenantConfigurationRepository;
+    private final TenantConfigurationRepository tenantConfigurationRepository;
 
     private final NoCountPagingRepository criteriaNoCountDao;
 
@@ -101,9 +100,7 @@ public class JpaTargetManagement implements TargetManagement {
             final TargetTagRepository targetTagRepository, final NoCountPagingRepository criteriaNoCountDao,
             final EventPublisherHolder eventPublisherHolder, final TenantAware tenantAware,
             final AfterTransactionCommitExecutor afterCommit, final VirtualPropertyReplacer virtualPropertyReplacer,
-            final Database database,
-            final TenantConfigurationManagement tenantConfigurationManagement,
-            final SystemSecurityContext systemSecurityContext){
+            final Database database, TenantConfigurationRepository tenantConfigurationRepository) {
         this.entityManager = entityManager;
         this.quotaManagement = quotaManagement;
         this.targetRepository = targetRepository;
@@ -111,9 +108,7 @@ public class JpaTargetManagement implements TargetManagement {
         this.rolloutGroupRepository = rolloutGroupRepository;
         this.distributionSetRepository = distributionSetRepository;
         this.targetFilterQueryRepository = targetFilterQueryRepository;
-        this.tenantConfigurationManagement = tenantConfigurationManagement;
-        this.systemSecurityContext = systemSecurityContext;
-//        this.tenantConfigurationRepository = tenantConfigurationRepository;
+        this.tenantConfigurationRepository = tenantConfigurationRepository;
         this.targetTagRepository = targetTagRepository;
         this.criteriaNoCountDao = criteriaNoCountDao;
         this.eventPublisherHolder = eventPublisherHolder;
