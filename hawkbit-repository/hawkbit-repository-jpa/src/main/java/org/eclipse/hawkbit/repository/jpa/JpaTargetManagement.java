@@ -44,35 +44,18 @@ import org.eclipse.hawkbit.repository.jpa.builder.JpaTargetCreate;
 import org.eclipse.hawkbit.repository.jpa.builder.JpaTargetUpdate;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.executor.AfterTransactionCommitExecutor;
-import org.eclipse.hawkbit.repository.jpa.model.JpaDistributionSet_;
-import org.eclipse.hawkbit.repository.jpa.model.JpaTarget;
-import org.eclipse.hawkbit.repository.jpa.model.JpaTargetMetadata;
-import org.eclipse.hawkbit.repository.jpa.model.JpaTargetMetadata_;
-import org.eclipse.hawkbit.repository.jpa.model.JpaTargetTag;
-import org.eclipse.hawkbit.repository.jpa.model.JpaTarget_;
-import org.eclipse.hawkbit.repository.jpa.model.TargetMetadataCompositeKey;
+import org.eclipse.hawkbit.repository.jpa.model.*;
 import org.eclipse.hawkbit.repository.jpa.rsql.RSQLUtility;
 import org.eclipse.hawkbit.repository.jpa.specifications.SpecificationsBuilder;
 import org.eclipse.hawkbit.repository.jpa.specifications.TargetSpecifications;
 import org.eclipse.hawkbit.repository.jpa.utils.QuotaHelper;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.MetaData;
-import org.eclipse.hawkbit.repository.model.RolloutGroup;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
-import org.eclipse.hawkbit.repository.model.TargetMetadata;
-import org.eclipse.hawkbit.repository.model.TargetTag;
-import org.eclipse.hawkbit.repository.model.TargetTagAssignmentResult;
-import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
+import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.eclipse.hawkbit.repository.rsql.VirtualPropertyReplacer;
+import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.springframework.dao.ConcurrencyFailureException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.orm.jpa.vendor.Database;
 import org.springframework.retry.annotation.Backoff;
@@ -111,6 +94,8 @@ public class JpaTargetManagement implements TargetManagement {
 
     private final TenantConfigurationManagement tenantConfigurationManagement;
 
+    private final SystemSecurityContext systemSecurityContext;
+
     private final NoCountPagingRepository criteriaNoCountDao;
 
     private final EventPublisherHolder eventPublisherHolder;
@@ -132,7 +117,8 @@ public class JpaTargetManagement implements TargetManagement {
             final EventPublisherHolder eventPublisherHolder, final TenantAware tenantAware,
             final AfterTransactionCommitExecutor afterCommit, final VirtualPropertyReplacer virtualPropertyReplacer,
             final Database database,
-            final TenantConfigurationManagement tenantConfigurationManagement){
+            final TenantConfigurationManagement tenantConfigurationManagement,
+            final SystemSecurityContext systemSecurityContext){
         this.entityManager = entityManager;
         this.quotaManagement = quotaManagement;
         this.targetRepository = targetRepository;
@@ -141,6 +127,7 @@ public class JpaTargetManagement implements TargetManagement {
         this.distributionSetRepository = distributionSetRepository;
         this.targetFilterQueryRepository = targetFilterQueryRepository;
         this.tenantConfigurationManagement = tenantConfigurationManagement;
+        this.systemSecurityContext = systemSecurityContext;
         this.targetTagRepository = targetTagRepository;
         this.criteriaNoCountDao = criteriaNoCountDao;
         this.eventPublisherHolder = eventPublisherHolder;
@@ -480,7 +467,9 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     private boolean isAttributeSearchEnabled() {
-        final TenantConfigurationValue<Boolean> isEnabled = tenantConfigurationManagement.getConfigurationValue(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED);
+        final TenantConfigurationValue<Boolean> isEnabled = systemSecurityContext.
+                runAsSystem(() -> tenantConfigurationManagement
+                        .getConfigurationValue(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED));
         return isEnabled != null ? isEnabled.getValue() : true;
     }
 
@@ -503,7 +492,7 @@ public class JpaTargetManagement implements TargetManagement {
             if(isAttributeSearchEnabled()){
                 specList.add(TargetSpecifications
                         .likeIdOrNameOrDescriptionOrAttributeValue(filterParams.getFilterBySearchText()));
-            }else {
+            } else {
                 specList.add(TargetSpecifications
                         .likeIdOrNameOrDescription(filterParams.getFilterBySearchText()));
             }
