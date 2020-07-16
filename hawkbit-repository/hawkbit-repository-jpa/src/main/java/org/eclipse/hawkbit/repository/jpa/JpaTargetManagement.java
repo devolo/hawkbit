@@ -29,6 +29,7 @@ import org.eclipse.hawkbit.repository.jpa.utils.QuotaHelper;
 import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.eclipse.hawkbit.repository.rsql.VirtualPropertyReplacer;
+import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,8 @@ public class JpaTargetManagement implements TargetManagement {
 
     private TenantConfigurationManagement tenantConfigurationManagement;
 
+    private final SystemSecurityContext systemSecurityContext;
+
     private final NoCountPagingRepository criteriaNoCountDao;
 
     private final EventPublisherHolder eventPublisherHolder;
@@ -99,8 +102,8 @@ public class JpaTargetManagement implements TargetManagement {
             final EventPublisherHolder eventPublisherHolder, final TenantAware tenantAware,
             final AfterTransactionCommitExecutor afterCommit, final VirtualPropertyReplacer virtualPropertyReplacer,
             final Database database,
-            final TenantConfigurationManagement tenantConfigurationManagement)
-    {
+            final TenantConfigurationManagement tenantConfigurationManagement,
+            final SystemSecurityContext systemSecurityContext){
         this.entityManager = entityManager;
         this.quotaManagement = quotaManagement;
         this.targetRepository = targetRepository;
@@ -109,6 +112,7 @@ public class JpaTargetManagement implements TargetManagement {
         this.distributionSetRepository = distributionSetRepository;
         this.targetFilterQueryRepository = targetFilterQueryRepository;
         this.tenantConfigurationManagement = tenantConfigurationManagement;
+        this.systemSecurityContext = systemSecurityContext;
         this.targetTagRepository = targetTagRepository;
         this.criteriaNoCountDao = criteriaNoCountDao;
         this.eventPublisherHolder = eventPublisherHolder;
@@ -448,7 +452,9 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     private boolean isAttributeSearchEnabled() {
-        final TenantConfigurationValue<Boolean> isEnabled = tenantConfigurationManagement.getConfigurationValue(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED);
+        final TenantConfigurationValue<Boolean> isEnabled = systemSecurityContext.
+                runAsSystem(() -> tenantConfigurationManagement
+                        .getConfigurationValue(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED));
         return isEnabled != null ? isEnabled.getValue() : true;
     }
 
@@ -471,7 +477,7 @@ public class JpaTargetManagement implements TargetManagement {
             if(isAttributeSearchEnabled()){
                 specList.add(TargetSpecifications
                         .likeIdOrNameOrDescriptionOrAttributeValue(filterParams.getFilterBySearchText()));
-            }else{
+            } else {
                 specList.add(TargetSpecifications
                         .likeIdOrNameOrDescription(filterParams.getFilterBySearchText()));
             }

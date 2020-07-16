@@ -510,11 +510,12 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
             final TargetTagRepository targetTagRepository, final NoCountPagingRepository criteriaNoCountDao,
             final EventPublisherHolder eventPublisherHolder, final TenantAware tenantAware,
             final AfterTransactionCommitExecutor afterCommit, final VirtualPropertyReplacer virtualPropertyReplacer,
-            final JpaProperties properties, TenantConfigurationManagement tenantConfigurationManagement) {
+            final JpaProperties properties, TenantConfigurationManagement tenantConfigurationManagement,
+            final SystemSecurityContext systemSecurityContext) {
         return new JpaTargetManagement(entityManager, quotaManagement, targetRepository, targetMetadataRepository,
                 rolloutGroupRepository, distributionSetRepository, targetFilterQueryRepository, targetTagRepository,
                 criteriaNoCountDao, eventPublisherHolder, tenantAware, afterCommit, virtualPropertyReplacer,
-                properties.getDatabase(), tenantConfigurationManagement);
+                properties.getDatabase(), tenantConfigurationManagement, systemSecurityContext);
     }
 
     /**
