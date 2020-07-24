@@ -56,6 +56,8 @@ public class TenantResourceDocumentationTest extends AbstractApiRestDocumentatio
     static {
         CONFIG_ITEM_DESCRIPTIONS.put(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED,
                 "if target text search should include target attributes");
+        CONFIG_ITEM_DESCRIPTIONS.put(TenantConfigurationKey.TRIGGER_AUTO_ASSIGN_CHECK_BY_TARGET,
+                "if auto-assign check should occur when target uploads its configuration");
         CONFIG_ITEM_DESCRIPTIONS.put(TenantConfigurationKey.AUTHENTICATION_MODE_GATEWAY_SECURITY_TOKEN_ENABLED,
                 "if the authentication mode 'gateway security token' is enabled.");
         CONFIG_ITEM_DESCRIPTIONS.put(TenantConfigurationKey.AUTHENTICATION_MODE_GATEWAY_SECURITY_TOKEN_KEY,

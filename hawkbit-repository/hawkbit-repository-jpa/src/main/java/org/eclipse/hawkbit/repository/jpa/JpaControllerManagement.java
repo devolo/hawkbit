@@ -29,6 +29,7 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
@@ -45,6 +46,7 @@ import org.eclipse.hawkbit.repository.MaintenanceScheduleHelper;
 import org.eclipse.hawkbit.repository.QuotaManagement;
 import org.eclipse.hawkbit.repository.RepositoryConstants;
 import org.eclipse.hawkbit.repository.RepositoryProperties;
+import org.eclipse.hawkbit.repository.SystemManagement;
 import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
 import org.eclipse.hawkbit.repository.UpdateMode;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
@@ -55,6 +57,7 @@ import org.eclipse.hawkbit.repository.exception.CancelActionNotAllowedException;
 import org.eclipse.hawkbit.repository.exception.EntityAlreadyExistsException;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.exception.InvalidTargetAttributeException;
+import org.eclipse.hawkbit.repository.jpa.autoassign.AutoAssignChecker;
 import org.eclipse.hawkbit.repository.jpa.builder.JpaActionStatusCreate;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.executor.AfterTransactionCommitExecutor;
@@ -76,6 +79,7 @@ import org.eclipse.hawkbit.repository.model.SoftwareModule;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleMetadata;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
+import org.eclipse.hawkbit.repository.model.TenantConfigurationValue;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.TenantAware;
@@ -83,6 +87,7 @@ import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.T
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -91,6 +96,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.integration.support.locks.LockRegistry;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -137,6 +143,12 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
     private SystemSecurityContext systemSecurityContext;
 
     @Autowired
+    private SystemManagement systemManagement;
+
+    @Autowired
+    private LockRegistry lockRegistry;
+
+    @Autowired
     private EntityFactory entityFactory;
 
     @Autowired
@@ -153,6 +165,9 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     @Autowired
     private TenantAware tenantAware;
+
+    @Autowired
+    private AutoAssignChecker autoAssignChecker;
 
     JpaControllerManagement(final ScheduledExecutorService executorService,
             final RepositoryProperties repositoryProperties, final ActionRepository actionRepository) {
@@ -767,6 +782,34 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         assertTargetAttributesQuota(target);
 
         return targetRepository.save(target);
+    }
+
+
+    @Override
+    public void autoAssignCheckWithId(String controllerId){
+        final TenantConfigurationValue<Boolean> isEnabled = systemSecurityContext.
+                runAsSystem(() -> tenantConfigurationManagement
+                        .getConfigurationValue(TenantConfigurationKey.TRIGGER_AUTO_ASSIGN_CHECK_BY_TARGET));
+        if(isEnabled.getValue()){
+            LOG.debug("Auto assign check with ID triggered...");
+            systemSecurityContext.runAsSystem(() -> executeAutoAssignCheck(controllerId));
+        }
+    }
+
+    private Object executeAutoAssignCheck(String controllerId) {
+
+        final Lock lock = lockRegistry.obtain("autoassign");
+        if (!lock.tryLock()) {
+            return null;
+        }
+
+        try {
+            systemManagement.forEachTenant(tenant -> autoAssignChecker.checkWithId(controllerId));
+        } finally {
+            lock.unlock();
+        }
+
+        return null;
     }
 
     private static boolean isAttributeEntryValid(final Map.Entry<String, String> e) {

@@ -152,6 +152,11 @@ public class TenantConfigurationProperties {
          */
         public static final String MULTI_ASSIGNMENTS_ENABLED = "multi.assignments.enabled";
 
+        /**
+         * Enable/disable autoassignment check by targets when sending their configuration
+         */
+        public static final String TRIGGER_AUTO_ASSIGN_CHECK_BY_TARGET = "autoassign.trigger.by.target.enabled";
+
         private String keyName;
         private String defaultValue = "";
         private Class<?> dataType = String.class;
