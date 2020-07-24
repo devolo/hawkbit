@@ -1297,6 +1297,12 @@ public final class UIComponentIdProvider {
     public static final String TARGET_SEARCH_ATTRIBUTES = "target.search.attributes.checkbox";
 
     /**
+     * Configuration checkbox for
+     * {@link TenantConfigurationKey#TRIGGER_AUTO_ASSIGN_CHECK_BY_TARGET}
+     */
+    public static final String TRIGGER_AUTOASSIGN_CHECK_BY_TARGET = "trigger.autoassign.check.checkbox";
+
+    /**
      * Id of the rollout approval remark field
      */
     public static final String ROLLOUT_APPROVAL_REMARK_FIELD_ID = "rollout.approve.remark";

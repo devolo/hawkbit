@@ -66,6 +66,8 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
 
     private final TargetSearchConfigurationView targetSearchConfigurationView;
 
+    private final AutoAssignCheckConfigurationView autoAssignCheckConfigurationView;
+
     private final VaadinMessageSource i18n;
 
     private final UiProperties uiProperties;
@@ -99,6 +101,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
                 uiProperties);
         this.rolloutConfigurationView = new RolloutConfigurationView(i18n, tenantConfigurationManagement, uiProperties);
         this.targetSearchConfigurationView = new TargetSearchConfigurationView(i18n, tenantConfigurationManagement, uiProperties);
+        this.autoAssignCheckConfigurationView = new AutoAssignCheckConfigurationView(i18n, tenantConfigurationManagement);
 
         this.i18n = i18n;
         this.uiProperties = uiProperties;
@@ -117,6 +120,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
         configurationViews.add(rolloutConfigurationView);
         configurationViews.add(authenticationConfigurationView);
         configurationViews.add(targetSearchConfigurationView);
+        configurationViews.add(autoAssignCheckConfigurationView);
         configurationViews.add(pollingConfigurationView);
         if (customConfigurationViews != null) {
             configurationViews.addAll(

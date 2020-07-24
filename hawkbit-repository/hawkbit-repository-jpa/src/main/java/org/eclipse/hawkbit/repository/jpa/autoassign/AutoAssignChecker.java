@@ -106,6 +106,26 @@ public class AutoAssignChecker {
     }
 
     /**
+     * Checks all target filter queries with an auto assign distribution set and
+     * triggers the check and assignment for the target with the specific ID
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void checkWithId(String controllerId) {
+        LOGGER.debug("Auto assign check with ID call");
+
+        final PageRequest pageRequest = PageRequest.of(0, PAGE_SIZE);
+
+        final Page<TargetFilterQuery> filterQueries = targetFilterQueryManagement.findWithAutoAssignDS(pageRequest);
+
+        final String prefix = "id==" + controllerId + " and ";
+
+        for (final TargetFilterQuery filterQuery : filterQueries) {
+            filterQuery.setQuery(prefix + filterQuery.getQuery());
+            checkByTargetFilterQueryAndAssignDS(filterQuery);
+        }
+    }
+
+    /**
      * Fetches the distribution set, gets all controllerIds and assigns the DS
      * to them. Catches PersistenceException and own exceptions derived from
      * AbstractServerRtException
