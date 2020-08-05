@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -143,11 +144,26 @@ public class AutoAssignChecker {
                 count = runTransactionalAssignment(targetFilterQuery, distributionSet.getId());
 
             } while (count == PAGE_SIZE);
+            LOGGER.debug("Running AutoAssignCheck. TFQ: " + targetFilterQuery.getQuery() + " with DS: " + distributionSet.getName());
 
         } catch (PersistenceException | AbstractServerRtException e) {
             LOGGER.error("Error during auto assign check of target filter query " + targetFilterQuery.getId(), e);
         }
+    }
 
+    public void checkByTFQAndAssignDS(final TargetFilterQuery targetFilterQuery) {
+        try {
+            final DistributionSet distributionSet = targetFilterQuery.getAutoAssignDistributionSet();
+
+            LOGGER.debug("Running AutoAssignCheck. TFQ: " + targetFilterQuery.getQuery() + " with DS: " + distributionSet.getName());
+
+            int count = runTransactionalAssignment(targetFilterQuery, distributionSet.getId());
+
+            LOGGER.debug("Assigned " + count + " targets with DS: " + distributionSet.getName());
+
+        } catch (PersistenceException | AbstractServerRtException e) {
+            LOGGER.error("Error during auto assign check of target filter query " + targetFilterQuery.getId(), e);
+        }
     }
 
     /**
