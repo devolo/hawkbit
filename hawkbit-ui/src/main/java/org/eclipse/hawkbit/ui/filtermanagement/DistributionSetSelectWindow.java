@@ -17,6 +17,7 @@ import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
+import org.eclipse.hawkbit.repository.jpa.autoassign.AutoAssignChecker;
 import org.eclipse.hawkbit.ui.common.CommonDialogWindow;
 import org.eclipse.hawkbit.ui.common.builder.WindowBuilder;
 import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
@@ -62,15 +63,19 @@ public class DistributionSetSelectWindow implements CommonDialogWindow.SaveDialo
     private DistributionSetSelectComboBox dsCombo;
     private Long tfqId;
 
+    private final AutoAssignChecker autoAssignChecker;
+
     DistributionSetSelectWindow(final VaadinMessageSource i18n, final UIEventBus eventBus,
             final UINotification notification, final TargetManagement targetManagement,
-            final TargetFilterQueryManagement targetFilterQueryManagement, final EntityFactory entityFactory) {
+            final TargetFilterQueryManagement targetFilterQueryManagement, final EntityFactory entityFactory,
+            final AutoAssignChecker autoAssignChecker) {
         this.i18n = i18n;
         this.notification = notification;
         this.eventBus = eventBus;
         this.targetManagement = targetManagement;
         this.targetFilterQueryManagement = targetFilterQueryManagement;
         this.entityFactory = entityFactory;
+        this.autoAssignChecker = autoAssignChecker;
     }
 
     private VerticalLayout initView() {
@@ -204,15 +209,19 @@ public class DistributionSetSelectWindow implements CommonDialogWindow.SaveDialo
                     entityFactory.targetFilterQuery().updateAutoAssign(targetFilterQueryId).ds(null));
             eventBus.publish(this, CustomFilterUIEvent.UPDATED_TARGET_FILTER_QUERY);
         }
+
     }
 
     private void confirmWithConsequencesDialog(final TargetFilterQuery tfq, final Long dsId,
             final ActionType actionType) {
         final ConfirmConsequencesDialog dialog = new ConfirmConsequencesDialog(tfq, dsId, accepted -> {
             if (accepted) {
-                targetFilterQueryManagement.updateAutoAssignDS(entityFactory.targetFilterQuery()
+                TargetFilterQuery targetFilterQuery = targetFilterQueryManagement.updateAutoAssignDS(entityFactory.targetFilterQuery()
                         .updateAutoAssign(tfq.getId()).ds(dsId).actionType(actionType));
                 eventBus.publish(this, CustomFilterUIEvent.UPDATED_TARGET_FILTER_QUERY);
+                if(targetFilterQuery.getAutoAssignDistributionSet() != null){
+                    autoAssignChecker.checkByTFQAndAssignDS(targetFilterQuery);
+                }
             }
         });
 

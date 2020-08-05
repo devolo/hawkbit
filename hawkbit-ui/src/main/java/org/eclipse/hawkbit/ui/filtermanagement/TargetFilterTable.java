@@ -17,6 +17,7 @@ import org.eclipse.hawkbit.im.authentication.SpPermission;
 import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
+import org.eclipse.hawkbit.repository.jpa.autoassign.AutoAssignChecker;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.ConfirmationDialog;
@@ -81,7 +82,9 @@ public class TargetFilterTable extends Table {
     public TargetFilterTable(final VaadinMessageSource i18n, final UINotification notification,
             final UIEventBus eventBus, final FilterManagementUIState filterManagementUIState,
             final TargetFilterQueryManagement targetFilterQueryManagement, final TargetManagement targetManagement,
-            final SpPermissionChecker permChecker, final EntityFactory entityFactory) {
+            final SpPermissionChecker permChecker, final EntityFactory entityFactory,
+            final AutoAssignChecker autoAssignChecker) {
+
         this.i18n = i18n;
         this.notification = notification;
         this.eventBus = eventBus;
@@ -90,7 +93,7 @@ public class TargetFilterTable extends Table {
         this.permChecker = permChecker;
 
         this.dsSelectWindow = new DistributionSetSelectWindow(i18n, eventBus, notification, targetManagement,
-                targetFilterQueryManagement, entityFactory);
+                targetFilterQueryManagement, entityFactory, autoAssignChecker);
 
         setStyleName("sp-table");
         setSizeFull();
