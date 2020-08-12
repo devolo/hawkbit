@@ -27,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -120,9 +119,15 @@ public class AutoAssignChecker {
 
         final String prefix = "id==" + controllerId + " and ";
 
+        TargetFilterQuery tfqCopy;
+
         for (final TargetFilterQuery filterQuery : filterQueries) {
-            filterQuery.setQuery(prefix + filterQuery.getQuery());
-            checkByTargetFilterQueryAndAssignDS(filterQuery);
+
+            tfqCopy = filterQuery.deepCopy();
+
+            tfqCopy.setQuery(prefix + tfqCopy.getQuery());
+
+            checkByTargetFilterQueryAndAssignDS(tfqCopy);
         }
     }
 
