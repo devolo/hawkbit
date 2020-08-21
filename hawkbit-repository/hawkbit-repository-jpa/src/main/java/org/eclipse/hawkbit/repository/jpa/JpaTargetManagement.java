@@ -8,8 +8,31 @@
  */
 package org.eclipse.hawkbit.repository.jpa;
 
-import com.google.common.collect.Lists;
-import org.eclipse.hawkbit.repository.*;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import javax.persistence.EntityManager;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Expression;
+import javax.persistence.criteria.MapJoin;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+
+import org.eclipse.hawkbit.repository.FilterParams;
+import org.eclipse.hawkbit.repository.QuotaManagement;
+import org.eclipse.hawkbit.repository.TargetFields;
+import org.eclipse.hawkbit.repository.TargetManagement;
+import org.eclipse.hawkbit.repository.TargetMetadataFields;
+import org.eclipse.hawkbit.repository.TimestampCalculator;
 import org.eclipse.hawkbit.repository.builder.TargetCreate;
 import org.eclipse.hawkbit.repository.builder.TargetUpdate;
 import org.eclipse.hawkbit.repository.event.remote.TargetAttributesRequestedEvent;
@@ -269,8 +292,7 @@ public class JpaTargetManagement implements TargetManagement {
     public Optional<TargetMetadata> getMetaDataByControllerId(final String controllerId, final String key) {
         final Long targetId = getByControllerIdAndThrowIfNotFound(controllerId).getId();
 
-        return targetMetadataRepository.findById(new TargetMetadataCompositeKey(targetId, key))
-                .map(t -> t);
+        return targetMetadataRepository.findById(new TargetMetadataCompositeKey(targetId, key)).map(t -> t);
     }
 
     @Override
@@ -458,7 +480,7 @@ public class JpaTargetManagement implements TargetManagement {
         if ((filterParams.getFilterByStatus() != null) && !filterParams.getFilterByStatus().isEmpty()) {
             specList.add(TargetSpecifications.hasTargetUpdateStatus(filterParams.getFilterByStatus()));
         }
-        if (filterParams.getOverdueState() != null) {
+        if (filterParams.getOverdueState() != null && filterParams.getOverdueState()) {
             specList.add(TargetSpecifications.isOverdue(TimestampCalculator.calculateOverdueTimestamp()));
         }
         if (filterParams.getFilterByDistributionId() != null) {
@@ -485,8 +507,11 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     private static boolean hasTagsFilterActive(final FilterParams filterParams) {
-        return ((filterParams.getSelectTargetWithNoTag() != null) && filterParams.getSelectTargetWithNoTag())
-                || ((filterParams.getFilterByTagNames() != null) && (filterParams.getFilterByTagNames().length > 0));
+        final boolean isNoTagActive = Boolean.TRUE.equals(filterParams.getSelectTargetWithNoTag());
+        final boolean isAtLeastOneTagActive = filterParams.getFilterByTagNames() != null
+                && filterParams.getFilterByTagNames().length > 0;
+
+        return isNoTagActive || isAtLeastOneTagActive;
     }
 
     private Slice<Target> findByCriteriaAPI(final Pageable pageable, final List<Specification<JpaTarget>> specList) {
@@ -618,16 +643,10 @@ public class JpaTargetManagement implements TargetManagement {
         }
         // add the order to the multi select first based on the selectCase
         query.orderBy(cb.asc(selectCase), cb.desc(targetRoot.get(JpaTarget_.id)));
-        // the result is a Object[] due the fact that the selectCase is an extra
-        // column, so it cannot
-        // be mapped directly to a Target entity because the selectCase is not a
-        // attribute of the
-        // Target entity, the the Object array contains the Target on the first
-        // index of the array and
-        // the 2nd contains the selectCase int value.
+
         final int pageSize = pageable.getPageSize();
         final List<JpaTarget> resultList = entityManager.createQuery(query).setFirstResult((int) pageable.getOffset())
-                .setMaxResults(pageSize + 1).getResultList();
+                .setMaxResults(pageSize).getResultList();
         final boolean hasNext = resultList.size() > pageSize;
         return new SliceImpl<>(Collections.unmodifiableList(resultList), pageable, hasNext);
     }
@@ -792,9 +811,20 @@ public class JpaTargetManagement implements TargetManagement {
 
     @Override
     public Map<String, String> getControllerAttributes(final String controllerId) {
-        final JpaTarget target = getByControllerIdAndThrowIfNotFound(controllerId);
+        final CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        final CriteriaQuery<Object[]> query = cb.createQuery(Object[].class);
 
-        return target.getControllerAttributes();
+        final Root<JpaTarget> targetRoot = query.from(JpaTarget.class);
+        query.where(cb.equal(targetRoot.get(JpaTarget_.controllerId), controllerId));
+
+        final MapJoin<JpaTarget, String, String> attributes = targetRoot.join(JpaTarget_.controllerAttributes);
+        query.multiselect(attributes.key(), attributes.value());
+        query.orderBy(cb.asc(attributes.key()));
+
+        final List<Object[]> attr = entityManager.createQuery(query).getResultList();
+
+        return attr.stream().collect(Collectors.toMap(entry -> (String) entry[0], entry -> (String) entry[1],
+                (v1, v2) -> v1, LinkedHashMap::new));
     }
 
     @Override
