@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -106,32 +107,6 @@ public class AutoAssignChecker {
     }
 
     /**
-     * Checks all target filter queries with an auto assign distribution set and
-     * triggers the check and assignment for the target with the specific ID
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void checkWithId(String controllerId) {
-        LOGGER.debug("Auto assign check with ID call");
-
-        final PageRequest pageRequest = PageRequest.of(0, PAGE_SIZE);
-
-        final Page<TargetFilterQuery> filterQueries = targetFilterQueryManagement.findWithAutoAssignDS(pageRequest);
-
-        final String prefix = "id==" + controllerId + " and ";
-
-        TargetFilterQuery tfqCopy;
-
-        for (final TargetFilterQuery filterQuery : filterQueries) {
-
-            tfqCopy = filterQuery.deepCopy();
-
-            tfqCopy.setQuery(prefix + tfqCopy.getQuery());
-
-            checkByTargetFilterQueryAndAssignDS(tfqCopy);
-        }
-    }
-
-    /**
      * Fetches the distribution set, gets all controllerIds and assigns the DS
      * to them. Catches PersistenceException and own exceptions derived from
      * AbstractServerRtException
@@ -156,6 +131,7 @@ public class AutoAssignChecker {
         }
     }
 
+    @Async
     public void checkByTFQAndAssignDS(final TargetFilterQuery targetFilterQuery) {
         try {
             final DistributionSet distributionSet = targetFilterQuery.getAutoAssignDistributionSet();
