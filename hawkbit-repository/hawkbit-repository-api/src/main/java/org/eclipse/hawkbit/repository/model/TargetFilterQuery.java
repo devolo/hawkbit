@@ -82,10 +82,4 @@ public interface TargetFilterQuery extends TenantAwareBaseEntity {
      *         assignment.
      */
     Optional<Integer> getAutoAssignWeight();
-
-    /**
-     *
-     * @return deep copy of the TargetFilterQuery
-     */
-    public TargetFilterQuery deepCopy();
 }

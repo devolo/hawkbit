@@ -42,7 +42,6 @@ import org.eclipse.hawkbit.repository.RepositoryConstants;
 import org.eclipse.hawkbit.repository.SystemManagement;
 import org.eclipse.hawkbit.repository.UpdateMode;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
-import org.eclipse.hawkbit.repository.builder.AutoAssignDistributionSetUpdate;
 import org.eclipse.hawkbit.repository.event.remote.DownloadProgressEvent;
 import org.eclipse.hawkbit.repository.exception.ArtifactBinaryNotFoundException;
 import org.eclipse.hawkbit.repository.exception.CancelActionNotAllowedException;
@@ -58,7 +57,6 @@ import org.eclipse.hawkbit.rest.util.FileStreamingUtil;
 import org.eclipse.hawkbit.rest.util.HttpUtil;
 import org.eclipse.hawkbit.rest.util.RequestResponseContextHolder;
 import org.eclipse.hawkbit.security.HawkbitSecurityProperties;
-import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.eclipse.hawkbit.util.IpUtil;
 import org.slf4j.Logger;
@@ -461,7 +459,7 @@ public class DdiRootController implements DdiRootControllerRestApi {
 
         controllerManagement.updateControllerAttributes(controllerId, configData.getData(), getUpdateMode(configData));
 
-        controllerManagement.autoAssignCheckWithId(controllerId);
+        controllerManagement.triggerDistributionSetAssignmentCheck(controllerId);
 
         return ResponseEntity.ok().build();
     }

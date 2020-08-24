@@ -120,7 +120,6 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
         configurationViews.add(rolloutConfigurationView);
         configurationViews.add(authenticationConfigurationView);
         configurationViews.add(targetSearchConfigurationView);
-        configurationViews.add(autoAssignCheckConfigurationView);
         configurationViews.add(pollingConfigurationView);
         if (customConfigurationViews != null) {
             configurationViews.addAll(

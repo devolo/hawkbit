@@ -105,11 +105,6 @@ public class JpaTargetFilterQuery extends AbstractJpaTenantAwareBaseEntity
     }
 
     @Override
-    public TargetFilterQuery deepCopy(){
-        return new JpaTargetFilterQuery(this.name, this.query, this.autoAssignDistributionSet, this.autoAssignActionType, this.autoAssignWeight);
-    }
-
-    @Override
     public String getName() {
         return name;
     }
