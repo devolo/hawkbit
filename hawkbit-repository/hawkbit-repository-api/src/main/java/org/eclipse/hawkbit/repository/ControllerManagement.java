@@ -36,6 +36,7 @@ import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
@@ -386,7 +387,7 @@ public interface ControllerManagement {
             UpdateMode mode);
 
     @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
-    void autoAssignCheckWithId(String controllerId);
+    void triggerDistributionSetAssignmentCheck(String controllerId);
 
     /**
      * Finds {@link Target} based on given controller ID returns found Target
