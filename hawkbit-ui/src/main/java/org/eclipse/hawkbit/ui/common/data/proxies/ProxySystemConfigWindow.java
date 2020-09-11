@@ -45,6 +45,7 @@ public class ProxySystemConfigWindow implements Serializable {
     private boolean downloadAnonymous;
     private Long authConfigId;
     private Long pollingConfigId;
+    private boolean attributeSearchEnabled;
 
     /**
      * Gets the id
@@ -485,5 +486,13 @@ public class ProxySystemConfigWindow implements Serializable {
 
     public void setPollingConfigId(final Long pollingConfigId) {
         this.pollingConfigId = pollingConfigId;
+    }
+
+    public boolean isAttributeSearchEnabled() {
+        return this.attributeSearchEnabled;
+    }
+
+    public void setAttributeSearch(final boolean enabled){
+        this.attributeSearchEnabled = enabled;
     }
 }

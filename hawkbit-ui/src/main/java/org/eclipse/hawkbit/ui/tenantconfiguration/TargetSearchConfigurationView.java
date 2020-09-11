@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2018 devolo AG and others.
+ * Copyright (c) 2020 devolo AG and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -8,50 +8,50 @@
  */
 package org.eclipse.hawkbit.ui.tenantconfiguration;
 
-import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
-import org.eclipse.hawkbit.ui.UiProperties;
-import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
-import org.eclipse.hawkbit.ui.tenantconfiguration.search.TargetSearchConfigurationItem;
-import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
-import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
-
-import com.vaadin.data.Property;
+import com.vaadin.data.Binder;
 import com.vaadin.ui.CheckBox;
+import com.vaadin.ui.CustomComponent;
 import com.vaadin.ui.GridLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.VerticalLayout;
+import org.eclipse.hawkbit.ui.UiProperties;
+import org.eclipse.hawkbit.ui.common.builder.FormComponentBuilder;
+import org.eclipse.hawkbit.ui.common.data.proxies.ProxySystemConfigWindow;
+import org.eclipse.hawkbit.ui.tenantconfiguration.search.TargetSearchConfigurationItem;
+import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+
 
 /**
  * Provides configuration for target search option
  * to include/exclude target attributes for the search.
  */
-public class TargetSearchConfigurationView extends BaseConfigurationView
-        implements Property.ValueChangeListener, ConfigurationItem.ConfigurationItemChangeListener {
+public class TargetSearchConfigurationView extends CustomComponent {
 
     private static final long serialVersionUID = 1L;
 
-    private final TargetSearchConfigurationItem targetSearchConfigurationItem;
     private final VaadinMessageSource i18n;
     private final UiProperties uiProperties;
-    private CheckBox attributeSearchCheckbox;
+    private final Binder<ProxySystemConfigWindow> binder;
+    private final TargetSearchConfigurationItem targetSearchConfigurationItem;
 
-    TargetSearchConfigurationView(final VaadinMessageSource i18n,
-                                  final TenantConfigurationManagement tenantConfigurationManagement, final UiProperties uiProperties) {
+    TargetSearchConfigurationView(final VaadinMessageSource i18n, final UiProperties uiProperties,
+            final Binder<ProxySystemConfigWindow> binder) {
         this.i18n = i18n;
+        this.targetSearchConfigurationItem = new TargetSearchConfigurationItem(i18n);
         this.uiProperties = uiProperties;
-        this.targetSearchConfigurationItem = new TargetSearchConfigurationItem(tenantConfigurationManagement, i18n);
+        this.binder = binder;
         this.init();
     }
 
     private void init() {
-
         final Panel rootPanel = new Panel();
         rootPanel.setSizeFull();
-
         rootPanel.addStyleName("config-panel");
 
         final VerticalLayout vLayout = new VerticalLayout();
+        vLayout.setSpacing(false);
         vLayout.setMargin(true);
         vLayout.setSizeFull();
 
@@ -61,53 +61,18 @@ public class TargetSearchConfigurationView extends BaseConfigurationView
 
         final GridLayout gridLayout = new GridLayout(3, 1);
         gridLayout.setSpacing(true);
-        gridLayout.setImmediate(true);
         gridLayout.setColumnExpandRatio(1, 1.0F);
         gridLayout.setSizeFull();
 
-        attributeSearchCheckbox = SPUIComponentProvider.getCheckBox("", "", null, false, "");
-        attributeSearchCheckbox.setId(UIComponentIdProvider.TARGET_SEARCH_ATTRIBUTES);
-        attributeSearchCheckbox.setValue(targetSearchConfigurationItem.isConfigEnabled());
-        attributeSearchCheckbox.addValueChangeListener(this);
-        targetSearchConfigurationItem.addChangeListener(this);
+        CheckBox attributeSearchCheckbox = FormComponentBuilder.getCheckBox(
+                UIComponentIdProvider.TARGET_SEARCH_ATTRIBUTES, binder,
+                ProxySystemConfigWindow::isAttributeSearchEnabled, ProxySystemConfigWindow::setAttributeSearch);
+
         gridLayout.addComponent(attributeSearchCheckbox, 0, 0);
         gridLayout.addComponent(targetSearchConfigurationItem, 1, 0);
-
-//        final Link linkToApprovalHelp = SPUIComponentProvider.getHelpLink(i18n,
-//                uiProperties.getLinks().getDocumentation().getRollout());
-//        gridLayout.addComponent(linkToApprovalHelp, 2, 0);
-//        gridLayout.setComponentAlignment(linkToApprovalHelp, Alignment.BOTTOM_RIGHT);
 
         vLayout.addComponent(gridLayout);
         rootPanel.setContent(vLayout);
         setCompositionRoot(rootPanel);
-    }
-
-    @Override
-    public void save() {
-        this.targetSearchConfigurationItem.save();
-    }
-
-    @Override
-    public void undo() {
-        this.targetSearchConfigurationItem.undo();
-        this.attributeSearchCheckbox.setValue(targetSearchConfigurationItem.isConfigEnabled());
-    }
-
-    @Override
-    public void valueChange(final Property.ValueChangeEvent event) {
-        if (attributeSearchCheckbox.equals(event.getProperty())) {
-            if (attributeSearchCheckbox.getValue()) {
-                targetSearchConfigurationItem.configEnable();
-            } else {
-                targetSearchConfigurationItem.configDisable();
-            }
-            notifyConfigurationChanged();
-        }
-    }
-
-    @Override
-    public void configurationHasChanged() {
-        notifyConfigurationChanged();
     }
 }

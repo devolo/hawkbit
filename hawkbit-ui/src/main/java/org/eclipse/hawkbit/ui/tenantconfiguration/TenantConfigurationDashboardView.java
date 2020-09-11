@@ -87,6 +87,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
     private final AuthenticationConfigurationView authenticationConfigurationView;
     private final PollingConfigurationView pollingConfigurationView;
     private final RolloutConfigurationView rolloutConfigurationView;
+    private final TargetSearchConfigurationView targetSearchConfigurationView;
 
     @Autowired(required = false)
     private Collection<ConfigurationGroup> customConfigurationViews;
@@ -105,6 +106,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
             final TenantConfigurationManagement tenantConfigurationManagement,
             final SecurityTokenGenerator securityTokenGenerator,
             final ControllerPollProperties controllerPollProperties, final SpPermissionChecker permChecker) {
+
         this.i18n = i18n;
         this.uiProperties = uiProperties;
         this.uINotification = uINotification;
@@ -124,6 +126,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
                 tenantConfigurationManagement, binder);
         this.repositoryConfigurationView = new RepositoryConfigurationView(i18n, uiProperties, binder);
         this.rolloutConfigurationView = new RolloutConfigurationView(i18n, uiProperties, binder);
+        this.targetSearchConfigurationView = new TargetSearchConfigurationView(i18n, uiProperties, binder);
     }
 
     /**
@@ -134,10 +137,13 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
         if (defaultDistributionSetTypeLayout.getComponentCount() > 0) {
             customComponents.add(defaultDistributionSetTypeLayout);
         }
+
         customComponents.add(repositoryConfigurationView);
         customComponents.add(rolloutConfigurationView);
         customComponents.add(authenticationConfigurationView);
+        customComponents.add(targetSearchConfigurationView);
         customComponents.add(pollingConfigurationView);
+
         if (customConfigurationViews != null) {
             configurationViews.addAll(
                     customConfigurationViews.stream().filter(ConfigurationGroup::show).collect(Collectors.toList()));
@@ -171,6 +177,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
 
         configBean.setDistributionSetTypeId(systemManagement.getTenantMetadata().getDefaultDsType().getId());
         configBean.setRolloutApproval(readConfigOption(TenantConfigurationKey.ROLLOUT_APPROVAL_ENABLED));
+        configBean.setAttributeSearch(readConfigOption(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED));
         configBean.setActionAutoclose(readConfigOption(TenantConfigurationKey.REPOSITORY_ACTIONS_AUTOCLOSE_ENABLED));
         configBean.setMultiAssignments(readConfigOption(TenantConfigurationKey.MULTI_ASSIGNMENTS_ENABLED));
         configBean.setActionAutocleanup(readConfigOption(TenantConfigurationKey.ACTION_CLEANUP_ENABLED));
@@ -265,6 +272,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
         final ProxySystemConfigWindow configWindowBean = binder.getBean();
         systemManagement.updateTenantMetadata(configWindowBean.getDistributionSetTypeId());
         writeConfigOption(TenantConfigurationKey.ROLLOUT_APPROVAL_ENABLED, configWindowBean.isRolloutApproval());
+        writeConfigOption(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED, configWindowBean.isAttributeSearchEnabled());
         writeConfigOption(TenantConfigurationKey.ACTION_CLEANUP_ENABLED, configWindowBean.isActionAutocleanup());
         writeConfigOption(TenantConfigurationKey.AUTHENTICATION_MODE_TARGET_SECURITY_TOKEN_ENABLED,
                 configWindowBean.isTargetSecToken());
