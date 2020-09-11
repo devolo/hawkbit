@@ -8,44 +8,62 @@
  */
 package org.eclipse.hawkbit.ui.management.targettag;
 
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetTagManagement;
-import org.eclipse.hawkbit.repository.model.Tag;
-import org.eclipse.hawkbit.ui.common.AbstractAddNamedEntityWindowController;
+import org.eclipse.hawkbit.repository.model.TargetTag;
+import org.eclipse.hawkbit.ui.common.AbstractEntityWindowController;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowLayout;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTag;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
-import org.eclipse.hawkbit.ui.common.tag.ProxyTagValidator;
+import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload;
+import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload.EntityModifiedEventType;
+import org.eclipse.hawkbit.ui.common.event.EventTopics;
 import org.eclipse.hawkbit.ui.management.tag.TagWindowLayout;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 import org.springframework.util.StringUtils;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Controller for add target tag window
  */
-public class AddTargetTagWindowController extends AbstractAddNamedEntityWindowController<ProxyTag, ProxyTag, Tag> {
+public class AddTargetTagWindowController extends AbstractEntityWindowController<ProxyTag, ProxyTag> {
+    private final VaadinMessageSource i18n;
+    private final EntityFactory entityFactory;
+    private final UIEventBus eventBus;
+    private final UINotification uiNotification;
 
     private final TargetTagManagement targetTagManagement;
+
     private final TagWindowLayout<ProxyTag> layout;
-    private final ProxyTagValidator validator;
 
     /**
      * Constructor for AddTargetTagWindowController
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *          VaadinMessageSource
+     * @param entityFactory
+     *          EntityFactory
+     * @param eventBus
+     *          UIEventBus
+     * @param uiNotification
+     *          UINotification
      * @param targetTagManagement
-     *            TargetTagManagement
+     *          TargetTagManagement
      * @param layout
-     *            TagWindowLayout
+     *          TagWindowLayout
      */
-    public AddTargetTagWindowController(final CommonUiDependencies uiDependencies,
+    public AddTargetTagWindowController(final VaadinMessageSource i18n, final EntityFactory entityFactory,
+            final UIEventBus eventBus, final UINotification uiNotification,
             final TargetTagManagement targetTagManagement, final TagWindowLayout<ProxyTag> layout) {
-        super(uiDependencies);
+        this.i18n = i18n;
+        this.entityFactory = entityFactory;
+        this.eventBus = eventBus;
+        this.uiNotification = uiNotification;
 
         this.targetTagManagement = targetTagManagement;
+
         this.layout = layout;
-        this.validator = new ProxyTagValidator(uiDependencies);
     }
 
     @Override
@@ -61,24 +79,28 @@ public class AddTargetTagWindowController extends AbstractAddNamedEntityWindowCo
     }
 
     @Override
-    protected Tag persistEntityInRepository(final ProxyTag entity) {
-        return targetTagManagement.create(getEntityFactory().tag().create().name(entity.getName())
+    protected void persistEntity(final ProxyTag entity) {
+        final TargetTag newTargetTag = targetTagManagement.create(entityFactory.tag().create().name(entity.getName())
                 .description(entity.getDescription()).colour(entity.getColour()));
-    }
 
-    @Override
-    protected Class<? extends ProxyIdentifiableEntity> getEntityClass() {
-        return ProxyTag.class;
-    }
-
-    @Override
-    protected Class<? extends ProxyIdentifiableEntity> getParentEntityClass() {
-        return ProxyTarget.class;
+        uiNotification.displaySuccess(i18n.getMessage("message.save.success", newTargetTag.getName()));
+        eventBus.publish(EventTopics.ENTITY_MODIFIED, this, new EntityModifiedEventPayload(
+                EntityModifiedEventType.ENTITY_ADDED, ProxyTarget.class, ProxyTag.class, newTargetTag.getId()));
     }
 
     @Override
     protected boolean isEntityValid(final ProxyTag entity) {
+        if (!StringUtils.hasText(entity.getName())) {
+            uiNotification.displayValidationError(i18n.getMessage("message.error.missing.tagname"));
+            return false;
+        }
+
         final String trimmedName = StringUtils.trimWhitespace(entity.getName());
-        return validator.isEntityValid(entity, () -> targetTagManagement.getByName(trimmedName).isPresent());
+        if (targetTagManagement.getByName(trimmedName).isPresent()) {
+            uiNotification.displayValidationError(i18n.getMessage("message.tag.duplicate.check", trimmedName));
+            return false;
+        }
+
+        return true;
     }
 }

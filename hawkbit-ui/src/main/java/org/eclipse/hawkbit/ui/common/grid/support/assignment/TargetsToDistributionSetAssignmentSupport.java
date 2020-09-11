@@ -15,15 +15,16 @@ import java.util.stream.Collectors;
 import org.eclipse.hawkbit.im.authentication.SpPermission;
 import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.ConfirmationDialog;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
 import org.eclipse.hawkbit.ui.management.miscs.DeploymentAssignmentWindowController;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 
 /**
  * Support for assigning targets to distribution set.
- *
+ * 
  */
 public class TargetsToDistributionSetAssignmentSupport
         extends DeploymentAssignmentSupport<ProxyTarget, ProxyDistributionSet> {
@@ -34,16 +35,20 @@ public class TargetsToDistributionSetAssignmentSupport
     /**
      * Constructor for TargetsToDistributionSetAssignmentSupport
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param notification
+     *            UINotification
+     * @param i18n
+     *            VaadinMessageSource
+     * @param permChecker
+     *            SpPermissionChecker
      * @param assignmentController
      *            DeploymentAssignmentWindowController
      */
-    public TargetsToDistributionSetAssignmentSupport(final CommonUiDependencies uiDependencies,
-            final DeploymentAssignmentWindowController assignmentController) {
-        super(uiDependencies.getUiNotification(), uiDependencies.getI18n());
+    public TargetsToDistributionSetAssignmentSupport(final UINotification notification, final VaadinMessageSource i18n,
+            final SpPermissionChecker permChecker, final DeploymentAssignmentWindowController assignmentController) {
+        super(notification, i18n);
 
-        this.permChecker = uiDependencies.getPermChecker();
+        this.permChecker = permChecker;
         this.assignmentController = assignmentController;
     }
 

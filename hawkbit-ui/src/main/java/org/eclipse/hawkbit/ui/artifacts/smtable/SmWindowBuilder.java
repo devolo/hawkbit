@@ -8,13 +8,16 @@
  */
 package org.eclipse.hawkbit.ui.artifacts.smtable;
 
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.SoftwareModuleManagement;
 import org.eclipse.hawkbit.repository.SoftwareModuleTypeManagement;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowBuilder;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxySoftwareModule;
 import org.eclipse.hawkbit.ui.common.event.EventView;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.Window;
 
@@ -22,6 +25,9 @@ import com.vaadin.ui.Window;
  * Builder for Software module windows
  */
 public class SmWindowBuilder extends AbstractEntityWindowBuilder<ProxySoftwareModule> {
+    private final EntityFactory entityFactory;
+    private final UIEventBus eventBus;
+    private final UINotification uiNotification;
 
     private final SoftwareModuleManagement smManagement;
     private final SoftwareModuleTypeManagement smTypeManagement;
@@ -31,18 +37,29 @@ public class SmWindowBuilder extends AbstractEntityWindowBuilder<ProxySoftwareMo
     /**
      * Constructor for SmWindowBuilder
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *          VaadinMessageSource
+     * @param entityFactory
+     *          EntityFactory
+     * @param eventBus
+     *          UIEventBus
+     * @param uiNotification
+     *          UINotification
      * @param smManagement
-     *            SoftwareModuleManagement
+     *          SoftwareModuleManagement
      * @param smTypeManagement
-     *            SoftwareModuleTypeManagement
+     *          SoftwareModuleTypeManagement
      * @param view
-     *            EventView
+     *          EventView
      */
-    public SmWindowBuilder(final CommonUiDependencies uiDependencies, final SoftwareModuleManagement smManagement,
+    public SmWindowBuilder(final VaadinMessageSource i18n, final EntityFactory entityFactory, final UIEventBus eventBus,
+            final UINotification uiNotification, final SoftwareModuleManagement smManagement,
             final SoftwareModuleTypeManagement smTypeManagement, final EventView view) {
-        super(uiDependencies);
+        super(i18n);
+
+        this.entityFactory = entityFactory;
+        this.eventBus = eventBus;
+        this.uiNotification = uiNotification;
 
         this.smManagement = smManagement;
         this.smTypeManagement = smTypeManagement;
@@ -60,20 +77,20 @@ public class SmWindowBuilder extends AbstractEntityWindowBuilder<ProxySoftwareMo
      */
     @Override
     public Window getWindowForAdd() {
-        return getWindowForNewEntity(
-                new AddSmWindowController(uiDependencies, smManagement, new SmWindowLayout(getI18n(), smTypeManagement), view));
+        return getWindowForNewEntity(new AddSmWindowController(i18n, entityFactory, eventBus, uiNotification,
+                smManagement, new SmWindowLayout(i18n, smTypeManagement), view));
 
     }
 
     /**
      * @param proxySm
-     *            ProxySoftwareModule
+     *          ProxySoftwareModule
      *
      * @return update window for software module
      */
     @Override
     public Window getWindowForUpdate(final ProxySoftwareModule proxySm) {
-        return getWindowForEntity(proxySm,
-                new UpdateSmWindowController(uiDependencies, smManagement, new SmWindowLayout(getI18n(), smTypeManagement)));
+        return getWindowForEntity(proxySm, new UpdateSmWindowController(i18n, entityFactory, eventBus, uiNotification,
+                smManagement, new SmWindowLayout(i18n, smTypeManagement)));
     }
 }

@@ -15,12 +15,13 @@ import java.util.concurrent.Executor;
 
 import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.TargetTagManagement;
 import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.UiProperties;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTag;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
@@ -49,6 +50,9 @@ import org.eclipse.hawkbit.ui.management.bulkupload.BulkUploadWindowBuilder;
 import org.eclipse.hawkbit.ui.management.bulkupload.TargetBulkUploadUiState;
 import org.eclipse.hawkbit.ui.management.dstable.DistributionGridLayoutUiState;
 import org.eclipse.hawkbit.ui.management.targettag.filter.TargetTagFilterLayoutUiState;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Target table layout.
@@ -74,14 +78,22 @@ public class TargetGridLayout extends AbstractGridComponentLayout {
     /**
      * Constructor for TargetGridLayout
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param eventBus
+     *            UIEventBus
      * @param targetManagement
      *            TargetManagement
+     * @param entityFactory
+     *            EntityFactory
+     * @param i18n
+     *            VaadinMessageSource
+     * @param uiNotification
+     *            UINotification
      * @param deploymentManagement
      *            DeploymentManagement
      * @param uiProperties
      *            UiProperties
+     * @param permissionChecker
+     *            SpPermissionChecker
      * @param targetTagManagement
      *            TargetTagManagement
      * @param distributionSetManagement
@@ -101,57 +113,59 @@ public class TargetGridLayout extends AbstractGridComponentLayout {
      * @param distributionGridLayoutUiState
      *            DistributionGridLayoutUiState
      */
-    public TargetGridLayout(final CommonUiDependencies uiDependencies, final TargetManagement targetManagement,
+    public TargetGridLayout(final UIEventBus eventBus, final TargetManagement targetManagement,
+            final EntityFactory entityFactory, final VaadinMessageSource i18n, final UINotification uiNotification,
             final DeploymentManagement deploymentManagement, final UiProperties uiProperties,
-            final TargetTagManagement targetTagManagement, final DistributionSetManagement distributionSetManagement,
-            final Executor uiExecutor, final TenantConfigurationManagement configManagement,
-            final SystemSecurityContext systemSecurityContext,
+            final SpPermissionChecker permissionChecker, final TargetTagManagement targetTagManagement,
+            final DistributionSetManagement distributionSetManagement, final Executor uiExecutor,
+            final TenantConfigurationManagement configManagement, final SystemSecurityContext systemSecurityContext,
             final TargetTagFilterLayoutUiState targetTagFilterLayoutUiState,
             final TargetGridLayoutUiState targetGridLayoutUiState,
             final TargetBulkUploadUiState targetBulkUploadUiState,
             final DistributionGridLayoutUiState distributionGridLayoutUiState) {
-        final TargetWindowBuilder targetWindowBuilder = new TargetWindowBuilder(uiDependencies, targetManagement,
-                EventView.DEPLOYMENT);
-        final TargetMetaDataWindowBuilder targetMetaDataWindowBuilder = new TargetMetaDataWindowBuilder(uiDependencies,
-                targetManagement);
-        final BulkUploadWindowBuilder bulkUploadWindowBuilder = new BulkUploadWindowBuilder(uiDependencies, uiProperties,
-                uiExecutor, targetManagement, deploymentManagement, targetTagManagement, distributionSetManagement,
-                targetBulkUploadUiState);
+        final TargetWindowBuilder targetWindowBuilder = new TargetWindowBuilder(i18n, entityFactory, eventBus,
+                uiNotification, targetManagement, EventView.DEPLOYMENT);
+        final TargetMetaDataWindowBuilder targetMetaDataWindowBuilder = new TargetMetaDataWindowBuilder(i18n,
+                entityFactory, eventBus, uiNotification, permissionChecker, targetManagement);
+        final BulkUploadWindowBuilder bulkUploadWindowBuilder = new BulkUploadWindowBuilder(i18n, eventBus,
+                permissionChecker, uiNotification, uiProperties, uiExecutor, targetManagement, deploymentManagement,
+                targetTagManagement, distributionSetManagement, entityFactory, targetBulkUploadUiState);
 
-        this.targetGridHeader = new TargetGridHeader(uiDependencies, targetWindowBuilder, bulkUploadWindowBuilder,
-                targetTagFilterLayoutUiState, targetGridLayoutUiState, targetBulkUploadUiState);
+        this.targetGridHeader = new TargetGridHeader(i18n, permissionChecker, eventBus, uiNotification,
+                targetWindowBuilder, bulkUploadWindowBuilder, targetTagFilterLayoutUiState, targetGridLayoutUiState,
+                targetBulkUploadUiState);
         this.targetGridHeader.buildHeader();
         this.targetGridHeader.addDsDroArea();
-        this.targetGrid = new TargetGrid(uiDependencies, targetManagement, deploymentManagement, configManagement,
-                systemSecurityContext, uiProperties, targetGridLayoutUiState, distributionGridLayoutUiState,
-                targetTagFilterLayoutUiState);
+        this.targetGrid = new TargetGrid(eventBus, i18n, uiNotification, targetManagement, permissionChecker,
+                deploymentManagement, configManagement, systemSecurityContext, uiProperties, targetGridLayoutUiState,
+                distributionGridLayoutUiState, targetTagFilterLayoutUiState);
 
-        this.targetDetailsHeader = new TargetDetailsHeader(uiDependencies, targetWindowBuilder, targetMetaDataWindowBuilder);
-        this.targetDetails = new TargetDetails(uiDependencies, targetTagManagement, targetManagement, deploymentManagement,
-                targetMetaDataWindowBuilder);
+        this.targetDetailsHeader = new TargetDetailsHeader(i18n, permissionChecker, eventBus, uiNotification,
+                targetWindowBuilder, targetMetaDataWindowBuilder);
+        this.targetDetails = new TargetDetails(i18n, eventBus, permissionChecker, uiNotification, targetTagManagement,
+                targetManagement, deploymentManagement, targetMetaDataWindowBuilder);
 
-        this.countMessageLabel = new CountMessageLabel(targetManagement, uiDependencies.getI18n());
+        this.countMessageLabel = new CountMessageLabel(targetManagement, i18n);
 
         initGridDataUpdatedListener();
 
-        this.filterTabChangedListener = new GenericEventListener<>(uiDependencies.getEventBus(),
-                EventTopics.TARGET_FILTER_TAB_CHANGED, this::onTargetFilterTabChanged);
-        this.targetFilterListener = new FilterChangedListener<>(uiDependencies.getEventBus(), ProxyTarget.class,
+        this.filterTabChangedListener = new GenericEventListener<>(eventBus, EventTopics.TARGET_FILTER_TAB_CHANGED,
+                this::onTargetFilterTabChanged);
+        this.targetFilterListener = new FilterChangedListener<>(eventBus, ProxyTarget.class,
                 new EventViewAware(EventView.DEPLOYMENT), targetGrid.getFilterSupport());
-        this.pinningChangedListener = new PinningChangedListener<>(uiDependencies.getEventBus(), ProxyDistributionSet.class,
+        this.pinningChangedListener = new PinningChangedListener<>(eventBus, ProxyDistributionSet.class,
                 targetGrid.getPinSupport());
-        this.targetChangedListener = new SelectionChangedListener<>(uiDependencies.getEventBus(),
+        this.targetChangedListener = new SelectionChangedListener<>(eventBus,
                 new EventLayoutViewAware(EventLayout.TARGET_LIST, EventView.DEPLOYMENT),
                 getMasterTargetAwareComponents());
-        this.selectTargetListener = new SelectGridEntityListener<>(uiDependencies.getEventBus(),
+        this.selectTargetListener = new SelectGridEntityListener<>(eventBus,
                 new EventLayoutViewAware(EventLayout.TARGET_LIST, EventView.DEPLOYMENT),
                 targetGrid.getSelectionSupport());
-        this.targetModifiedListener = new EntityModifiedListener.Builder<>(uiDependencies.getEventBus(), ProxyTarget.class)
+        this.targetModifiedListener = new EntityModifiedListener.Builder<>(eventBus, ProxyTarget.class)
                 .entityModifiedAwareSupports(getTargetModifiedAwareSupports()).build();
-        this.tagModifiedListener = new EntityModifiedListener.Builder<>(uiDependencies.getEventBus(), ProxyTag.class)
+        this.tagModifiedListener = new EntityModifiedListener.Builder<>(eventBus, ProxyTag.class)
                 .entityModifiedAwareSupports(getTagModifiedAwareSupports()).parentEntityType(ProxyTarget.class).build();
-        this.bulkUploadListener = new BulkUploadChangedListener(uiDependencies.getEventBus(),
-                targetGridHeader::onBulkUploadChanged);
+        this.bulkUploadListener = new BulkUploadChangedListener(eventBus, targetGridHeader::onBulkUploadChanged);
 
         buildLayout(targetGridHeader, targetGrid, targetDetailsHeader, targetDetails);
     }
@@ -193,7 +207,7 @@ public class TargetGridLayout extends AbstractGridComponentLayout {
 
     /**
      * Actions on target filter tab changed
-     *
+     * 
      * @param eventPayload
      *            event payload to identify which tab was selected
      */

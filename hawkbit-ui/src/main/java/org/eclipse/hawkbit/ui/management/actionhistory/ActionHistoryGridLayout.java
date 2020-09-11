@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyAction;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
 import org.eclipse.hawkbit.ui.common.event.EventLayout;
@@ -26,6 +26,9 @@ import org.eclipse.hawkbit.ui.common.layout.listener.EntityModifiedListener.Enti
 import org.eclipse.hawkbit.ui.common.layout.listener.SelectionChangedListener;
 import org.eclipse.hawkbit.ui.common.layout.listener.support.EntityModifiedGridRefreshAwareSupport;
 import org.eclipse.hawkbit.ui.common.layout.listener.support.EntityModifiedSelectionAwareSupport;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Layout responsible for action-history-grid and the corresponding header.
@@ -42,24 +45,32 @@ public class ActionHistoryGridLayout extends AbstractGridComponentLayout {
     /**
      * Constructor for ActionHistoryGridLayout
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *          DeploymentManagement
      * @param deploymentManagement
-     *            DeploymentManagement
+     *          DeploymentManagement
+     * @param eventBus
+     *          UIEventBus
+     * @param notification
+     *          UINotification
+     * @param permChecker
+     *          SpPermissionChecker
      * @param actionHistoryGridLayoutUiState
-     *            ActionHistoryGridLayoutUiState
+     *          ActionHistoryGridLayoutUiState
      */
-    public ActionHistoryGridLayout(final CommonUiDependencies uiDependencies, final DeploymentManagement deploymentManagement,
+    public ActionHistoryGridLayout(final VaadinMessageSource i18n, final DeploymentManagement deploymentManagement,
+            final UIEventBus eventBus, final UINotification notification, final SpPermissionChecker permChecker,
             final ActionHistoryGridLayoutUiState actionHistoryGridLayoutUiState) {
-        this.actionHistoryHeader = new ActionHistoryGridHeader(uiDependencies, actionHistoryGridLayoutUiState);
-        this.actionHistoryGrid = new ActionHistoryGrid(uiDependencies, deploymentManagement, actionHistoryGridLayoutUiState);
+        this.actionHistoryHeader = new ActionHistoryGridHeader(i18n, eventBus, actionHistoryGridLayoutUiState);
+        this.actionHistoryGrid = new ActionHistoryGrid(i18n, deploymentManagement, eventBus, notification, permChecker,
+                actionHistoryGridLayoutUiState);
 
         final EventLayoutViewAware masterLayoutView = new EventLayoutViewAware(EventLayout.TARGET_LIST,
                 EventView.DEPLOYMENT);
 
-        this.masterEntityChangedListener = new SelectionChangedListener<>(uiDependencies.getEventBus(), masterLayoutView,
+        this.masterEntityChangedListener = new SelectionChangedListener<>(eventBus, masterLayoutView,
                 getMasterEntityAwareComponents());
-        this.entityModifiedListener = new EntityModifiedListener.Builder<>(uiDependencies.getEventBus(), ProxyAction.class)
+        this.entityModifiedListener = new EntityModifiedListener.Builder<>(eventBus, ProxyAction.class)
                 .entityModifiedAwareSupports(getEntityModifiedAwareSupports()).parentEntityType(ProxyTarget.class)
                 .parentEntityIdProvider(this::getMasterEntityId).build();
 

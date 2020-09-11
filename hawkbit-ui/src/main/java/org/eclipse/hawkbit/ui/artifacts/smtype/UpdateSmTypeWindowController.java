@@ -8,28 +8,41 @@
  */
 package org.eclipse.hawkbit.ui.artifacts.smtype;
 
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.SoftwareModuleTypeManagement;
 import org.eclipse.hawkbit.repository.builder.SoftwareModuleTypeUpdate;
+import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
+import org.eclipse.hawkbit.repository.exception.EntityReadOnlyException;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleType;
-import org.eclipse.hawkbit.ui.common.AbstractUpdateNamedEntityWindowController;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
-import org.eclipse.hawkbit.ui.common.EntityWindowLayout;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
+import org.eclipse.hawkbit.ui.common.AbstractEntityWindowController;
+import org.eclipse.hawkbit.ui.common.AbstractEntityWindowLayout;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxySoftwareModule;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyType;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyType.SmTypeAssign;
-import org.eclipse.hawkbit.ui.common.type.ProxyTypeValidator;
+import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload;
+import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload.EntityModifiedEventType;
+import org.eclipse.hawkbit.ui.common.event.EventTopics;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Controller for update software module type window
  */
-public class UpdateSmTypeWindowController
-        extends AbstractUpdateNamedEntityWindowController<ProxyType, ProxyType, SoftwareModuleType> {
+public class UpdateSmTypeWindowController extends AbstractEntityWindowController<ProxyType, ProxyType> {
+    private static final Logger LOG = LoggerFactory.getLogger(UpdateSmTypeWindowController.class);
+
+    private final VaadinMessageSource i18n;
+    private final EntityFactory entityFactory;
+    private final UIEventBus eventBus;
+    private final UINotification uiNotification;
 
     private final SoftwareModuleTypeManagement smTypeManagement;
+
     private final SmTypeWindowLayout layout;
-    private final ProxyTypeValidator validator;
 
     private String nameBeforeEdit;
     private String keyBeforeEdit;
@@ -37,20 +50,40 @@ public class UpdateSmTypeWindowController
     /**
      * Constructor for UpdateSmTypeWindowController
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *            VaadinMessageSource
+     * @param entityFactory
+     *            EntityFactory
+     * @param eventBus
+     *            UIEventBus
+     * @param uiNotification
+     *            UINotification
      * @param smTypeManagement
      *            SoftwareModuleTypeManagement
      * @param layout
      *            SmTypeWindowLayout
      */
-    public UpdateSmTypeWindowController(final CommonUiDependencies uiDependencies,
+    public UpdateSmTypeWindowController(final VaadinMessageSource i18n, final EntityFactory entityFactory,
+            final UIEventBus eventBus, final UINotification uiNotification,
             final SoftwareModuleTypeManagement smTypeManagement, final SmTypeWindowLayout layout) {
-        super(uiDependencies);
+        this.i18n = i18n;
+        this.entityFactory = entityFactory;
+        this.eventBus = eventBus;
+        this.uiNotification = uiNotification;
 
         this.smTypeManagement = smTypeManagement;
+
         this.layout = layout;
-        this.validator = new ProxyTypeValidator(uiDependencies);
+    }
+
+    /**
+     * Getter for Software module type Window Layout
+     *
+     * @return AbstractEntityWindowLayout
+     */
+    @Override
+    public AbstractEntityWindowLayout<ProxyType> getLayout() {
+        return layout;
     }
 
     @Override
@@ -77,11 +110,6 @@ public class UpdateSmTypeWindowController
     }
 
     @Override
-    public EntityWindowLayout<ProxyType> getLayout() {
-        return layout;
-    }
-
-    @Override
     protected void adaptLayout(final ProxyType proxyEntity) {
         layout.disableTagName();
         layout.disableTypeKey();
@@ -89,36 +117,46 @@ public class UpdateSmTypeWindowController
     }
 
     @Override
-    protected SoftwareModuleType persistEntityInRepository(final ProxyType entity) {
-        final SoftwareModuleTypeUpdate smTypeUpdate = getEntityFactory().softwareModuleType().update(entity.getId())
+    protected void persistEntity(final ProxyType entity) {
+        final SoftwareModuleTypeUpdate smTypeUpdate = entityFactory.softwareModuleType().update(entity.getId())
                 .description(entity.getDescription()).colour(entity.getColour());
-        return smTypeManagement.update(smTypeUpdate);
-    }
 
-    @Override
-    protected Class<? extends ProxyIdentifiableEntity> getEntityClass() {
-        return ProxyType.class;
-    }
+        try {
+            final SoftwareModuleType updatedSmType = smTypeManagement.update(smTypeUpdate);
 
-    @Override
-    protected Class<? extends ProxyIdentifiableEntity> getParentEntityClass() {
-        return ProxySoftwareModule.class;
+            uiNotification.displaySuccess(i18n.getMessage("message.update.success", updatedSmType.getName()));
+            eventBus.publish(EventTopics.ENTITY_MODIFIED, this,
+                    new EntityModifiedEventPayload(EntityModifiedEventType.ENTITY_UPDATED, ProxySoftwareModule.class,
+                            ProxyType.class, updatedSmType.getId()));
+        } catch (final EntityNotFoundException | EntityReadOnlyException e) {
+            LOG.trace("Update of software module type failed in UI: {}", e.getMessage());
+
+            final String entityType = i18n.getMessage("caption.entity.software.module.type");
+            uiNotification
+                    .displayWarning(i18n.getMessage("message.deleted.or.notAllowed", entityType, entity.getName()));
+        }
     }
 
     @Override
     protected boolean isEntityValid(final ProxyType entity) {
+        if (!StringUtils.hasText(entity.getName()) || !StringUtils.hasText(entity.getKey())
+                || entity.getSmTypeAssign() == null) {
+            uiNotification.displayValidationError(i18n.getMessage("message.error.missing.typenameorkeyorsmtype"));
+            return false;
+        }
+
         final String trimmedName = StringUtils.trimWhitespace(entity.getName());
         final String trimmedKey = StringUtils.trimWhitespace(entity.getKey());
-        return validator.isSmTypeValid(entity,
-                () -> hasKeyChanged(trimmedKey) && smTypeManagement.getByKey(trimmedKey).isPresent(),
-                () -> hasNameChanged(trimmedName) && smTypeManagement.getByName(trimmedName).isPresent());
-    }
+        if (!nameBeforeEdit.equals(trimmedName) && smTypeManagement.getByName(trimmedName).isPresent()) {
+            uiNotification.displayValidationError(i18n.getMessage("message.type.duplicate.check", trimmedName));
+            return false;
+        }
+        if (!keyBeforeEdit.equals(trimmedKey) && smTypeManagement.getByKey(trimmedKey).isPresent()) {
+            uiNotification
+                    .displayValidationError(i18n.getMessage("message.type.key.swmodule.duplicate.check", trimmedKey));
+            return false;
+        }
 
-    private boolean hasNameChanged(final String trimmedName) {
-        return !nameBeforeEdit.equals(trimmedName);
-    }
-
-    private boolean hasKeyChanged(final String trimmedKey) {
-        return !keyBeforeEdit.equals(trimmedKey);
+        return true;
     }
 }

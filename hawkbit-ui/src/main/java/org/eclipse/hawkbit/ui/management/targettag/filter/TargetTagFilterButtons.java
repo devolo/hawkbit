@@ -12,7 +12,7 @@ import java.util.Collections;
 
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.TargetTagManagement;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.data.mappers.TagToProxyTagMapper;
 import org.eclipse.hawkbit.ui.common.data.providers.TargetTagDataProvider;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
@@ -25,6 +25,9 @@ import org.eclipse.hawkbit.ui.common.grid.support.assignment.TargetsToTagAssignm
 import org.eclipse.hawkbit.ui.management.targettag.TargetTagWindowBuilder;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.Window;
 
@@ -37,18 +40,19 @@ public class TargetTagFilterButtons extends AbstractTagFilterButtons {
     private final transient TargetTagManagement targetTagManagement;
     private final transient TargetTagWindowBuilder targetTagWindowBuilder;
 
-    TargetTagFilterButtons(final CommonUiDependencies uiDependencies, final TargetTagManagement targetTagManagement,
+    TargetTagFilterButtons(final VaadinMessageSource i18n, final UIEventBus eventBus, final UINotification notification,
+            final SpPermissionChecker permChecker, final TargetTagManagement targetTagManagement,
             final TargetManagement targetManagement, final TargetTagFilterLayoutUiState targetTagFilterLayoutUiState,
             final TargetTagWindowBuilder targetTagWindowBuilder) {
-        super(uiDependencies, targetTagFilterLayoutUiState);
+        super(eventBus, i18n, notification, permChecker, targetTagFilterLayoutUiState);
 
         this.targetTagManagement = targetTagManagement;
         this.targetTagWindowBuilder = targetTagWindowBuilder;
 
-        final TargetsToTagAssignmentSupport targetsToTagAssignment = new TargetsToTagAssignmentSupport(uiDependencies,
-                targetManagement);
+        final TargetsToTagAssignmentSupport targetsToTagAssignment = new TargetsToTagAssignmentSupport(notification,
+                i18n, eventBus, permChecker, targetManagement);
 
-        setDragAndDropSupportSupport(new DragAndDropSupport<>(this, i18n, uiNotification,
+        setDragAndDropSupportSupport(new DragAndDropSupport<>(this, i18n, notification,
                 Collections.singletonMap(UIComponentIdProvider.TARGET_TABLE_ID, targetsToTagAssignment), eventBus));
         getDragAndDropSupportSupport().ignoreSelection(true);
         getDragAndDropSupportSupport().addDragAndDrop();

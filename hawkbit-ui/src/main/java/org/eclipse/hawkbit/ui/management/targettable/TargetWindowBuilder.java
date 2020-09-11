@@ -8,12 +8,15 @@
  */
 package org.eclipse.hawkbit.ui.management.targettable;
 
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowBuilder;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
 import org.eclipse.hawkbit.ui.common.event.EventView;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.Window;
 
@@ -21,6 +24,9 @@ import com.vaadin.ui.Window;
  * Builder for target window
  */
 public class TargetWindowBuilder extends AbstractEntityWindowBuilder<ProxyTarget> {
+    private final EntityFactory entityFactory;
+    private final UIEventBus eventBus;
+    private final UINotification uiNotification;
 
     private final TargetManagement targetManagement;
 
@@ -29,16 +35,27 @@ public class TargetWindowBuilder extends AbstractEntityWindowBuilder<ProxyTarget
     /**
      * Constructor for TargetWindowBuilder
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *          VaadinMessageSource
+     * @param entityFactory
+     *          EntityFactory
+     * @param eventBus
+     *          UIEventBus
+     * @param uiNotification
+     *          UINotification
      * @param targetManagement
-     *            TargetManagement
+     *          TargetManagement
      * @param view
-     *            EventView
+     *          EventView
      */
-    public TargetWindowBuilder(final CommonUiDependencies uiDependencies, final TargetManagement targetManagement,
+    public TargetWindowBuilder(final VaadinMessageSource i18n, final EntityFactory entityFactory,
+            final UIEventBus eventBus, final UINotification uiNotification, final TargetManagement targetManagement,
             final EventView view) {
-        super(uiDependencies);
+        super(i18n);
+
+        this.entityFactory = entityFactory;
+        this.eventBus = eventBus;
+        this.uiNotification = uiNotification;
 
         this.targetManagement = targetManagement;
 
@@ -52,14 +69,14 @@ public class TargetWindowBuilder extends AbstractEntityWindowBuilder<ProxyTarget
 
     @Override
     public Window getWindowForAdd() {
-        return getWindowForNewEntity(
-                new AddTargetWindowController(uiDependencies, targetManagement, new TargetWindowLayout(getI18n()), view));
+        return getWindowForNewEntity(new AddTargetWindowController(i18n, entityFactory, eventBus, uiNotification,
+                targetManagement, new TargetWindowLayout(i18n), view));
 
     }
 
     @Override
     public Window getWindowForUpdate(final ProxyTarget proxyTarget) {
-        return getWindowForEntity(proxyTarget,
-                new UpdateTargetWindowController(uiDependencies, targetManagement, new TargetWindowLayout(getI18n())));
+        return getWindowForEntity(proxyTarget, new UpdateTargetWindowController(i18n, entityFactory, eventBus,
+                uiNotification, targetManagement, new TargetWindowLayout(i18n)));
     }
 }

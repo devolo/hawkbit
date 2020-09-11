@@ -16,7 +16,6 @@ import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.model.RolloutGroup;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyAdvancedRolloutGroup;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQueryInfo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.util.StringUtils;
@@ -33,7 +32,7 @@ public class RolloutGroupToAdvancedDefinitionMapper {
      * Constructor for RolloutGroupToAdvancedDefinitionMapper
      *
      * @param targetFilterQueryManagement
-     *            TargetFilterQueryManagement
+     *          TargetFilterQueryManagement
      */
     public RolloutGroupToAdvancedDefinitionMapper(final TargetFilterQueryManagement targetFilterQueryManagement) {
         this.targetFilterQueryManagement = targetFilterQueryManagement;
@@ -43,7 +42,7 @@ public class RolloutGroupToAdvancedDefinitionMapper {
      * Map advanced Rollout Group
      *
      * @param rolloutGroup
-     *            RolloutGroup
+     *          RolloutGroup
      *
      * @return ProxyAdvancedRolloutGroup
      */
@@ -58,9 +57,7 @@ public class RolloutGroupToAdvancedDefinitionMapper {
             final Page<TargetFilterQuery> filterQueries = targetFilterQueryManagement.findByQuery(PageRequest.of(0, 1),
                     groupTargetFilterQuery);
             if (filterQueries.getTotalElements() == 1) {
-                final TargetFilterQuery tfq = filterQueries.getContent().get(0);
-                advancedGroupRow.setTargetFilterQueryInfo(
-                        new ProxyTargetFilterQueryInfo(tfq.getId(), tfq.getName(), tfq.getQuery()));
+                advancedGroupRow.setTargetFilterId(filterQueries.getContent().get(0).getId());
             }
         }
 
@@ -75,11 +72,11 @@ public class RolloutGroupToAdvancedDefinitionMapper {
      * Fetch rollout group data from the backend
      *
      * @param rolloutId
-     *            Rollout id
+     *          Rollout id
      * @param rolloutGroupManagement
-     *            RolloutGroupManagement
+     *          RolloutGroupManagement
      * @param pageCount
-     *            Total page count
+     *          Total page count
      *
      * @return List of advance rollout group
      */

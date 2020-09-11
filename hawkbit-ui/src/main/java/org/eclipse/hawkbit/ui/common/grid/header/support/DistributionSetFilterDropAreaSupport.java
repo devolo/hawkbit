@@ -25,6 +25,7 @@ import org.eclipse.hawkbit.ui.common.layout.listener.EntityDraggingListener;
 import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
 import org.eclipse.hawkbit.ui.decorators.SPUIButtonStyleNoBorder;
 import org.eclipse.hawkbit.ui.management.targettable.TargetGridLayoutUiState;
+import org.eclipse.hawkbit.ui.utils.HawkbitCommonUtil;
 import org.eclipse.hawkbit.ui.utils.SPUITargetDefinitions;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UINotification;
@@ -169,7 +170,7 @@ public class DistributionSetFilterDropAreaSupport implements HeaderSupport {
         currentDsFilterInfo.removeAllComponents();
         currentDsFilterInfo.setSizeUndefined();
 
-        targetGridLayoutUiState.setFilterDsInfo(null);
+        targetGridLayoutUiState.setFilterDsIdNameVersion(null);
     }
 
     private static String sanitizeDsNameVersion(final String dsNameAndVersion) {
@@ -181,7 +182,7 @@ public class DistributionSetFilterDropAreaSupport implements HeaderSupport {
     }
 
     private void updateUiState(final ProxyDistributionSet ds) {
-        targetGridLayoutUiState.setFilterDsInfo(ds.getInfo());
+        targetGridLayoutUiState.setFilterDsIdNameVersion(ds.getIdNameVersion());
     }
 
     private void addDropStylingListener() {
@@ -203,8 +204,11 @@ public class DistributionSetFilterDropAreaSupport implements HeaderSupport {
 
     @Override
     public void restoreState() {
-        if (targetGridLayoutUiState.getFilterDsInfo() != null) {
-            addDsFilterDropAreaTextField(targetGridLayoutUiState.getFilterDsInfo().getNameVersion());
+        if (targetGridLayoutUiState.getFilterDsIdNameVersion() != null) {
+            final String dsNameVersion = HawkbitCommonUtil.getFormattedNameVersion(
+                    targetGridLayoutUiState.getFilterDsIdNameVersion().getName(),
+                    targetGridLayoutUiState.getFilterDsIdNameVersion().getVersion());
+            addDsFilterDropAreaTextField(dsNameVersion);
         }
     }
 

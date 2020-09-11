@@ -30,9 +30,9 @@ public class ProxyTypeInfo extends ProxyIdentifiableEntity {
      * Constructor
      * 
      * @param id
-     *            type ID
-     * @param name
      *            type name
+     * @param name
+     *            type ID
      * @param key
      *            type key
      */
@@ -56,15 +56,6 @@ public class ProxyTypeInfo extends ProxyIdentifiableEntity {
 
     public void setKey(final String key) {
         this.key = key;
-    }
-
-    /**
-     * Gets the key and name
-     *
-     * @return keyAndName
-     */
-    public String getKeyAndName() {
-        return key + " (" + getName() + ")";
     }
 
     @Override

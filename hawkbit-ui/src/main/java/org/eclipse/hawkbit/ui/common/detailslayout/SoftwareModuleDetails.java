@@ -18,12 +18,13 @@ import org.eclipse.hawkbit.repository.SoftwareModuleManagement;
 import org.eclipse.hawkbit.repository.SoftwareModuleTypeManagement;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleType;
 import org.eclipse.hawkbit.ui.artifacts.smtable.SmMetaDataWindowBuilder;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.providers.SmMetaDataDataProvider;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyKeyValueDetails;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyMetaData;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxySoftwareModule;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.UI;
 import com.vaadin.ui.Window;
@@ -45,8 +46,10 @@ public class SoftwareModuleDetails extends AbstractGridDetailsLayout<ProxySoftwa
     /**
      * Constructor for SoftwareModuleDetails
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *            VaadinMessageSource
+     * @param eventBus
+     *            UIEventBus
      * @param softwareManagement
      *            SoftwareModuleManagement
      * @param softwareModuleTypeManagement
@@ -54,17 +57,17 @@ public class SoftwareModuleDetails extends AbstractGridDetailsLayout<ProxySoftwa
      * @param smMetaDataWindowBuilder
      *            SmMetaDataWindowBuilder
      */
-    public SoftwareModuleDetails(final CommonUiDependencies uiDependencies, final SoftwareModuleManagement softwareManagement,
+    public SoftwareModuleDetails(final VaadinMessageSource i18n, final UIEventBus eventBus,
+            final SoftwareModuleManagement softwareManagement,
             final SoftwareModuleTypeManagement softwareModuleTypeManagement,
             final SmMetaDataWindowBuilder smMetaDataWindowBuilder) {
-        super(uiDependencies.getI18n());
+        super(i18n);
 
         this.smMetaDataWindowBuilder = smMetaDataWindowBuilder;
         this.softwareModuleTypeManagement = softwareModuleTypeManagement;
 
-        this.smMetadataGrid = new MetadataDetailsGrid<>(i18n, uiDependencies.getEventBus(),
-                UIComponentIdProvider.SW_TYPE_PREFIX, this::showMetadataDetails,
-                new SmMetaDataDataProvider(softwareManagement));
+        this.smMetadataGrid = new MetadataDetailsGrid<>(i18n, eventBus, UIComponentIdProvider.SW_TYPE_PREFIX,
+                this::showMetadataDetails, new SmMetaDataDataProvider(softwareManagement));
 
         addDetailsComponents(Arrays.asList(new SimpleEntry<>(i18n.getMessage("caption.tab.details"), entityDetails),
                 new SimpleEntry<>(i18n.getMessage("caption.tab.description"), entityDescription),

@@ -48,15 +48,15 @@ public class ApproveRolloutWindowController extends UpdateRolloutWindowControlle
     protected void persistEntity(final ProxyRolloutWindow entity) {
         rolloutManagement.approveOrDeny(entity.getId(), entity.getApprovalDecision(), entity.getApprovalRemark());
 
-        getUiNotification().displaySuccess(getI18n().getMessage("message.update.success", entity.getName()));
-        getEventBus().publish(EventTopics.ENTITY_MODIFIED, this, new EntityModifiedEventPayload(
+        uiNotification.displaySuccess(i18n.getMessage("message.update.success", entity.getName()));
+        eventBus.publish(EventTopics.ENTITY_MODIFIED, this, new EntityModifiedEventPayload(
                 EntityModifiedEventType.ENTITY_UPDATED, ProxyRollout.class, entity.getId()));
     }
 
     @Override
     protected boolean isEntityValid(final ProxyRolloutWindow entity) {
         if (entity.getApprovalDecision() == null) {
-            getUiNotification().displayValidationError(getI18n().getMessage("message.rollout.approval.required"));
+            uiNotification.displayValidationError(i18n.getMessage("message.rollout.approval.required"));
             return false;
         }
 

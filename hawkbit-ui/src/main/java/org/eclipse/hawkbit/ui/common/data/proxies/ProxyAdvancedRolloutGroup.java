@@ -20,7 +20,8 @@ public class ProxyAdvancedRolloutGroup implements Serializable, TargetFilterQuer
     private static final long serialVersionUID = 1L;
 
     private String groupName;
-    private ProxyTargetFilterQueryInfo targetFilterInfo;
+    private String targetFilterQuery;
+    private Long targetFilterId;
     private Float targetPercentage;
     private String triggerThresholdPercentage;
     private String errorThresholdPercentage;
@@ -39,32 +40,30 @@ public class ProxyAdvancedRolloutGroup implements Serializable, TargetFilterQuer
      * Sets the groupName
      *
      * @param groupName
-     *            name of the group
+     *          name of the group
      */
     public void setGroupName(final String groupName) {
         this.groupName = groupName;
     }
 
     @Override
-    public ProxyTargetFilterQueryInfo getTargetFilterQueryInfo() {
-        return targetFilterInfo;
+    public String getTargetFilterQuery() {
+        return targetFilterQuery;
     }
 
     @Override
-    public void setTargetFilterQueryInfo(final ProxyTargetFilterQueryInfo tfqInfo) {
-        this.targetFilterInfo = tfqInfo;
-    }
-
-    public String getTargetFilterQuery() {
-        return targetFilterInfo != null ? targetFilterInfo.getQuery() : null;
-    }
-
     public void setTargetFilterQuery(final String targetFilterQuery) {
-        if (targetFilterInfo != null) {
-            targetFilterInfo.setQuery(targetFilterQuery);
-        } else {
-            targetFilterInfo = new ProxyTargetFilterQueryInfo(null, null, targetFilterQuery);
-        }
+        this.targetFilterQuery = targetFilterQuery;
+    }
+
+    @Override
+    public Long getTargetFilterId() {
+        return targetFilterId;
+    }
+
+    @Override
+    public void setTargetFilterId(final Long targetFilterId) {
+        this.targetFilterId = targetFilterId;
     }
 
     /**
@@ -80,7 +79,7 @@ public class ProxyAdvancedRolloutGroup implements Serializable, TargetFilterQuer
      * Sets the targetPercentage
      *
      * @param targetPercentage
-     *            percentage of the target
+     *          percentage of the target
      */
     public void setTargetPercentage(final Float targetPercentage) {
         this.targetPercentage = targetPercentage;
@@ -99,7 +98,7 @@ public class ProxyAdvancedRolloutGroup implements Serializable, TargetFilterQuer
      * Sets the triggerThresholdPercentage
      *
      * @param triggerThresholdPercentage
-     *            percentage of the triggerThreshold
+     *          percentage of the triggerThreshold
      */
     public void setTriggerThresholdPercentage(final String triggerThresholdPercentage) {
         this.triggerThresholdPercentage = triggerThresholdPercentage;
@@ -118,7 +117,7 @@ public class ProxyAdvancedRolloutGroup implements Serializable, TargetFilterQuer
      * Sets the errorThresholdPercentage
      *
      * @param errorThresholdPercentage
-     *            percentage of the errorThreshold
+     *          percentage of the errorThreshold
      */
     public void setErrorThresholdPercentage(final String errorThresholdPercentage) {
         this.errorThresholdPercentage = errorThresholdPercentage;

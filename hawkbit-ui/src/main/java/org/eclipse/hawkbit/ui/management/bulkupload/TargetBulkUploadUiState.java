@@ -12,8 +12,6 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSetInfo;
-
 /**
  * Target bulk upload ui state
  */
@@ -22,7 +20,7 @@ public class TargetBulkUploadUiState implements Serializable {
 
     private boolean isInProgress;
 
-    private ProxyDistributionSetInfo dsInfo;
+    private Long dsId;
     private final Map<Long, String> tagIdsWithNameToAssign = new HashMap<>();
     private String description;
 
@@ -37,27 +35,27 @@ public class TargetBulkUploadUiState implements Serializable {
      * Sets the upload progress
      *
      * @param isInProgress
-     *            boolean
+     *          boolean
      */
     public void setInProgress(final boolean isInProgress) {
         this.isInProgress = isInProgress;
     }
 
     /**
-     * @return Distribution set info
+     * @return Distribution set id
      */
-    public ProxyDistributionSetInfo getDsInfo() {
-        return dsInfo;
+    public Long getDsId() {
+        return dsId;
     }
 
     /**
-     * Sets the distribution set info
+     * Sets the distribution set id
      *
-     * @param dsInfo
-     *            Info of distribution set
+     * @param dsId
+     *          Id
      */
-    public void setDsInfo(final ProxyDistributionSetInfo dsInfo) {
-        this.dsInfo = dsInfo;
+    public void setDsId(final Long dsId) {
+        this.dsId = dsId;
     }
 
     /**
@@ -71,7 +69,7 @@ public class TargetBulkUploadUiState implements Serializable {
      * Sets the Tag ids with name
      *
      * @param tagIdsWithNameToAssign
-     *            Tag ids with name
+     *          Tag ids with name
      */
     public void setTagIdsWithNameToAssign(final Map<Long, String> tagIdsWithNameToAssign) {
         this.tagIdsWithNameToAssign.clear();
@@ -89,7 +87,7 @@ public class TargetBulkUploadUiState implements Serializable {
      * Sets the description of target bulk upload
      *
      * @param description
-     *            Description
+     *          Description
      */
     public void setDescription(final String description) {
         this.description = description;

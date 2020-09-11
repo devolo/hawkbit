@@ -8,13 +8,11 @@
  */
 package org.eclipse.hawkbit.ui.common.data.aware;
 
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSetInfo;
-
 /**
- * Element provides a distribution set info
+ * Element provides a distribution set id
  */
 public interface DsIdAware {
-    void setDistributionSetInfo(ProxyDistributionSetInfo dsInfo);
+    void setDistributionSetId(Long id);
 
-    ProxyDistributionSetInfo getDistributionSetInfo();
+    Long getDistributionSetId();
 }

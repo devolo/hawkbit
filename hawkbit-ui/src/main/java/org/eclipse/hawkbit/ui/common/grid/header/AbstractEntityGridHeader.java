@@ -10,8 +10,8 @@ package org.eclipse.hawkbit.ui.common.grid.header;
 
 import java.util.Arrays;
 
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowBuilder;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
 import org.eclipse.hawkbit.ui.common.event.CommandTopics;
 import org.eclipse.hawkbit.ui.common.event.EventLayout;
@@ -30,6 +30,8 @@ import org.eclipse.hawkbit.ui.common.grid.header.support.SearchHeaderSupport;
 import org.eclipse.hawkbit.ui.common.state.GridLayoutUiState;
 import org.eclipse.hawkbit.ui.common.state.HidableLayoutUiState;
 import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.Component;
 import com.vaadin.ui.UI;
@@ -57,8 +59,12 @@ public abstract class AbstractEntityGridHeader extends AbstractGridHeader {
     /**
      * Constructor for AbstractEntityGridHeader
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *            VaadinMessageSource
+     * @param permChecker
+     *            SpPermissionChecker
+     * @param eventBus
+     *            UIEventBus
      * @param filterLayoutUiState
      *            HidableLayoutUiState
      * @param gridLayoutUiState
@@ -68,9 +74,10 @@ public abstract class AbstractEntityGridHeader extends AbstractGridHeader {
      * @param view
      *            EventView
      */
-    public AbstractEntityGridHeader(final CommonUiDependencies uiDependencies, final HidableLayoutUiState filterLayoutUiState,
+    public AbstractEntityGridHeader(final VaadinMessageSource i18n, final SpPermissionChecker permChecker,
+            final UIEventBus eventBus, final HidableLayoutUiState filterLayoutUiState,
             final GridLayoutUiState gridLayoutUiState, final EventLayout filterLayout, final EventView view) {
-        super(uiDependencies.getI18n(), uiDependencies.getPermChecker(), uiDependencies.getEventBus());
+        super(i18n, permChecker, eventBus);
 
         this.filterLayoutUiState = filterLayoutUiState;
         this.gridLayoutUiState = gridLayoutUiState;

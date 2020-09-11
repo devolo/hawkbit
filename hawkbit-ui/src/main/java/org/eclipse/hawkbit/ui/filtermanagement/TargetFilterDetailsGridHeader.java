@@ -8,12 +8,12 @@
  */
 package org.eclipse.hawkbit.ui.filtermanagement;
 
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
-import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.eclipse.hawkbit.repository.rsql.RsqlValidationOracle;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.UiProperties;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowController;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.event.CommandTopics;
 import org.eclipse.hawkbit.ui.common.event.EventLayout;
@@ -26,6 +26,9 @@ import org.eclipse.hawkbit.ui.filtermanagement.state.TargetFilterDetailsLayoutUi
 import org.eclipse.hawkbit.ui.filtermanagement.state.TargetFilterDetailsLayoutUiState.Mode;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Layout for Custom Filter view
@@ -44,8 +47,16 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
     /**
      * Constructor for TargetFilterDetailsGridHeader
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *            VaadinMessageSource
+     * @param permChecker
+     *            SpPermissionChecker
+     * @param eventBus
+     *            UIEventBus
+     * @param uiNotification
+     *            UINotification
+     * @param entityFactory
+     *            EntityFactory
      * @param targetFilterManagement
      *            TargetFilterQueryManagement
      * @param uiProperties
@@ -55,10 +66,11 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
      * @param uiState
      *            TargetFilterDetailsLayoutUiState
      */
-    public TargetFilterDetailsGridHeader(final CommonUiDependencies uiDependencies,
+    public TargetFilterDetailsGridHeader(final VaadinMessageSource i18n, final SpPermissionChecker permChecker,
+            final UIEventBus eventBus, final UINotification uiNotification, final EntityFactory entityFactory,
             final TargetFilterQueryManagement targetFilterManagement, final UiProperties uiProperties,
             final RsqlValidationOracle rsqlValidationOracle, final TargetFilterDetailsLayoutUiState uiState) {
-        super(uiDependencies.getI18n(), uiDependencies.getPermChecker(), uiDependencies.getEventBus());
+        super(i18n, permChecker, eventBus);
 
         this.uiState = uiState;
 
@@ -72,10 +84,10 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
 
         this.targetFilterAddUpdateLayout = new TargetFilterAddUpdateLayout(i18n, permChecker, uiProperties, uiState,
                 eventBus, rsqlValidationOracle);
-        this.addTargetFilterController = new AddTargetFilterController(uiDependencies, targetFilterManagement,
-                targetFilterAddUpdateLayout, this::closeDetails);
-        this.updateTargetFilterController = new UpdateTargetFilterController(uiDependencies, targetFilterManagement,
-                targetFilterAddUpdateLayout, this::closeDetails);
+        this.addTargetFilterController = new AddTargetFilterController(i18n, entityFactory, eventBus, uiNotification,
+                targetFilterManagement, targetFilterAddUpdateLayout, this::closeDetails);
+        this.updateTargetFilterController = new UpdateTargetFilterController(i18n, entityFactory, eventBus,
+                uiNotification, targetFilterManagement, targetFilterAddUpdateLayout, this::closeDetails);
 
         buildHeader();
     }
@@ -138,7 +150,7 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
     }
 
     private void showAddUpdateFilterLayout(final String captionMessage,
-            final AbstractEntityWindowController<ProxyTargetFilterQuery, ProxyTargetFilterQuery, TargetFilterQuery> controller,
+            final AbstractEntityWindowController<ProxyTargetFilterQuery, ProxyTargetFilterQuery> controller,
             final ProxyTargetFilterQuery proxyEntity) {
         headerCaptionDetails.setValue(captionMessage);
         controller.populateWithData(proxyEntity);
@@ -175,7 +187,7 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
 
     /**
      * Check validity of target filter query.
-     *
+     * 
      * @return {@code true}: if header form layout is active and the target
      *         filter query is valid {@code false}: otherwise
      */

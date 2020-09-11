@@ -8,11 +8,14 @@
  */
 package org.eclipse.hawkbit.ui.artifacts.smtype;
 
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.SoftwareModuleTypeManagement;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowBuilder;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyType;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.Window;
 
@@ -20,19 +23,35 @@ import com.vaadin.ui.Window;
  * Builder for software module type window
  */
 public class SmTypeWindowBuilder extends AbstractEntityWindowBuilder<ProxyType> {
+    private final EntityFactory entityFactory;
+    private final UIEventBus eventBus;
+    private final UINotification uiNotification;
 
     private final SoftwareModuleTypeManagement smTypeManagement;
 
     /**
      * Constructor for SmTypeWindowBuilder
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *          VaadinMessageSource
+     * @param entityFactory
+     *          EntityFactory
+     * @param eventBus
+     *          UIEventBus
+     * @param uiNotification
+     *          UINotification
      * @param smTypeManagement
-     *            SoftwareModuleTypeManagement
+     *          SoftwareModuleTypeManagement
      */
-    public SmTypeWindowBuilder(final CommonUiDependencies uiDependencies, final SoftwareModuleTypeManagement smTypeManagement) {
-        super(uiDependencies);
+    public SmTypeWindowBuilder(final VaadinMessageSource i18n, final EntityFactory entityFactory,
+            final UIEventBus eventBus, final UINotification uiNotification,
+            final SoftwareModuleTypeManagement smTypeManagement) {
+        super(i18n);
+
+        this.entityFactory = entityFactory;
+        this.eventBus = eventBus;
+        this.uiNotification = uiNotification;
+
         this.smTypeManagement = smTypeManagement;
     }
 
@@ -48,8 +67,8 @@ public class SmTypeWindowBuilder extends AbstractEntityWindowBuilder<ProxyType> 
      */
     @Override
     public Window getWindowForAdd() {
-        return getWindowForNewEntity(
-                new AddSmTypeWindowController(uiDependencies, smTypeManagement, new SmTypeWindowLayout(uiDependencies)));
+        return getWindowForNewEntity(new AddSmTypeWindowController(i18n, entityFactory, eventBus, uiNotification,
+                smTypeManagement, new SmTypeWindowLayout(i18n, uiNotification)));
 
     }
 
@@ -57,13 +76,13 @@ public class SmTypeWindowBuilder extends AbstractEntityWindowBuilder<ProxyType> 
      * Update window for software module type
      *
      * @param proxyType
-     *            ProxyType
+     *          ProxyType
      *
      * @return Window of Software module type
      */
     @Override
     public Window getWindowForUpdate(final ProxyType proxyType) {
-        return getWindowForEntity(proxyType,
-                new UpdateSmTypeWindowController(uiDependencies, smTypeManagement, new SmTypeWindowLayout(uiDependencies)));
+        return getWindowForEntity(proxyType, new UpdateSmTypeWindowController(i18n, entityFactory, eventBus,
+                uiNotification, smTypeManagement, new SmTypeWindowLayout(i18n, uiNotification)));
     }
 }

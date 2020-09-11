@@ -8,7 +8,7 @@
  */
 package org.eclipse.hawkbit.ui.artifacts.smtable;
 
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxySoftwareModule;
 import org.eclipse.hawkbit.ui.common.event.EventLayout;
@@ -17,6 +17,8 @@ import org.eclipse.hawkbit.ui.common.grid.header.AbstractEntityGridHeader;
 import org.eclipse.hawkbit.ui.common.state.GridLayoutUiState;
 import org.eclipse.hawkbit.ui.common.state.HidableLayoutUiState;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Header of Software module table.
@@ -30,21 +32,26 @@ public class SoftwareModuleGridHeader extends AbstractEntityGridHeader {
     /**
      * Constructor for SoftwareModuleGridHeader
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *          VaadinMessageSource
+     * @param permChecker
+     *          SpPermissionChecker
+     * @param eventBus
+     *          UIEventBus
      * @param smTypeFilterLayoutUiState
-     *            HidableLayoutUiState
+     *          HidableLayoutUiState
      * @param smGridLayoutUiState
-     *            GridLayoutUiState
+     *          GridLayoutUiState
      * @param smWindowBuilder
-     *            SmWindowBuilder
+     *          SmWindowBuilder
      * @param view
-     *            EventView
+     *          EventView
      */
-    public SoftwareModuleGridHeader(final CommonUiDependencies uiDependencies,
-            final HidableLayoutUiState smTypeFilterLayoutUiState, final GridLayoutUiState smGridLayoutUiState,
-            final SmWindowBuilder smWindowBuilder, final EventView view) {
-        super(uiDependencies, smTypeFilterLayoutUiState, smGridLayoutUiState, EventLayout.SM_TYPE_FILTER, view);
+    public SoftwareModuleGridHeader(final VaadinMessageSource i18n, final SpPermissionChecker permChecker,
+            final UIEventBus eventBus, final HidableLayoutUiState smTypeFilterLayoutUiState,
+            final GridLayoutUiState smGridLayoutUiState, final SmWindowBuilder smWindowBuilder, final EventView view) {
+        super(i18n, permChecker, eventBus, smTypeFilterLayoutUiState, smGridLayoutUiState, EventLayout.SM_TYPE_FILTER,
+                view);
 
         addAddHeaderSupport(smWindowBuilder);
     }

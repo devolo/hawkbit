@@ -28,8 +28,9 @@ public class ProxyRolloutForm implements Serializable, NameAware, DsIdAware, Tar
 
     private Long id;
     private String name;
-    private ProxyTargetFilterQueryInfo targetFilterInfo;
-    private ProxyDistributionSetInfo dsInfo;
+    private Long distributionSetId;
+    private Long targetFilterId;
+    private String targetFilterQuery;
     private String description;
     private ActionType actionType;
     private Long forcedTime;
@@ -38,7 +39,6 @@ public class ProxyRolloutForm implements Serializable, NameAware, DsIdAware, Tar
 
     /**
      * Gets the rollout form id
-     * 
      * @return id
      */
     public Long getId() {
@@ -49,7 +49,7 @@ public class ProxyRolloutForm implements Serializable, NameAware, DsIdAware, Tar
      * Sets the form id
      *
      * @param id
-     *            rollout form id
+     *         rollout form id
      */
     public void setId(final Long id) {
         this.id = id;
@@ -66,35 +66,33 @@ public class ProxyRolloutForm implements Serializable, NameAware, DsIdAware, Tar
     }
 
     @Override
-    public ProxyTargetFilterQueryInfo getTargetFilterQueryInfo() {
-        return targetFilterInfo;
+    public Long getDistributionSetId() {
+        return distributionSetId;
     }
 
     @Override
-    public void setTargetFilterQueryInfo(final ProxyTargetFilterQueryInfo tfqInfo) {
-        this.targetFilterInfo = tfqInfo;
+    public void setDistributionSetId(final Long distributionSetId) {
+        this.distributionSetId = distributionSetId;
     }
 
+    @Override
+    public Long getTargetFilterId() {
+        return targetFilterId;
+    }
+
+    @Override
+    public void setTargetFilterId(final Long targetFilterId) {
+        this.targetFilterId = targetFilterId;
+    }
+
+    @Override
     public String getTargetFilterQuery() {
-        return targetFilterInfo != null ? targetFilterInfo.getQuery() : null;
+        return targetFilterQuery;
     }
 
+    @Override
     public void setTargetFilterQuery(final String targetFilterQuery) {
-        if (targetFilterInfo != null) {
-            targetFilterInfo.setQuery(targetFilterQuery);
-        } else {
-            targetFilterInfo = new ProxyTargetFilterQueryInfo(null, null, targetFilterQuery);
-        }
-    }
-
-    @Override
-    public ProxyDistributionSetInfo getDistributionSetInfo() {
-        return dsInfo;
-    }
-
-    @Override
-    public void setDistributionSetInfo(final ProxyDistributionSetInfo dsInfo) {
-        this.dsInfo = dsInfo;
+        this.targetFilterQuery = targetFilterQuery;
     }
 
     @Override

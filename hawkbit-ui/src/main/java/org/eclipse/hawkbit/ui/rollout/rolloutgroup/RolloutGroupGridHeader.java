@@ -8,7 +8,6 @@
  */
 package org.eclipse.hawkbit.ui.rollout.rolloutgroup;
 
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyRollout;
 import org.eclipse.hawkbit.ui.common.event.CommandTopics;
 import org.eclipse.hawkbit.ui.common.event.EventLayout;
@@ -20,6 +19,8 @@ import org.eclipse.hawkbit.ui.common.grid.header.support.CloseHeaderSupport;
 import org.eclipse.hawkbit.ui.common.layout.MasterEntityAwareComponent;
 import org.eclipse.hawkbit.ui.rollout.RolloutManagementUIState;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Header Layout of Rollout Group list view.
@@ -30,8 +31,19 @@ public class RolloutGroupGridHeader extends AbstractBreadcrumbGridHeader
 
     private final RolloutManagementUIState rolloutManagementUIState;
 
-    RolloutGroupGridHeader(final CommonUiDependencies uiDependencies, final RolloutManagementUIState rolloutManagementUIState) {
-        super(uiDependencies.getI18n(), uiDependencies.getPermChecker(), uiDependencies.getEventBus());
+    /**
+     * Constructor for RolloutGroupsListHeader
+     * 
+     * @param eventBus
+     *            UIEventBus
+     * @param rolloutManagementUIState
+     *            UIState
+     * @param i18n
+     *            I18N
+     */
+    public RolloutGroupGridHeader(final UIEventBus eventBus, final RolloutManagementUIState rolloutManagementUIState,
+            final VaadinMessageSource i18n) {
+        super(i18n, null, eventBus);
 
         this.rolloutManagementUIState = rolloutManagementUIState;
 

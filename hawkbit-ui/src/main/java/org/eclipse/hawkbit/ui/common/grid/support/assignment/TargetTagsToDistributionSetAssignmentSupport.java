@@ -13,15 +13,16 @@ import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTag;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
 import org.eclipse.hawkbit.ui.utils.HawkbitCommonUtil;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 
 /**
  * Support for assigning target tags to distribution set.
- *
+ * 
  */
 public class TargetTagsToDistributionSetAssignmentSupport extends AssignmentSupport<ProxyTag, ProxyDistributionSet> {
     private final TargetsToDistributionSetAssignmentSupport targetsToDistributionSetAssignmentSupport;
@@ -30,17 +31,19 @@ public class TargetTagsToDistributionSetAssignmentSupport extends AssignmentSupp
     /**
      * Constructor for TargetTagsToDistributionSetAssignmentSupport
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param notification
+     *            UINotification
+     * @param i18n
+     *            VaadinMessageSource
      * @param targetManagement
      *            TargetManagement
      * @param targetsToDistributionSetAssignmentSupport
      *            TargetsToDistributionSetAssignmentSupport
      */
-    public TargetTagsToDistributionSetAssignmentSupport(final CommonUiDependencies uiDependencies,
-            final TargetManagement targetManagement,
+    public TargetTagsToDistributionSetAssignmentSupport(final UINotification notification,
+            final VaadinMessageSource i18n, final TargetManagement targetManagement,
             final TargetsToDistributionSetAssignmentSupport targetsToDistributionSetAssignmentSupport) {
-        super(uiDependencies.getUiNotification(), uiDependencies.getI18n());
+        super(notification, i18n);
 
         this.targetManagement = targetManagement;
         this.targetsToDistributionSetAssignmentSupport = targetsToDistributionSetAssignmentSupport;

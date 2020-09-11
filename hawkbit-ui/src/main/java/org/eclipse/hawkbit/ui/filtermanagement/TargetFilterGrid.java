@@ -13,11 +13,12 @@ import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.im.authentication.SpPermission;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.builder.GridComponentBuilder;
 import org.eclipse.hawkbit.ui.common.builder.StatusIconBuilder.ActionTypeIconSupplier;
 import org.eclipse.hawkbit.ui.common.data.mappers.TargetFilterQueryToProxyTargetFilterMapper;
 import org.eclipse.hawkbit.ui.common.data.providers.TargetFilterQueryDataProvider;
+import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdNameVersion;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.event.CommandTopics;
@@ -32,10 +33,13 @@ import org.eclipse.hawkbit.ui.common.grid.AbstractGrid;
 import org.eclipse.hawkbit.ui.common.grid.support.DeleteSupport;
 import org.eclipse.hawkbit.ui.common.grid.support.FilterSupport;
 import org.eclipse.hawkbit.ui.filtermanagement.state.TargetFilterGridLayoutUiState;
+import org.eclipse.hawkbit.ui.utils.HawkbitCommonUtil;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
 import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 import org.springframework.util.StringUtils;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.data.ValueProvider;
 import com.vaadin.server.Sizeable;
@@ -69,21 +73,28 @@ public class TargetFilterGrid extends AbstractGrid<ProxyTargetFilterQuery, Strin
     /**
      * Constructor for TargetFilterGrid
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *            VaadinMessageSource
+     * @param notification
+     *            UINotification
+     * @param eventBus
+     *            UIEventBus
      * @param uiState
      *            TargetFilterGridLayoutUiState
      * @param targetFilterQueryManagement
      *            TargetFilterQueryManagement
+     * @param permChecker
+     *            SpPermissionChecker
      * @param autoAssignmentWindowBuilder
      *            AutoAssignmentWindowBuilder
      */
-    public TargetFilterGrid(final CommonUiDependencies uiDependencies, final TargetFilterGridLayoutUiState uiState,
-            final TargetFilterQueryManagement targetFilterQueryManagement,
+    public TargetFilterGrid(final VaadinMessageSource i18n, final UINotification notification,
+            final UIEventBus eventBus, final TargetFilterGridLayoutUiState uiState,
+            final TargetFilterQueryManagement targetFilterQueryManagement, final SpPermissionChecker permChecker,
             final AutoAssignmentWindowBuilder autoAssignmentWindowBuilder) {
-        super(uiDependencies.getI18n(), uiDependencies.getEventBus(), uiDependencies.getPermChecker());
+        super(i18n, eventBus, permChecker);
 
-        this.notification = uiDependencies.getUiNotification();
+        this.notification = notification;
         this.uiState = uiState;
         this.targetFilterQueryManagement = targetFilterQueryManagement;
         this.autoAssignmentWindowBuilder = autoAssignmentWindowBuilder;
@@ -174,24 +185,6 @@ public class TargetFilterGrid extends AbstractGrid<ProxyTargetFilterQuery, Strin
                 new ShowFormEventPayload<ProxyTargetFilterQuery>(FormType.EDIT, targetFilter, EventView.TARGET_FILTER));
     }
 
-    private Button buildAutoAssignmentLink(final ProxyTargetFilterQuery targetFilter) {
-        final String caption;
-        if (targetFilter.isAutoAssignmentEnabled() && targetFilter.getDistributionSetInfo() != null) {
-            caption = targetFilter.getDistributionSetInfo().getNameVersion();
-        } else {
-            caption = i18n.getMessage(UIMessageIdProvider.BUTTON_NO_AUTO_ASSIGNMENT);
-        }
-
-        final Button link = GridComponentBuilder.buildLink(targetFilter, "distSetButton", caption,
-                permissionChecker.hasReadRepositoryPermission(),
-                clickEvent -> onClickOfAutoAssignmentLink(targetFilter));
-
-        final String description = i18n.getMessage(UIMessageIdProvider.BUTTON_AUTO_ASSIGNMENT_DESCRIPTION);
-        link.setDescription(description);
-
-        return link;
-    }
-
     private void onClickOfAutoAssignmentLink(final ProxyTargetFilterQuery targetFilter) {
         if (permissionChecker.hasReadRepositoryPermission()) {
             final Window autoAssignmentWindow = autoAssignmentWindowBuilder.getWindowForAutoAssignment(targetFilter);
@@ -205,5 +198,25 @@ public class TargetFilterGrid extends AbstractGrid<ProxyTargetFilterQuery, Strin
             notification.displayValidationError(
                     i18n.getMessage("message.permission.insufficient", SpPermission.READ_REPOSITORY));
         }
+    }
+
+    private Button buildAutoAssignmentLink(final ProxyTargetFilterQuery targetFilter) {
+        final String caption;
+        if (targetFilter.isAutoAssignmentEnabled()) {
+            final ProxyIdNameVersion autoAssignDsIdNameVersion = targetFilter.getAutoAssignDsIdNameVersion();
+            caption = HawkbitCommonUtil.getFormattedNameVersion(autoAssignDsIdNameVersion.getName(),
+                    autoAssignDsIdNameVersion.getVersion());
+        } else {
+            caption = i18n.getMessage(UIMessageIdProvider.BUTTON_NO_AUTO_ASSIGNMENT);
+        }
+
+        final Button link = GridComponentBuilder.buildLink(targetFilter, "distSetButton", caption,
+                permissionChecker.hasReadRepositoryPermission(),
+                clickEvent -> onClickOfAutoAssignmentLink(targetFilter));
+
+        final String description = i18n.getMessage(UIMessageIdProvider.BUTTON_AUTO_ASSIGNMENT_DESCRIPTION);
+        link.setDescription(description);
+
+        return link;
     }
 }

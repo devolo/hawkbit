@@ -12,11 +12,9 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.model.MetaData;
 import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.CommonDialogWindow.SaveDialogCloseListener;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyMetaData;
 import org.eclipse.hawkbit.ui.common.layout.AbstractGridComponentLayout;
 import org.eclipse.hawkbit.ui.utils.UINotification;
@@ -38,11 +36,8 @@ public abstract class AbstractMetaDataWindowLayout<F> extends HorizontalLayout {
     private static final long serialVersionUID = 1L;
 
     protected final VaadinMessageSource i18n;
-    protected final UINotification uiNotification;
-    protected final SpPermissionChecker permChecker;
     protected final transient UIEventBus eventBus;
-    protected final transient EntityFactory entityFactory;
-    protected final transient CommonUiDependencies uiDependencies;
+    protected final UINotification uiNotification;
 
     private final MetadataWindowGridHeader metadataWindowGridHeader;
 
@@ -53,24 +48,23 @@ public abstract class AbstractMetaDataWindowLayout<F> extends HorizontalLayout {
     /**
      * Constructor for AbstractTagWindowLayout
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *            I18N
+     * @param eventBus
+     *            UIEventBus
+     * @param uiNotification
+     *            UINotification
+     * @param permChecker
+     *            SpPermissionChecker
      */
-    public AbstractMetaDataWindowLayout(final CommonUiDependencies uiDependencies) {
-        this.uiDependencies = uiDependencies;
-        this.i18n = uiDependencies.getI18n();
-        this.eventBus = uiDependencies.getEventBus();
-        this.uiNotification = uiDependencies.getUiNotification();
-        this.permChecker = uiDependencies.getPermChecker();
-        this.entityFactory = uiDependencies.getEntityFactory();
+    public AbstractMetaDataWindowLayout(final VaadinMessageSource i18n, final UIEventBus eventBus,
+            final UINotification uiNotification, final SpPermissionChecker permChecker) {
+        this.i18n = i18n;
+        this.eventBus = eventBus;
+        this.uiNotification = uiNotification;
 
-        this.metadataWindowGridHeader = new MetadataWindowGridHeader(uiDependencies, this::hasMetadataChangePermission,
+        this.metadataWindowGridHeader = new MetadataWindowGridHeader(i18n, permChecker, eventBus,
                 this::showAddMetaDataLayout);
-    }
-
-    // can be overriden in child classes for entity-specific permission
-    protected boolean hasMetadataChangePermission() {
-        return permChecker.hasUpdateRepositoryPermission();
     }
 
     protected MetaData createMetaData(final ProxyMetaData entity) {

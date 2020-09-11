@@ -14,10 +14,11 @@ import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.TargetTagManagement;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.UiProperties;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyBulkUploadWindow;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTag;
@@ -28,6 +29,7 @@ import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
 import org.eclipse.hawkbit.ui.utils.UINotification;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.data.Binder;
 import com.vaadin.icons.VaadinIcons;
@@ -75,8 +77,14 @@ public class TargetBulkUpdateWindowLayout extends CustomComponent {
     /**
      * Constructor for TargetBulkUpdateWindowLayout
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *            VaadinMessageSource
+     * @param eventBus
+     *            UIEventBus
+     * @param checker
+     *            SpPermissionChecker
+     * @param uinotification
+     *            UINotification
      * @param targetManagement
      *            TargetManagement
      * @param deploymentManagement
@@ -85,6 +93,8 @@ public class TargetBulkUpdateWindowLayout extends CustomComponent {
      *            TargetTagManagement
      * @param distributionSetManagement
      *            DistributionSetManagement
+     * @param entityFactory
+     *            EntityFactory
      * @param uiproperties
      *            UiProperties
      * @param uiExecutor
@@ -92,12 +102,14 @@ public class TargetBulkUpdateWindowLayout extends CustomComponent {
      * @param targetBulkUploadUiState
      *            TargetBulkUploadUiState
      */
-    public TargetBulkUpdateWindowLayout(final CommonUiDependencies uiDependencies, final TargetManagement targetManagement,
-            final DeploymentManagement deploymentManagement, final TargetTagManagement tagManagement,
-            final DistributionSetManagement distributionSetManagement, final UiProperties uiproperties,
-            final Executor uiExecutor, final TargetBulkUploadUiState targetBulkUploadUiState) {
-        this.i18n = uiDependencies.getI18n();
-        this.uinotification = uiDependencies.getUiNotification();
+    public TargetBulkUpdateWindowLayout(final VaadinMessageSource i18n, final UIEventBus eventBus,
+            final SpPermissionChecker checker, final UINotification uinotification,
+            final TargetManagement targetManagement, final DeploymentManagement deploymentManagement,
+            final TargetTagManagement tagManagement, final DistributionSetManagement distributionSetManagement,
+            final EntityFactory entityFactory, final UiProperties uiproperties, final Executor uiExecutor,
+            final TargetBulkUploadUiState targetBulkUploadUiState) {
+        this.i18n = i18n;
+        this.uinotification = uinotification;
         this.targetBulkUploadUiState = targetBulkUploadUiState;
         this.binder = new Binder<>();
 
@@ -106,14 +118,15 @@ public class TargetBulkUpdateWindowLayout extends CustomComponent {
 
         this.dsCombo = componentBuilder.createDistributionSetCombo(binder);
 
-        this.tagsComponent = new TargetBulkTokenTags(uiDependencies, tagManagement);
+        this.tagsComponent = new TargetBulkTokenTags(i18n, eventBus, checker, uinotification, tagManagement);
 
         this.descTextArea = componentBuilder.createDescriptionField(binder);
         this.progressBar = createProgressBar();
         this.targetsCountLabel = getStatusCountLabel();
 
-        final BulkUploadHandler bulkUploadHandler = new BulkUploadHandler(uiDependencies, uiExecutor, targetManagement,
-                tagManagement, distributionSetManagement, deploymentManagement, this::getBulkUploadInputsBean);
+        final BulkUploadHandler bulkUploadHandler = new BulkUploadHandler(i18n, eventBus, entityFactory, uiExecutor,
+                targetManagement, tagManagement, distributionSetManagement, deploymentManagement,
+                this::getBulkUploadInputsBean);
         this.uploadButton = createUploadButton(bulkUploadHandler);
 
         this.linkToSystemConfigHelp = SPUIComponentProvider.getHelpLink(i18n,
@@ -143,7 +156,7 @@ public class TargetBulkUpdateWindowLayout extends CustomComponent {
 
     private ProxyBulkUploadWindow getBulkUploadInputsBean() {
         final ProxyBulkUploadWindow bean = new ProxyBulkUploadWindow();
-        bean.setDistributionSetInfo(binder.getBean().getDistributionSetInfo());
+        bean.setDistributionSetId(binder.getBean().getDistributionSetId());
         bean.setTagIdsWithNameToAssign(getTagIdsWithNameToAssign());
         bean.setDescription(binder.getBean().getDescription());
 
@@ -256,7 +269,7 @@ public class TargetBulkUpdateWindowLayout extends CustomComponent {
      * Actions once start of upload
      */
     public void onStartOfUpload() {
-        targetBulkUploadUiState.setDsInfo(binder.getBean().getDistributionSetInfo());
+        targetBulkUploadUiState.setDsId(binder.getBean().getDistributionSetId());
         targetBulkUploadUiState.setTagIdsWithNameToAssign(getTagIdsWithNameToAssign());
         targetBulkUploadUiState.setDescription(binder.getBean().getDescription());
 
@@ -364,7 +377,7 @@ public class TargetBulkUpdateWindowLayout extends CustomComponent {
      * Reset target bulk upload ui state
      */
     public void clearUiState() {
-        targetBulkUploadUiState.setDsInfo(null);
+        targetBulkUploadUiState.setDsId(null);
         targetBulkUploadUiState.getTagIdsWithNameToAssign().clear();
         targetBulkUploadUiState.setDescription(null);
     }
@@ -374,7 +387,7 @@ public class TargetBulkUpdateWindowLayout extends CustomComponent {
      */
     public void restoreComponentsValue() {
         final ProxyBulkUploadWindow bulkUploadInputsToRestore = new ProxyBulkUploadWindow();
-        bulkUploadInputsToRestore.setDistributionSetInfo(targetBulkUploadUiState.getDsInfo());
+        bulkUploadInputsToRestore.setDistributionSetId(targetBulkUploadUiState.getDsId());
         bulkUploadInputsToRestore.setDescription(targetBulkUploadUiState.getDescription());
         bulkUploadInputsToRestore.setTagIdsWithNameToAssign(targetBulkUploadUiState.getTagIdsWithNameToAssign());
 

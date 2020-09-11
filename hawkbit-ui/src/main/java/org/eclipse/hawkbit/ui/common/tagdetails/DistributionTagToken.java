@@ -17,7 +17,7 @@ import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.DistributionSetTagManagement;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.DistributionSetTag;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.data.mappers.TagToProxyTagMapper;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTag;
@@ -25,6 +25,9 @@ import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload;
 import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload.EntityModifiedEventType;
 import org.eclipse.hawkbit.ui.common.event.EventTopics;
 import org.eclipse.hawkbit.ui.utils.HawkbitCommonUtil;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Implementation of target/ds tag token layout.
@@ -39,17 +42,24 @@ public class DistributionTagToken extends AbstractTagToken<ProxyDistributionSet>
     /**
      * Constructor for DistributionTagToken
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param checker
+     *            SpPermissionChecker
+     * @param i18n
+     *            VaadinMessageSource
+     * @param uinotification
+     *            UINotification
+     * @param eventBus
+     *            UIEventBus
      * @param distributionSetTagManagement
      *            DistributionSetTagManagement
      * @param distributionSetManagement
      *            DistributionSetManagement
      */
-    public DistributionTagToken(final CommonUiDependencies uiDependencies,
+    public DistributionTagToken(final SpPermissionChecker checker, final VaadinMessageSource i18n,
+            final UINotification uinotification, final UIEventBus eventBus,
             final DistributionSetTagManagement distributionSetTagManagement,
             final DistributionSetManagement distributionSetManagement) {
-        super(uiDependencies);
+        super(checker, i18n, uinotification, eventBus);
 
         this.distributionSetTagManagement = distributionSetTagManagement;
         this.distributionSetManagement = distributionSetManagement;

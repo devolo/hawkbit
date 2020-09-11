@@ -28,7 +28,6 @@ import org.eclipse.hawkbit.repository.SystemManagement;
 import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
 import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.Action.Status;
-import org.eclipse.hawkbit.repository.model.DistributionSetType;
 import org.eclipse.hawkbit.repository.model.TenantConfigurationValue;
 import org.eclipse.hawkbit.security.SecurityTokenGenerator;
 import org.eclipse.hawkbit.tenancy.configuration.DurationHelper;
@@ -36,7 +35,6 @@ import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.T
 import org.eclipse.hawkbit.ui.AbstractHawkbitUI;
 import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.UiProperties;
-import org.eclipse.hawkbit.ui.common.data.mappers.TypeToTypeInfoMapper;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxySystemConfigWindow;
 import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
 import org.eclipse.hawkbit.ui.decorators.SPUIButtonStyleNoBorder;
@@ -177,8 +175,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
     private ProxySystemConfigWindow populateAndGetSystemConfig() {
         final ProxySystemConfigWindow configBean = new ProxySystemConfigWindow();
 
-        configBean.setDsTypeInfo(new TypeToTypeInfoMapper<DistributionSetType>()
-                .map(systemManagement.getTenantMetadata().getDefaultDsType()));
+        configBean.setDistributionSetTypeId(systemManagement.getTenantMetadata().getDefaultDsType().getId());
         configBean.setRolloutApproval(readConfigOption(TenantConfigurationKey.ROLLOUT_APPROVAL_ENABLED));
         configBean.setAttributeSearch(readConfigOption(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED));
         configBean.setActionAutoclose(readConfigOption(TenantConfigurationKey.REPOSITORY_ACTIONS_AUTOCLOSE_ENABLED));
@@ -273,7 +270,7 @@ public class TenantConfigurationDashboardView extends CustomComponent implements
 
     private void saveSystemConfigBean() {
         final ProxySystemConfigWindow configWindowBean = binder.getBean();
-        systemManagement.updateTenantMetadata(configWindowBean.getDsTypeInfo().getId());
+        systemManagement.updateTenantMetadata(configWindowBean.getDistributionSetTypeId());
         writeConfigOption(TenantConfigurationKey.ROLLOUT_APPROVAL_ENABLED, configWindowBean.isRolloutApproval());
         writeConfigOption(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED, configWindowBean.isAttributeSearchEnabled());
         writeConfigOption(TenantConfigurationKey.ACTION_CLEANUP_ENABLED, configWindowBean.isActionAutocleanup());

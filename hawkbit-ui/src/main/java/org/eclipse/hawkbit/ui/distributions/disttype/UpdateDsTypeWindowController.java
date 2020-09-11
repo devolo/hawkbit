@@ -15,30 +15,44 @@ import java.util.stream.Stream;
 
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.DistributionSetTypeManagement;
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.builder.DistributionSetTypeUpdate;
+import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
+import org.eclipse.hawkbit.repository.exception.EntityReadOnlyException;
 import org.eclipse.hawkbit.repository.model.DistributionSetType;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleType;
+import org.eclipse.hawkbit.ui.common.AbstractEntityWindowController;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowLayout;
-import org.eclipse.hawkbit.ui.common.AbstractUpdateNamedEntityWindowController;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.mappers.TypeToProxyTypeMapper;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyType;
-import org.eclipse.hawkbit.ui.common.type.ProxyTypeValidator;
+import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload;
+import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload.EntityModifiedEventType;
+import org.eclipse.hawkbit.ui.common.event.EventTopics;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Controller for update distribution set type window
  */
-public class UpdateDsTypeWindowController
-        extends AbstractUpdateNamedEntityWindowController<ProxyType, ProxyType, DistributionSetType> {
+public class UpdateDsTypeWindowController extends AbstractEntityWindowController<ProxyType, ProxyType> {
+    private static final Logger LOG = LoggerFactory.getLogger(UpdateDsTypeWindowController.class);
+
+    private final VaadinMessageSource i18n;
+    private final EntityFactory entityFactory;
+    private final UIEventBus eventBus;
+    private final UINotification uiNotification;
 
     private final DistributionSetTypeManagement dsTypeManagement;
     private final DistributionSetManagement dsManagement;
     private final TypeToProxyTypeMapper<SoftwareModuleType> smTypeToProxyTypeMapper;
+
     private final DsTypeWindowLayout layout;
-    private final ProxyTypeValidator validator;
 
     private String nameBeforeEdit;
     private String keyBeforeEdit;
@@ -47,8 +61,14 @@ public class UpdateDsTypeWindowController
     /**
      * Constructor for UpdateDsTypeWindowController
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *            VaadinMessageSource
+     * @param entityFactory
+     *            EntityFactory
+     * @param eventBus
+     *            UIEventBus
+     * @param uiNotification
+     *            UINotification
      * @param dsTypeManagement
      *            DistributionSetTypeManagement
      * @param dsManagement
@@ -56,16 +76,21 @@ public class UpdateDsTypeWindowController
      * @param layout
      *            DsTypeWindowLayout
      */
-    public UpdateDsTypeWindowController(final CommonUiDependencies uiDependencies,
+    public UpdateDsTypeWindowController(final VaadinMessageSource i18n, final EntityFactory entityFactory,
+            final UIEventBus eventBus, final UINotification uiNotification,
             final DistributionSetTypeManagement dsTypeManagement, final DistributionSetManagement dsManagement,
             final DsTypeWindowLayout layout) {
-        super(uiDependencies);
+        this.i18n = i18n;
+        this.entityFactory = entityFactory;
+        this.eventBus = eventBus;
+        this.uiNotification = uiNotification;
 
         this.dsTypeManagement = dsTypeManagement;
         this.dsManagement = dsManagement;
+
         this.smTypeToProxyTypeMapper = new TypeToProxyTypeMapper<>();
+
         this.layout = layout;
-        this.validator = new ProxyTypeValidator(uiDependencies);
     }
 
     @Override
@@ -119,15 +144,15 @@ public class UpdateDsTypeWindowController
         layout.disableTypeKey();
 
         if (isDsTypeAssigned) {
-            getUiNotification().displayValidationError(
-                    nameBeforeEdit + "  " + getI18n().getMessage("message.error.dist.set.type.update"));
+            uiNotification.displayValidationError(
+                    nameBeforeEdit + "  " + i18n.getMessage("message.error.dist.set.type.update"));
             layout.disableDsTypeSmSelectLayout();
         }
     }
 
     @Override
-    protected DistributionSetType persistEntityInRepository(final ProxyType entity) {
-        final DistributionSetTypeUpdate dsTypeUpdate = getEntityFactory().distributionSetType().update(entity.getId())
+    protected void persistEntity(final ProxyType entity) {
+        final DistributionSetTypeUpdate dsTypeUpdate = entityFactory.distributionSetType().update(entity.getId())
                 .description(entity.getDescription()).colour(entity.getColour());
 
         final List<Long> mandatorySmTypeIds = entity.getSelectedSmTypes().stream().filter(ProxyType::isMandatory)
@@ -139,33 +164,40 @@ public class UpdateDsTypeWindowController
 
         dsTypeUpdate.mandatory(mandatorySmTypeIds).optional(optionalSmTypeIds);
 
-        return dsTypeManagement.update(dsTypeUpdate);
-    }
+        try {
+            final DistributionSetType updatedDsType = dsTypeManagement.update(dsTypeUpdate);
 
-    @Override
-    protected Class<? extends ProxyIdentifiableEntity> getEntityClass() {
-        return ProxyType.class;
-    }
-
-    @Override
-    protected Class<? extends ProxyIdentifiableEntity> getParentEntityClass() {
-        return ProxyDistributionSet.class;
+            uiNotification.displaySuccess(i18n.getMessage("message.update.success", updatedDsType.getName()));
+            eventBus.publish(EventTopics.ENTITY_MODIFIED, this,
+                    new EntityModifiedEventPayload(EntityModifiedEventType.ENTITY_UPDATED, ProxyDistributionSet.class,
+                            ProxyType.class, updatedDsType.getId()));
+        } catch (final EntityNotFoundException | EntityReadOnlyException e) {
+            LOG.trace("Update of DS type failed in UI: {}", e.getMessage());
+            final String entityType = i18n.getMessage("caption.entity.distribution.type");
+            uiNotification
+                    .displayWarning(i18n.getMessage("message.deleted.or.notAllowed", entityType, entity.getName()));
+        }
     }
 
     @Override
     protected boolean isEntityValid(final ProxyType entity) {
+        if (!StringUtils.hasText(entity.getName()) || !StringUtils.hasText(entity.getKey())
+                || CollectionUtils.isEmpty(entity.getSelectedSmTypes())) {
+            uiNotification.displayValidationError(i18n.getMessage("message.error.missing.typenameorkeyorsmtype"));
+            return false;
+        }
+
         final String trimmedName = StringUtils.trimWhitespace(entity.getName());
         final String trimmedKey = StringUtils.trimWhitespace(entity.getKey());
-        return validator.isDsTypeValid(entity,
-                () -> hasKeyChanged(trimmedKey) && dsTypeManagement.getByKey(trimmedKey).isPresent(),
-                () -> hasNameChanged(trimmedName) && dsTypeManagement.getByName(trimmedName).isPresent());
-    }
+        if (!nameBeforeEdit.equals(trimmedName) && dsTypeManagement.getByName(trimmedName).isPresent()) {
+            uiNotification.displayValidationError(i18n.getMessage("message.type.duplicate.check", trimmedName));
+            return false;
+        }
+        if (!keyBeforeEdit.equals(trimmedKey) && dsTypeManagement.getByKey(trimmedKey).isPresent()) {
+            uiNotification.displayValidationError(i18n.getMessage("message.type.key.ds.duplicate.check", trimmedKey));
+            return false;
+        }
 
-    private boolean hasNameChanged(final String trimmedName) {
-        return !nameBeforeEdit.equals(trimmedName);
-    }
-
-    private boolean hasKeyChanged(final String trimmedKey) {
-        return !keyBeforeEdit.equals(trimmedKey);
+        return true;
     }
 }

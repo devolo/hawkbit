@@ -20,29 +20,27 @@ import org.eclipse.hawkbit.ui.common.data.aware.DsIdAware;
 public class ProxyBulkUploadWindow implements Serializable, DescriptionAware, DsIdAware {
     private static final long serialVersionUID = 1L;
 
-    private ProxyDistributionSetInfo dsInfo;
+    private Long distributionSetId;
     private Map<Long, String> tagIdsWithNameToAssign;
     private String description;
 
     /**
-     * Gets the distribution set info
+     * Gets the distributionSetId
      *
-     * @return dsInfo
+     * @return distributionSetId
      */
-    @Override
-    public ProxyDistributionSetInfo getDistributionSetInfo() {
-        return dsInfo;
+    public Long getDistributionSetId() {
+        return distributionSetId;
     }
 
     /**
-     * Sets the distribution set info
+     * Sets the distributionSetId
      *
-     * @param dsInfo
-     *            Info of distribution set
+     * @param distributionSetId
+     *           Id of distribution set
      */
-    @Override
-    public void setDistributionSetInfo(final ProxyDistributionSetInfo dsInfo) {
-        this.dsInfo = dsInfo;
+    public void setDistributionSetId(final Long distributionSetId) {
+        this.distributionSetId = distributionSetId;
     }
 
     /**
@@ -58,7 +56,7 @@ public class ProxyBulkUploadWindow implements Serializable, DescriptionAware, Ds
      * Sets the tagIdsWithNameToAssign
      *
      * @param tagIdsWithNameToAssign
-     *            list of tagIds WithNameToAssign
+     *          list of tagIds WithNameToAssign
      */
     public void setTagIdsWithNameToAssign(final Map<Long, String> tagIdsWithNameToAssign) {
         this.tagIdsWithNameToAssign = tagIdsWithNameToAssign;
@@ -69,7 +67,6 @@ public class ProxyBulkUploadWindow implements Serializable, DescriptionAware, Ds
      *
      * @return description
      */
-    @Override
     public String getDescription() {
         return description;
     }
@@ -78,9 +75,8 @@ public class ProxyBulkUploadWindow implements Serializable, DescriptionAware, Ds
      * Sets the description
      *
      * @param description
-     *            entity description
+     *          entity description
      */
-    @Override
     public void setDescription(final String description) {
         this.description = description;
     }

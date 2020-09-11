@@ -17,16 +17,17 @@ import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
 import org.eclipse.hawkbit.ui.SpPermissionChecker;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.ConfirmationDialog;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
 import org.eclipse.hawkbit.ui.management.miscs.DeploymentAssignmentWindowController;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 
 /**
  * Support for assigning the distribution sets to target.
- *
+ * 
  */
 public class DistributionSetsToTargetAssignmentSupport
         extends DeploymentAssignmentSupport<ProxyDistributionSet, ProxyTarget> {
@@ -39,8 +40,10 @@ public class DistributionSetsToTargetAssignmentSupport
     /**
      * Constructor for DistributionSetsToTargetAssignmentSupport
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param notification
+     *            UINotification
+     * @param i18n
+     *            VaadinMessageSource
      * @param systemSecurityContext
      *            SystemSecurityContext
      * @param configManagement
@@ -50,14 +53,14 @@ public class DistributionSetsToTargetAssignmentSupport
      * @param assignmentController
      *            DeploymentAssignmentWindowController
      */
-    public DistributionSetsToTargetAssignmentSupport(final CommonUiDependencies uiDependencies,
+    public DistributionSetsToTargetAssignmentSupport(final UINotification notification, final VaadinMessageSource i18n,
             final SystemSecurityContext systemSecurityContext, final TenantConfigurationManagement configManagement,
-            final DeploymentAssignmentWindowController assignmentController) {
-        super(uiDependencies.getUiNotification(), uiDependencies.getI18n());
+            final SpPermissionChecker permChecker, final DeploymentAssignmentWindowController assignmentController) {
+        super(notification, i18n);
 
         this.systemSecurityContext = systemSecurityContext;
         this.configManagement = configManagement;
-        this.permChecker = uiDependencies.getPermChecker();
+        this.permChecker = permChecker;
         this.assignmentController = assignmentController;
     }
 

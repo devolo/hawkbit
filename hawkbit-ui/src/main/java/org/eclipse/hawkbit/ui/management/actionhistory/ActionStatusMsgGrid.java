@@ -11,7 +11,6 @@ package org.eclipse.hawkbit.ui.management.actionhistory;
 import javax.annotation.PreDestroy;
 
 import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.builder.GridComponentBuilder;
 import org.eclipse.hawkbit.ui.common.data.providers.ActionStatusMsgDataProvider;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyActionStatus;
@@ -24,6 +23,8 @@ import org.eclipse.hawkbit.ui.common.grid.support.SelectionSupport;
 import org.eclipse.hawkbit.ui.utils.SPUIStyleDefinitions;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.data.provider.Query;
 import com.vaadin.shared.Registration;
@@ -44,8 +45,17 @@ public class ActionStatusMsgGrid extends AbstractGrid<ProxyMessage, Long> {
 
     private final Registration itemClickListenerRegistration;
 
-    protected ActionStatusMsgGrid(final CommonUiDependencies uiDependencies, final DeploymentManagement deploymentManagement) {
-        super(uiDependencies.getI18n(), uiDependencies.getEventBus(), uiDependencies.getPermChecker());
+    /**
+     * Constructor.
+     *
+     * @param i18n
+     *            i18n
+     * @param eventBus
+     *            eventBus
+     */
+    protected ActionStatusMsgGrid(final VaadinMessageSource i18n, final UIEventBus eventBus,
+            final DeploymentManagement deploymentManagement) {
+        super(i18n, eventBus, null);
 
         setSelectionSupport(new SelectionSupport<ProxyMessage>(this));
         getSelectionSupport().enableSingleSelection();

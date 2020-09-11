@@ -8,7 +8,7 @@
  */
 package org.eclipse.hawkbit.ui.management.targettable;
 
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
 import org.eclipse.hawkbit.ui.common.event.BulkUploadEventPayload;
@@ -23,6 +23,9 @@ import org.eclipse.hawkbit.ui.management.bulkupload.TargetBulkUpdateWindowLayout
 import org.eclipse.hawkbit.ui.management.bulkupload.TargetBulkUploadUiState;
 import org.eclipse.hawkbit.ui.management.targettag.filter.TargetTagFilterLayoutUiState;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Component;
@@ -47,13 +50,14 @@ public class TargetGridHeader extends AbstractEntityGridHeader {
     private final transient BulkUploadHeaderSupport bulkUploadHeaderSupport;
     private final transient DistributionSetFilterDropAreaSupport distributionSetFilterDropAreaSupport;
 
-    TargetGridHeader(final CommonUiDependencies uiDependencies, final TargetWindowBuilder targetWindowBuilder,
+    TargetGridHeader(final VaadinMessageSource i18n, final SpPermissionChecker permChecker, final UIEventBus eventBus,
+            final UINotification notification, final TargetWindowBuilder targetWindowBuilder,
             final BulkUploadWindowBuilder bulkUploadWindowBuilder,
             final TargetTagFilterLayoutUiState targetTagFilterLayoutUiState,
             final TargetGridLayoutUiState targetGridLayoutUiState,
             final TargetBulkUploadUiState targetBulkUploadUiState) {
-        super(uiDependencies, targetTagFilterLayoutUiState, targetGridLayoutUiState, EventLayout.TARGET_TAG_FILTER,
-                EventView.DEPLOYMENT);
+        super(i18n, permChecker, eventBus, targetTagFilterLayoutUiState, targetGridLayoutUiState,
+                EventLayout.TARGET_TAG_FILTER, EventView.DEPLOYMENT);
 
         this.targetTagFilterLayoutUiState = targetTagFilterLayoutUiState;
         this.targetGridLayoutUiState = targetGridLayoutUiState;
@@ -73,7 +77,7 @@ public class TargetGridHeader extends AbstractEntityGridHeader {
 
         // DistributionSetFilterDropArea is only available in TargetTableHeader
         this.distributionSetFilterDropAreaSupport = new DistributionSetFilterDropAreaSupport(i18n, eventBus,
-                uiDependencies.getUiNotification(), targetGridLayoutUiState);
+                notification, targetGridLayoutUiState);
     }
 
     /**
@@ -147,7 +151,7 @@ public class TargetGridHeader extends AbstractEntityGridHeader {
             bulkUploadWindowBuilder.restoreState();
         }
 
-        if (targetGridLayoutUiState.getFilterDsInfo() != null) {
+        if (targetGridLayoutUiState.getFilterDsIdNameVersion() != null) {
             distributionSetFilterDropAreaSupport.restoreState();
         }
     }
@@ -194,7 +198,7 @@ public class TargetGridHeader extends AbstractEntityGridHeader {
      * Perform tasks on bulk upload state
      *
      * @param eventPayload
-     *            BulkUploadEventPayload
+     *          BulkUploadEventPayload
      */
     public void onBulkUploadChanged(final BulkUploadEventPayload eventPayload) {
         bulkUploadWindowBuilder.getLayout()

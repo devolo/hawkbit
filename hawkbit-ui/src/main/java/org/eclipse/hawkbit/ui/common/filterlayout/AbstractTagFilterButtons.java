@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTag;
 import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload;
@@ -30,7 +30,9 @@ import org.eclipse.hawkbit.ui.utils.SPUIDefinitions;
 import org.eclipse.hawkbit.ui.utils.SPUIStyleDefinitions;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
 import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 import org.springframework.util.CollectionUtils;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.Button;
 import com.vaadin.ui.UI;
@@ -44,24 +46,31 @@ public abstract class AbstractTagFilterButtons extends AbstractFilterButtons<Pro
 
     private final TagFilterLayoutUiState tagFilterLayoutUiState;
 
-    protected final UINotification uiNotification;
+    private final UINotification uiNotification;
     private final Button noTagButton;
     private final transient TagFilterButtonClick tagFilterButtonClick;
 
     /**
      * Constructor for AbstractTagFilterButtons
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param eventBus
+     *            UIEventBus
+     * @param i18n
+     *            VaadinMessageSource
+     * @param uiNotification
+     *            UINotification
+     * @param permChecker
+     *            SpPermissionChecker
      * @param tagFilterLayoutUiState
      *            TagFilterLayoutUiState
      */
-    public AbstractTagFilterButtons(final CommonUiDependencies uiDependencies,
+    public AbstractTagFilterButtons(final UIEventBus eventBus, final VaadinMessageSource i18n,
+            final UINotification uiNotification, final SpPermissionChecker permChecker,
             final TagFilterLayoutUiState tagFilterLayoutUiState) {
-        super(uiDependencies.getEventBus(), uiDependencies.getI18n(), uiDependencies.getUiNotification(), uiDependencies.getPermChecker());
+        super(eventBus, i18n, uiNotification, permChecker);
 
-        this.uiNotification = uiDependencies.getUiNotification();
         this.tagFilterLayoutUiState = tagFilterLayoutUiState;
+        this.uiNotification = uiNotification;
         this.noTagButton = buildNoTagButton();
         this.tagFilterButtonClick = new TagFilterButtonClick(this::onFilterChangedEvent, this::onNoTagChangedEvent);
     }

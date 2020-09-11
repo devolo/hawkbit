@@ -14,7 +14,7 @@ import java.util.List;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.TargetTagManagement;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTag;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
@@ -31,6 +31,7 @@ import org.eclipse.hawkbit.ui.common.layout.listener.support.EntityModifiedGridR
 import org.eclipse.hawkbit.ui.management.targettag.TargetTagWindowBuilder;
 import org.eclipse.hawkbit.ui.utils.SPUIStyleDefinitions;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 import org.vaadin.spring.events.EventBus.UIEventBus;
 
@@ -59,16 +60,18 @@ public class MultipleTargetFilter extends Accordion {
     private final transient EntityModifiedListener<ProxyTag> entityTagModifiedListener;
     private final transient EntityModifiedListener<ProxyTargetFilterQuery> entityFilterQueryModifiedListener;
 
-    MultipleTargetFilter(final CommonUiDependencies uiDependencies, final TargetFilterQueryManagement targetFilterQueryManagement,
+    MultipleTargetFilter(final SpPermissionChecker permChecker, final VaadinMessageSource i18n,
+            final UIEventBus eventBus, final UINotification notification,
+            final TargetFilterQueryManagement targetFilterQueryManagement,
             final TargetTagManagement targetTagManagement, final TargetManagement targetManagement,
             final TargetTagFilterLayoutUiState targetTagFilterLayoutUiState,
             final TargetTagWindowBuilder targetTagWindowBuilder) {
-        this.i18n = uiDependencies.getI18n();
-        this.eventBus = uiDependencies.getEventBus();
+        this.i18n = i18n;
+        this.eventBus = eventBus;
         this.targetTagFilterLayoutUiState = targetTagFilterLayoutUiState;
 
-        this.filterByButtons = new TargetTagFilterButtons(uiDependencies, targetTagManagement, targetManagement,
-                targetTagFilterLayoutUiState, targetTagWindowBuilder);
+        this.filterByButtons = new TargetTagFilterButtons(i18n, eventBus, notification, permChecker,
+                targetTagManagement, targetManagement, targetTagFilterLayoutUiState, targetTagWindowBuilder);
         this.filterByStatusFooter = new FilterByStatusLayout(i18n, eventBus, targetTagFilterLayoutUiState);
         this.simpleFilterTab = buildSimpleFilterTab();
         this.customFilterTab = new TargetFilterQueryButtons(i18n, eventBus, targetFilterQueryManagement,

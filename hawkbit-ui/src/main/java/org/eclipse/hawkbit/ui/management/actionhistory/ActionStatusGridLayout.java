@@ -12,7 +12,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyAction;
 import org.eclipse.hawkbit.ui.common.event.EventLayout;
 import org.eclipse.hawkbit.ui.common.event.EventLayoutViewAware;
@@ -21,6 +20,8 @@ import org.eclipse.hawkbit.ui.common.event.SelectionChangedEventPayload.Selectio
 import org.eclipse.hawkbit.ui.common.layout.AbstractGridComponentLayout;
 import org.eclipse.hawkbit.ui.common.layout.MasterEntityAwareComponent;
 import org.eclipse.hawkbit.ui.common.layout.listener.SelectionChangedListener;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Layout responsible for action-states-grid and the corresponding header.
@@ -36,18 +37,21 @@ public class ActionStatusGridLayout extends AbstractGridComponentLayout {
     /**
      * Constructor for ActionStatusGridLayout
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *          VaadinMessageSource
+     * @param eventBus
+     *          UIEventBus
      * @param deploymentManagement
-     *            DeploymentManagement
+     *          DeploymentManagement
      */
-    public ActionStatusGridLayout(final CommonUiDependencies uiDependencies, final DeploymentManagement deploymentManagement) {
-        this.actionStatusGridHeader = new ActionStatusGridHeader(uiDependencies.getI18n());
-        this.actionStatusGrid = new ActionStatusGrid(uiDependencies, deploymentManagement);
+    public ActionStatusGridLayout(final VaadinMessageSource i18n, final UIEventBus eventBus,
+            final DeploymentManagement deploymentManagement) {
+        this.actionStatusGridHeader = new ActionStatusGridHeader(i18n);
+        this.actionStatusGrid = new ActionStatusGrid(i18n, eventBus, deploymentManagement);
 
         final EventLayoutViewAware masterLayoutView = new EventLayoutViewAware(EventLayout.ACTION_HISTORY_LIST,
                 EventView.DEPLOYMENT);
-        this.selectionChangedListener = new SelectionChangedListener<>(uiDependencies.getEventBus(), masterLayoutView,
+        this.selectionChangedListener = new SelectionChangedListener<>(eventBus, masterLayoutView,
                 getMasterEntityAwareComponents());
 
         buildLayout(actionStatusGridHeader, actionStatusGrid);

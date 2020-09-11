@@ -8,14 +8,19 @@
  */
 package org.eclipse.hawkbit.ui.filtermanagement;
 
+import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
-import org.eclipse.hawkbit.ui.common.AbstractAddEntityWindowController;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
-import org.eclipse.hawkbit.ui.common.EntityWindowLayout;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
+import org.eclipse.hawkbit.ui.common.AbstractEntityWindowController;
+import org.eclipse.hawkbit.ui.common.AbstractEntityWindowLayout;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
+import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload;
+import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload.EntityModifiedEventType;
+import org.eclipse.hawkbit.ui.common.event.EventTopics;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 import org.springframework.util.StringUtils;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Controller for add target filter
@@ -24,38 +29,54 @@ import org.springframework.util.StringUtils;
  *
  */
 public class AddTargetFilterController
-        extends AbstractAddEntityWindowController<ProxyTargetFilterQuery, ProxyTargetFilterQuery, TargetFilterQuery> {
+        extends AbstractEntityWindowController<ProxyTargetFilterQuery, ProxyTargetFilterQuery> {
+    private final VaadinMessageSource i18n;
+    private final EntityFactory entityFactory;
+    private final UIEventBus eventBus;
+    private final UINotification uiNotification;
 
     private final TargetFilterQueryManagement targetFilterManagement;
+
     private final TargetFilterAddUpdateLayout layout;
+
     private final Runnable closeFormCallback;
-    private final ProxyTargetFilterValidator validator;
 
     /**
      * Constructor for AddTargetFilterController
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param i18n
+     *          VaadinMessageSource
+     * @param entityFactory
+     *          EntityFactory
+     * @param eventBus
+     *          UIEventBus
+     * @param uiNotification
+     *          UINotification
      * @param targetFilterManagement
-     *            TargetFilterQueryManagement
+     *          TargetFilterQueryManagement
      * @param layout
-     *            TargetFilterAddUpdateLayout
+     *          TargetFilterAddUpdateLayout
      * @param closeFormCallback
-     *            Runnable
+     *          Runnable
      */
-    public AddTargetFilterController(final CommonUiDependencies uiDependencies,
+    public AddTargetFilterController(final VaadinMessageSource i18n, final EntityFactory entityFactory,
+            final UIEventBus eventBus, final UINotification uiNotification,
             final TargetFilterQueryManagement targetFilterManagement, final TargetFilterAddUpdateLayout layout,
             final Runnable closeFormCallback) {
-        super(uiDependencies);
+        this.i18n = i18n;
+        this.entityFactory = entityFactory;
+        this.eventBus = eventBus;
+        this.uiNotification = uiNotification;
 
         this.targetFilterManagement = targetFilterManagement;
+
         this.layout = layout;
+
         this.closeFormCallback = closeFormCallback;
-        this.validator = new ProxyTargetFilterValidator(uiDependencies);
     }
 
     @Override
-    public EntityWindowLayout<ProxyTargetFilterQuery> getLayout() {
+    public AbstractEntityWindowLayout<ProxyTargetFilterQuery> getLayout() {
         return layout;
     }
 
@@ -65,39 +86,30 @@ public class AddTargetFilterController
     }
 
     @Override
-    protected TargetFilterQuery persistEntityInRepository(final ProxyTargetFilterQuery entity) {
-        return targetFilterManagement.create(
-                getEntityFactory().targetFilterQuery().create().name(entity.getName()).query(entity.getQuery()));
-    }
+    protected void persistEntity(final ProxyTargetFilterQuery entity) {
+        final TargetFilterQuery newTargetFilter = targetFilterManagement
+                .create(entityFactory.targetFilterQuery().create().name(entity.getName()).query(entity.getQuery()));
 
-    @Override
-    protected void postPersist() {
+        uiNotification.displaySuccess(i18n.getMessage("message.save.success", newTargetFilter.getName()));
+        eventBus.publish(EventTopics.ENTITY_MODIFIED, this, new EntityModifiedEventPayload(
+                EntityModifiedEventType.ENTITY_ADDED, ProxyTargetFilterQuery.class, newTargetFilter.getId()));
+
         closeFormCallback.run();
     }
 
     @Override
-    protected String getDisplayableName(final TargetFilterQuery entity) {
-        return entity.getName();
-    }
-
-    @Override
-    protected String getDisplayableNameForFailedMessage(final ProxyTargetFilterQuery entity) {
-        return entity.getName();
-    }
-
-    @Override
-    protected Long getId(final TargetFilterQuery entity) {
-        return entity.getId();
-    }
-
-    @Override
-    protected Class<? extends ProxyIdentifiableEntity> getEntityClass() {
-        return ProxyTargetFilterQuery.class;
-    }
-
-    @Override
     protected boolean isEntityValid(final ProxyTargetFilterQuery entity) {
+        if (!StringUtils.hasText(entity.getName())) {
+            uiNotification.displayValidationError(i18n.getMessage("message.error.missing.filtername"));
+            return false;
+        }
+
         final String trimmedName = StringUtils.trimWhitespace(entity.getName());
-        return validator.isEntityValid(entity, () -> targetFilterManagement.getByName(trimmedName).isPresent());
+        if (targetFilterManagement.getByName(trimmedName).isPresent()) {
+            uiNotification.displayValidationError(i18n.getMessage("message.target.filter.duplicate", trimmedName));
+            return false;
+        }
+
+        return true;
     }
 }

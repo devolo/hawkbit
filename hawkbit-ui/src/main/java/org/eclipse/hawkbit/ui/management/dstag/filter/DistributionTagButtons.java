@@ -12,7 +12,7 @@ import java.util.Collections;
 
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.DistributionSetTagManagement;
-import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
+import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.common.data.mappers.TagToProxyTagMapper;
 import org.eclipse.hawkbit.ui.common.data.providers.DistributionSetTagDataProvider;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
@@ -26,6 +26,9 @@ import org.eclipse.hawkbit.ui.common.state.TagFilterLayoutUiState;
 import org.eclipse.hawkbit.ui.management.dstag.DsTagWindowBuilder;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
+import org.eclipse.hawkbit.ui.utils.UINotification;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.ui.Window;
 
@@ -42,8 +45,14 @@ public class DistributionTagButtons extends AbstractTagFilterButtons {
     /**
      * Constructor for DistributionTagButtons
      *
-     * @param uiDependencies
-     *            {@link CommonUiDependencies}
+     * @param eventBus
+     *            UIEventBus
+     * @param i18n
+     *            VaadinMessageSource
+     * @param uiNotification
+     *            UINotification
+     * @param permChecker
+     *            SpPermissionChecker
      * @param distributionSetTagManagement
      *            DistributionSetTagManagement
      * @param distributionSetManagement
@@ -53,17 +62,18 @@ public class DistributionTagButtons extends AbstractTagFilterButtons {
      * @param distributionTagLayoutUiState
      *            TagFilterLayoutUiState
      */
-    public DistributionTagButtons(final CommonUiDependencies uiDependencies,
+    public DistributionTagButtons(final UIEventBus eventBus, final VaadinMessageSource i18n,
+            final UINotification uiNotification, final SpPermissionChecker permChecker,
             final DistributionSetTagManagement distributionSetTagManagement,
             final DistributionSetManagement distributionSetManagement, final DsTagWindowBuilder dsTagWindowBuilder,
             final TagFilterLayoutUiState distributionTagLayoutUiState) {
-        super(uiDependencies, distributionTagLayoutUiState);
+        super(eventBus, i18n, uiNotification, permChecker, distributionTagLayoutUiState);
 
         this.distributionSetTagManagement = distributionSetTagManagement;
         this.dsTagWindowBuilder = dsTagWindowBuilder;
 
         final DistributionSetsToTagAssignmentSupport distributionSetsToTagAssignment = new DistributionSetsToTagAssignmentSupport(
-                uiDependencies, distributionSetManagement);
+                uiNotification, i18n, distributionSetManagement, eventBus, permChecker);
 
         setDragAndDropSupportSupport(new DragAndDropSupport<>(this, i18n, uiNotification,
                 Collections.singletonMap(UIComponentIdProvider.DIST_TABLE_ID, distributionSetsToTagAssignment),
