@@ -82,9 +82,4 @@ public interface TargetFilterQuery extends TenantAwareBaseEntity {
      *         assignment.
      */
     Optional<Integer> getAutoAssignWeight();
-
-    /**
-     * @return the user that triggered the auto assignment
-     */
-    String getAutoAssignInitiatedBy();
 }
