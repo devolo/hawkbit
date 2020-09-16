@@ -20,7 +20,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @SpringBootApplication
 @EnableHawkbitManagedSecurityConfiguration
-@EnableAsync
 // Exception squid:S1118 - Spring boot standard behavior
 @SuppressWarnings({ "squid:S1118" })
 public class Start {

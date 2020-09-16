@@ -8,10 +8,13 @@
  */
 package org.eclipse.hawkbit.ui.filtermanagement;
 
+import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
+import org.eclipse.hawkbit.repository.model.DeploymentRequest;
+import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowController;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowLayout;
 import org.eclipse.hawkbit.ui.common.ConfirmationDialog;
@@ -23,10 +26,15 @@ import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
 import org.eclipse.hawkbit.ui.utils.UINotification;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.vaadin.spring.events.EventBus.UIEventBus;
 
 import com.vaadin.server.Sizeable;
 import com.vaadin.ui.UI;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Controller for auto assignment window
@@ -40,6 +48,7 @@ public class AutoAssignmentWindowController
 
     private final TargetManagement targetManagement;
     private final TargetFilterQueryManagement targetFilterQueryManagement;
+    private final DeploymentManagement deploymentManagement;
 
     private final AutoAssignmentWindowLayout layout;
 
@@ -64,7 +73,7 @@ public class AutoAssignmentWindowController
     public AutoAssignmentWindowController(final VaadinMessageSource i18n, final UIEventBus eventBus,
             final UINotification uiNotification, final EntityFactory entityFactory,
             final TargetManagement targetManagement, final TargetFilterQueryManagement targetFilterQueryManagement,
-            final AutoAssignmentWindowLayout layout) {
+            final DeploymentManagement deploymentManagement, final AutoAssignmentWindowLayout layout) {
         this.i18n = i18n;
         this.eventBus = eventBus;
         this.uiNotification = uiNotification;
@@ -72,6 +81,7 @@ public class AutoAssignmentWindowController
 
         this.targetManagement = targetManagement;
         this.targetFilterQueryManagement = targetFilterQueryManagement;
+        this.deploymentManagement = deploymentManagement;
 
         this.layout = layout;
     }
@@ -138,6 +148,7 @@ public class AutoAssignmentWindowController
                         targetFilterQueryManagement.updateAutoAssignDS(entityFactory.targetFilterQuery()
                                 .updateAutoAssign(targetFilterId).ds(autoAssignDsId).actionType(autoAssignActionType));
                         publishModifiedEvent(entity.getId());
+                        instantAssign(entity);
                     }
                 }, UIComponentIdProvider.DIST_SET_SELECT_CONS_WINDOW_ID);
 
@@ -145,6 +156,27 @@ public class AutoAssignmentWindowController
 
         UI.getCurrent().addWindow(confirmDialog.getWindow());
         confirmDialog.getWindow().bringToFront();
+    }
+
+
+    private void instantAssign(ProxyTargetFilterQuery filterQuery){
+        final String ACTION_MESSAGE = "Auto assignment by target filter: %s";
+        final String actionMessage = String.format(ACTION_MESSAGE, filterQuery.getName());
+
+        final Page<Target> targets = targetManagement.findByTargetFilterQueryAndNonDS(PageRequest.of(0, 1000),
+                filterQuery.getDistributionSetId(), filterQuery.getQuery());
+
+        final ActionType autoAssignActionType = filterQuery.getAutoAssignActionType() == null ?
+                ActionType.SOFT : filterQuery.getAutoAssignActionType();
+
+        List<DeploymentRequest> deploymentRequests =  targets.getContent().stream()
+                .map(t -> DeploymentManagement.deploymentRequest(
+                        t.getControllerId(), filterQuery.getDistributionSetId())
+                        .setActionType(autoAssignActionType).build()).collect(Collectors.toList());
+
+        if (deploymentRequests.size() > 0) {
+            deploymentManagement.assignDistributionSets(deploymentRequests, actionMessage);
+        }
     }
 
     private void publishModifiedEvent(final Long entityId) {
