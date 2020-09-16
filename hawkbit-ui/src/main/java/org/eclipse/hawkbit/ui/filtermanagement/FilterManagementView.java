@@ -14,6 +14,7 @@ import java.util.Map;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
@@ -62,12 +63,13 @@ public class FilterManagementView extends VerticalLayout implements View {
             final FilterManagementUIState filterManagementUIState, final RsqlValidationOracle rsqlValidationOracle,
             final TargetFilterQueryManagement targetFilterQueryManagement, final SpPermissionChecker permissionChecker,
             final UINotification notification, final UiProperties uiProperties, final EntityFactory entityFactory,
-            final TargetManagement targetManagement, final DistributionSetManagement distributionSetManagement) {
+            final TargetManagement targetManagement, final DistributionSetManagement distributionSetManagement,
+            final DeploymentManagement deploymentManagement) {
         this.filterManagementUIState = filterManagementUIState;
 
         this.targetFilterGridLayout = new TargetFilterGridLayout(i18n, eventBus, permissionChecker, notification,
                 entityFactory, targetFilterQueryManagement, targetManagement, distributionSetManagement,
-                filterManagementUIState);
+                deploymentManagement, filterManagementUIState);
 
         this.targetFilterDetailsLayout = new TargetFilterDetailsLayout(i18n, permissionChecker, eventBus, notification,
                 uiProperties, entityFactory, rsqlValidationOracle, targetManagement, targetFilterQueryManagement,
