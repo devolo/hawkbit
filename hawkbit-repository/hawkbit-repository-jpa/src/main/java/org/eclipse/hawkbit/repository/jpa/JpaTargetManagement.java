@@ -444,16 +444,6 @@ public class JpaTargetManagement implements TargetManagement {
 
     @Override
     public Slice<Target> findByFilters(final Pageable pageable, final FilterParams filterParams) {
-        if (filterParams.isSearchTextOnly()) {
-            String exactId = filterParams.getFilterBySearchText();
-            if (exactId.startsWith("%") && exactId.endsWith("%"))
-                exactId = exactId.substring(1, exactId.length()-1);
-            final Specification<JpaTarget> spec = TargetSpecifications.equalId(exactId);
-            final Page<JpaTarget> res = targetRepository.findAll(spec, pageable);
-            if (res.hasContent())
-                return convertPage(res, pageable);
-        }
-
         final List<Specification<JpaTarget>> specList = buildSpecificationList(filterParams);
         return findByCriteriaAPI(pageable, specList);
     }
@@ -476,7 +466,16 @@ public class JpaTargetManagement implements TargetManagement {
 
     private List<Specification<JpaTarget>> buildSpecificationList(final FilterParams filterParams) {
         final List<Specification<JpaTarget>> specList = new ArrayList<>();
-        if ((filterParams.getFilterByStatus() != null) && !filterParams.getFilterByStatus().isEmpty()) {
+        if (filterParams.isSearchTextOnly()) {
+            String exactId = filterParams.getFilterBySearchText();
+            if (exactId.startsWith("%") && exactId.endsWith("%"))
+                exactId = exactId.substring(1, exactId.length() - 1);
+            if (targetRepository.existsByControllerId(exactId)) {
+                specList.add(TargetSpecifications.equalId(exactId));
+                return specList;
+            }
+        }
+            if ((filterParams.getFilterByStatus() != null) && !filterParams.getFilterByStatus().isEmpty()) {
             specList.add(TargetSpecifications.hasTargetUpdateStatus(filterParams.getFilterByStatus()));
         }
         if (filterParams.getOverdueState() != null && filterParams.getOverdueState()) {
@@ -494,8 +493,7 @@ public class JpaTargetManagement implements TargetManagement {
                 specList.add(TargetSpecifications
                         .likeIdOrNameOrDescriptionOrAttributeValue(filterParams.getFilterBySearchText()));
             } else {
-                specList.add(TargetSpecifications
-                        .likeIdOrNameOrDescription(filterParams.getFilterBySearchText()));
+                specList.add(TargetSpecifications.likeIdOrNameOrDescription(filterParams.getFilterBySearchText()));
             }
         }
         if (hasTagsFilterActive(filterParams)) {
