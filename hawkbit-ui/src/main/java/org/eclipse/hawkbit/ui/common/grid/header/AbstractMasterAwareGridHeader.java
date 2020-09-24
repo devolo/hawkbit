@@ -89,6 +89,10 @@ public abstract class AbstractMasterAwareGridHeader<T> extends AbstractGridHeade
         masterAwareCaptionLayout.setComponentAlignment(entityDetailsCaption, Alignment.TOP_LEFT);
         masterAwareCaptionLayout.setExpandRatio(entityDetailsCaption, 0.0F);
 
+        Label ph = new Label();
+        ph.setCaption("");
+        masterAwareCaptionLayout.addComponent(ph);
+
         masterAwareCaptionLayout.addComponent(masterEntityDetailsCaption);
         masterAwareCaptionLayout.setComponentAlignment(masterEntityDetailsCaption, Alignment.TOP_LEFT);
         masterAwareCaptionLayout.setExpandRatio(masterEntityDetailsCaption, 1.0F);
