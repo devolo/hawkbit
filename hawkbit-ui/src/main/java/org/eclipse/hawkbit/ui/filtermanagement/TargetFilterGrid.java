@@ -57,7 +57,6 @@ public class TargetFilterGrid extends AbstractGrid<ProxyTargetFilterQuery, Strin
 
     private static final String FILTER_NAME_ID = "filterName";
     private static final String FILTER_DELETE_BUTTON_ID = "filterDeleteButton";
-    private static final String FILTER_EDIT_BUTTON_ID = "filterEditButton";
 
     private final UINotification notification;
     private final TargetFilterGridLayoutUiState uiState;
@@ -145,9 +144,6 @@ public class TargetFilterGrid extends AbstractGrid<ProxyTargetFilterQuery, Strin
 
         addAutoAssignmentColumns();
 
-        GridComponentBuilder.addEditColumn(this, this::buildEditLink).setId(FILTER_EDIT_BUTTON_ID)
-                .setCaption(i18n.getMessage("header.action.edit"));
-
         GridComponentBuilder.addDeleteColumn(this, i18n, FILTER_DELETE_BUTTON_ID, targetFilterDeleteSupport,
                 UIComponentIdProvider.CUSTOM_FILTER_DELETE_ICON, e -> permissionChecker.hasDeleteTargetPermission());
 
@@ -172,21 +168,6 @@ public class TargetFilterGrid extends AbstractGrid<ProxyTargetFilterQuery, Strin
                 .setCaption(i18n.getMessage("header.auto.assignment.ds")).setWidthUndefined();
     }
 
-    private Button buildEditLink(final ProxyTargetFilterQuery targetFilter) {
-        final String caption = "Edit";
-        final String description = i18n.getMessage(UIMessageIdProvider.TOOLTIP_UPDATE_CUSTOM_FILTER);
-        final Button link = GridComponentBuilder.buildLink(targetFilter,
-                UIComponentIdProvider.CUSTOM_FILTER_DETAIL_LINK, caption, true,
-                clickEvent -> onClickQuickEditFilter(targetFilter));
-        link.setDescription(description);
-        return link;
-    }
-
-    private void onClickQuickEditFilter(final ProxyTargetFilterQuery targetFilter){
-        eventBus.publish(CommandTopics.SHOW_ENTITY_FORM_LAYOUT, this,
-                new ShowFormEventPayload<>(FormType.QUICK_EDIT, targetFilter, EventView.TARGET_FILTER));
-    }
-
     private Button buildFilterLink(final ProxyTargetFilterQuery targetFilter) {
         final String caption = targetFilter.getName();
         final String description = i18n.getMessage(UIMessageIdProvider.TOOLTIP_UPDATE_CUSTOM_FILTER);
@@ -199,7 +180,7 @@ public class TargetFilterGrid extends AbstractGrid<ProxyTargetFilterQuery, Strin
 
     private void onClickOfFilterName(final ProxyTargetFilterQuery targetFilter) {
         eventBus.publish(CommandTopics.SHOW_ENTITY_FORM_LAYOUT, this,
-                new ShowFormEventPayload<>(FormType.EDIT, targetFilter, EventView.TARGET_FILTER));
+                new ShowFormEventPayload<ProxyTargetFilterQuery>(FormType.EDIT, targetFilter, EventView.TARGET_FILTER));
     }
 
     private Button buildAutoAssignmentLink(final ProxyTargetFilterQuery targetFilter) {

@@ -201,8 +201,6 @@ public final class UIMessageIdProvider {
 
     public static final String TOOLTIP_DELETE = "tooltip.delete";
 
-    public static final String TOOLTIP_EDIT = "tooltip.edit";
-
     public static final String TOOLTIP_ROLLOUT_UPDATE = "tooltip.rollout.update";
 
     public static final String TOOLTIP_ROLLOUT_COPY = "tooltip.rollout.copy";
