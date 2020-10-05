@@ -141,6 +141,6 @@ public class ShowFormEventPayload<T extends ProxyIdentifiableEntity> extends Eve
      * Form action type
      */
     public enum FormType {
-        ADD, EDIT, QUICK_EDIT;
+        ADD, EDIT;
     }
 }
