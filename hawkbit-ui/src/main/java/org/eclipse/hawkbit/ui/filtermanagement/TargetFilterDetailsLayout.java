@@ -78,10 +78,12 @@ public class TargetFilterDetailsLayout extends AbstractGridComponentLayout {
 
         initGridDataUpdatedListener();
 
+
         this.showFilterQueryFormListener = new ShowEntityFormLayoutListener<>(eventBus, ProxyTargetFilterQuery.class,
                 new EventLayoutViewAware(EventLayout.TARGET_FILTER_QUERY_FORM, EventView.TARGET_FILTER),
                 targetFilterDetailsGridHeader::showAddFilterLayout,
-                targetFilterDetailsGridHeader::showEditFilterLayout);
+                targetFilterDetailsGridHeader::showEditFilterLayout,
+                targetFilterDetailsGridHeader::showQuickEditFilterLayout);
         this.targetFilterListener = new FilterChangedListener<>(eventBus, ProxyTarget.class,
                 new EventViewAware(EventView.TARGET_FILTER), targetFilterTargetGrid.getFilterSupport());
 

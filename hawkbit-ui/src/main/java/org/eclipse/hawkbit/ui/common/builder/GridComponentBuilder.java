@@ -244,6 +244,14 @@ public final class GridComponentBuilder {
         return addComponentColumn(grid, componentProvider, null);
     }
 
+    public static <E, T extends Component> Column<E, T> addEditColumn(final Grid<E> grid,
+            final ValueProvider<E, T> componentProvider){
+        final Column<E, T> column = grid.addComponentColumn(componentProvider).setMinimumWidthFromContent(false)
+                .setExpandRatio(1).setWidth(60D);
+
+        return column;
+    }
+
     /**
      * Add column to grid with the standard settings
      * 

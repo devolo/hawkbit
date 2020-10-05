@@ -141,7 +141,22 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
         uiState.setSelectedFilterId(proxyEntity.getId());
         uiState.setSelectedFilterName(proxyEntity.getName());
 
-        targetFilterAddUpdateLayout.filterTargetListByQuery(proxyEntity.getQuery());
+        targetFilterAddUpdateLayout.filterTargetListByQuery(null);
+        doShowEditFilterLayout(proxyEntity.getName(), proxyEntity);
+    }
+
+    /**
+     * Show edit filter layout without loading targets by filter (Quick Edit)
+     *
+     * @param proxyEntity
+     *            ProxyTargetFilterQuery
+     */
+    public void showQuickEditFilterLayout(final ProxyTargetFilterQuery proxyEntity) {
+        uiState.setCurrentMode(Mode.EDIT);
+        uiState.setSelectedFilterId(proxyEntity.getId());
+        uiState.setSelectedFilterName(proxyEntity.getName());
+
+        targetFilterAddUpdateLayout.filterTargetListByQuery(null);
         doShowEditFilterLayout(proxyEntity.getName(), proxyEntity);
     }
 
