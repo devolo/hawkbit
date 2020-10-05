@@ -931,6 +931,11 @@ public final class UIComponentIdProvider {
     public static final String CUSTOM_FILTER_DELETE_ICON = "custom.filter.delete.button";
 
     /**
+     * custom filter - edit button id
+     */
+    public static final String CUSTOM_FILTER_EDIT_ICON = "custom.filter.edit.button";
+
+    /**
      * custom filter - update button id.
      */
     public static final String CUSTOM_FILTER_DETAIL_LINK = "custom.filter.detail.link";

@@ -32,6 +32,7 @@ public class ShowEntityFormLayoutListener<T extends ProxyIdentifiableEntity> ext
     private final Class<? extends ProxyIdentifiableEntity> parentEntityType;
     private final Runnable addFormCallback;
     private final Consumer<T> updateFormCallback;
+    private final Consumer<T> quickEditFormCallback;
 
     /**
      * Constructor for ShowEntityFormLayoutListener
@@ -49,8 +50,8 @@ public class ShowEntityFormLayoutListener<T extends ProxyIdentifiableEntity> ext
      */
     public ShowEntityFormLayoutListener(final UIEventBus eventBus, final Class<T> entityType,
             final EventLayoutViewAware layoutViewAware, final Runnable addFormCallback,
-            final Consumer<T> updateFormCallback) {
-        this(eventBus, entityType, null, layoutViewAware, addFormCallback, updateFormCallback);
+            final Consumer<T> updateFormCallback, final Consumer<T> quickEditFormCallback) {
+        this(eventBus, entityType, null, layoutViewAware, addFormCallback, updateFormCallback, quickEditFormCallback);
     }
 
     /**
@@ -71,13 +72,14 @@ public class ShowEntityFormLayoutListener<T extends ProxyIdentifiableEntity> ext
      */
     public ShowEntityFormLayoutListener(final UIEventBus eventBus, final Class<T> entityType,
             final Class<? extends ProxyIdentifiableEntity> parentEntityType, final EventLayoutViewAware layoutViewAware,
-            final Runnable addFormCallback, final Consumer<T> updateFormCallback) {
+            final Runnable addFormCallback, final Consumer<T> updateFormCallback, final Consumer<T> quickEditFormCallback) {
         super(eventBus, CommandTopics.SHOW_ENTITY_FORM_LAYOUT, layoutViewAware);
 
         this.entityType = entityType;
         this.parentEntityType = parentEntityType;
         this.addFormCallback = addFormCallback;
         this.updateFormCallback = updateFormCallback;
+        this.quickEditFormCallback = quickEditFormCallback;
     }
 
     @EventBusListenerMethod(scope = EventScope.UI)
@@ -90,6 +92,8 @@ public class ShowEntityFormLayoutListener<T extends ProxyIdentifiableEntity> ext
 
         if (FormType.ADD == eventPayload.getFormType()) {
             addFormCallback.run();
+        } else if(FormType.QUICK_EDIT == eventPayload.getFormType()){
+            quickEditFormCallback.accept(eventPayload.getEntity());
         } else {
             updateFormCallback.accept(eventPayload.getEntity());
         }
