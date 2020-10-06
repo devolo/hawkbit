@@ -141,7 +141,6 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
         uiState.setSelectedFilterId(proxyEntity.getId());
         uiState.setSelectedFilterName(proxyEntity.getName());
 
-        targetFilterAddUpdateLayout.filterTargetListByQuery(null);
         doShowEditFilterLayout(proxyEntity.getName(), proxyEntity);
     }
 
