@@ -121,7 +121,6 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
     public void showAddFilterLayout() {
         uiState.setCurrentMode(Mode.CREATE);
 
-        targetFilterAddUpdateLayout.filterTargetListByQuery(null);
         doShowAddFilterLayout(new ProxyTargetFilterQuery());
     }
 
