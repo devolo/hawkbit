@@ -318,11 +318,6 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     @Override
-    public void validateQuery(String rsqlParam){
-        RSQLUtility.parseRsql(rsqlParam);
-    }
-
-    @Override
     public Page<Target> findByRsql(final Pageable pageable, final String targetFilterQuery) {
         return findTargetsBySpec(
                 RSQLUtility.parse(targetFilterQuery, TargetFields.class, virtualPropertyReplacer, database), pageable);
