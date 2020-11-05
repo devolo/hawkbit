@@ -119,11 +119,27 @@ public class OnlineDsAssignmentStrategy extends AbstractDsAssignmentStrategy {
     }
 
     @Override
+    void closeActiveActions(final Long targetId) {
+        closeObsoleteUpdateActions(Collections.singletonList(targetId));
+    }
+
+    @Override
+    void cancelActiveActions(final Long targetId) {
+        overrideObsoleteUpdateActions(Collections.singletonList(targetId));
+    }
+
+    @Override
     void setAssignedDistributionSetAndTargetStatus(final JpaDistributionSet set, final List<List<Long>> targetIds,
             final String currentUser) {
         targetIds.forEach(tIds -> targetRepository.setAssignedDistributionSetAndUpdateStatus(TargetUpdateStatus.PENDING,
                 set, System.currentTimeMillis(), currentUser, tIds));
 
+    }
+
+    @Override
+    void setAssignedDistributionSetAndTargetStatus(final DistributionSet dSet, final Long targetId, final String currentUser){
+        targetRepository.setAssignedDistributionSetAndUpdateStatus(TargetUpdateStatus.PENDING,
+                (JpaDistributionSet) dSet, System.currentTimeMillis(), currentUser, Collections.singletonList(targetId));
     }
 
     @Override
