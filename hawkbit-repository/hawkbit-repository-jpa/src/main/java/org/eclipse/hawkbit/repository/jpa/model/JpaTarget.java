@@ -16,7 +16,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +77,7 @@ import org.slf4j.LoggerFactory;
         @Index(name = "sp_idx_target_01", columnList = "tenant,name,assigned_distribution_set"),
         @Index(name = "sp_idx_target_03", columnList = "tenant,controller_id,assigned_distribution_set"),
         @Index(name = "sp_idx_target_04", columnList = "tenant,created_at"),
+        @Index(name = "sp_idx_target_05", columnList = "tenant,last_modified_at"),
         @Index(name = "sp_idx_target_prim", columnList = "tenant,id") }, uniqueConstraints = @UniqueConstraint(columnNames = {
                 "controller_id", "tenant" }, name = "uk_tenant_controller_id"))
 // exception squid:S2160 - BaseEntity equals/hashcode is handling correctly for
@@ -160,7 +160,7 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     @MapKeyColumn(name = "attribute_key", nullable = false, length = Target.CONTROLLER_ATTRIBUTE_KEY_SIZE)
     @CollectionTable(name = "sp_target_attributes", joinColumns = {
             @JoinColumn(name = "target_id", nullable = false, updatable = false) }, foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT, name = "fk_targ_attrib_target"))
-    private final Map<String, String> controllerAttributes = Collections.synchronizedMap(new HashMap<String, String>());
+    private Map<String, String> controllerAttributes;
 
     // set default request controller attributes to true, because we want to
     // request them the first
