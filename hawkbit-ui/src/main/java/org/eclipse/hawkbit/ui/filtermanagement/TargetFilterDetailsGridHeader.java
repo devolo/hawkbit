@@ -10,6 +10,7 @@ package org.eclipse.hawkbit.ui.filtermanagement;
 
 import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
+import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.rsql.RsqlValidationOracle;
 import org.eclipse.hawkbit.ui.SpPermissionChecker;
 import org.eclipse.hawkbit.ui.UiProperties;
@@ -69,7 +70,8 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
     public TargetFilterDetailsGridHeader(final VaadinMessageSource i18n, final SpPermissionChecker permChecker,
             final UIEventBus eventBus, final UINotification uiNotification, final EntityFactory entityFactory,
             final TargetFilterQueryManagement targetFilterManagement, final UiProperties uiProperties,
-            final RsqlValidationOracle rsqlValidationOracle, final TargetFilterDetailsLayoutUiState uiState) {
+            final RsqlValidationOracle rsqlValidationOracle, final TargetFilterDetailsLayoutUiState uiState,
+            final TargetManagement targetManagement) {
         super(i18n, permChecker, eventBus);
 
         this.uiState = uiState;
@@ -83,7 +85,7 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
         addHeaderSupport(closeHeaderSupport);
 
         this.targetFilterAddUpdateLayout = new TargetFilterAddUpdateLayout(i18n, permChecker, uiProperties, uiState,
-                eventBus, rsqlValidationOracle);
+                eventBus, rsqlValidationOracle, targetManagement);
         this.addTargetFilterController = new AddTargetFilterController(i18n, entityFactory, eventBus, uiNotification,
                 targetFilterManagement, targetFilterAddUpdateLayout, this::closeDetails);
         this.updateTargetFilterController = new UpdateTargetFilterController(i18n, entityFactory, eventBus,
@@ -111,6 +113,7 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
 
         targetFilterAddUpdateLayout.setEntity(null);
         targetFilterAddUpdateLayout.filterTargetListByQuery(null);
+        targetFilterAddUpdateLayout.removeDownloaderExtension();
 
         eventBus.publish(CommandTopics.CHANGE_LAYOUT_VISIBILITY, this, new LayoutVisibilityEventPayload(
                 VisibilityType.HIDE, EventLayout.TARGET_FILTER_QUERY_FORM, EventView.TARGET_FILTER));
@@ -154,6 +157,7 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
         headerCaptionDetails.setValue(captionMessage);
         controller.populateWithData(proxyEntity);
         targetFilterAddUpdateLayout.setSaveCallback(controller.getSaveDialogCloseListener());
+        targetFilterAddUpdateLayout.setCSVExportCallback(proxyEntity);
     }
 
     @Override

@@ -72,7 +72,8 @@ public class TargetFilterDetailsLayout extends AbstractGridComponentLayout {
             final TargetFilterDetailsLayoutUiState uiState) {
 
         this.targetFilterDetailsGridHeader = new TargetFilterDetailsGridHeader(i18n, permChecker, eventBus,
-                uiNotification, entityFactory, targetFilterManagement, uiProperties, rsqlValidationOracle, uiState);
+                uiNotification, entityFactory, targetFilterManagement, uiProperties, rsqlValidationOracle, uiState,
+                targetManagement);
         this.targetFilterTargetGrid = new TargetFilterTargetGrid(i18n, eventBus, targetManagement, uiState);
         this.targetFilterCountMessageLabel = new TargetFilterCountMessageLabel(i18n);
 
