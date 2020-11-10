@@ -123,7 +123,8 @@ public class TargetFilterAddUpdateLayoutComponentBuilder {
     }
 
     public Button createExportButton(){
-        return SPUIComponentProvider.getButton("export", "Export", "Export CSV",
+        return SPUIComponentProvider.getButton(UIComponentIdProvider.CUSTOM_FILTER_CSV_ICON,
+                UIComponentIdProvider.CUSTOM_FILTER_CSV_ICON, i18n.getMessage(UIMessageIdProvider.TOOLTIP_EXPORT_CSV),
                 null, false, VaadinIcons.FILE_TEXT, SPUIButtonStyleNoBorder.class);
     }
 }
