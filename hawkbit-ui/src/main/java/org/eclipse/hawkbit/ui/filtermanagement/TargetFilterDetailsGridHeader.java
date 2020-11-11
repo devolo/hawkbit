@@ -110,6 +110,7 @@ public class TargetFilterDetailsGridHeader extends AbstractBreadcrumbGridHeader 
         uiState.setSelectedFilterName("");
 
         targetFilterAddUpdateLayout.setEntity(null);
+        targetFilterAddUpdateLayout.filterTargetListByQuery(null);
 
         eventBus.publish(CommandTopics.CHANGE_LAYOUT_VISIBILITY, this, new LayoutVisibilityEventPayload(
                 VisibilityType.HIDE, EventLayout.TARGET_FILTER_QUERY_FORM, EventView.TARGET_FILTER));
