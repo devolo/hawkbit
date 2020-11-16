@@ -10,13 +10,17 @@ package org.eclipse.hawkbit.ui.filtermanagement;
 
 import org.eclipse.hawkbit.repository.builder.TargetBuilder;
 import org.eclipse.hawkbit.repository.jpa.builder.JpaTargetBuilder;
+import org.eclipse.hawkbit.repository.jpa.model.AbstractJpaBaseEntity;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -34,8 +38,9 @@ public class TargetDataExporterTest {
             "Modified By", SEPARATOR,
             "Modified Date"
     };
+    
 
-    private static final String line1 = "0123,TestTargetDescription1,PENDING,,Do Jan 01 01:00:00 MEZ 1970,,Do Jan 01 01:00:00 MEZ 1970";
+    private static final StringBuilder line1 = new StringBuilder();
 
     private static final List<Target> targetList = new ArrayList<>();
 
@@ -51,6 +56,24 @@ public class TargetDataExporterTest {
                 .status(TargetUpdateStatus.PENDING)
                 .securityToken("321")
                 .build();
+        ((AbstractJpaBaseEntity)t1).setCreatedBy("User1");
+        ((AbstractJpaBaseEntity)t1).setCreatedAt(0L);
+        ((AbstractJpaBaseEntity)t1).setLastModifiedBy("User2");
+        ((AbstractJpaBaseEntity)t1).setLastModifiedAt(100L);
+
+        line1.append("0123")
+                .append(",")
+                .append("TestTargetDescription1")
+                .append(",")
+                .append("PENDING")
+                .append(",")
+                .append("User1")
+                .append(",")
+                .append(toReadableDate(0L))
+                .append(",")
+                .append("User2")
+                .append(",")
+                .append(toReadableDate(100L));
 
         targetList.add(t1);
 
@@ -63,5 +86,11 @@ public class TargetDataExporterTest {
     public void CSVExportTest(){
         StringBuilder builder = TargetDataExporter.toCSV(targetList);
         assertEquals(builder.toString(), expected.toString());
+    }
+
+    private static String toReadableDate(long millis){
+        DateFormat simpleDate = new SimpleDateFormat("E MMM dd HH:mm:ss z yyyy");
+        Date date = new Date(millis);
+        return simpleDate.format(date);
     }
 }
