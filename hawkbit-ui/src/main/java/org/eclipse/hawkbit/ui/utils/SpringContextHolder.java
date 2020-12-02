@@ -8,6 +8,7 @@
  */
 package org.eclipse.hawkbit.ui.utils;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 
 /**
@@ -16,19 +17,25 @@ import org.springframework.context.ApplicationContext;
  *
  *
  */
-public final class SpringContextHelper {
+public final class SpringContextHolder {
 
-    private static ApplicationContext context;
+    private static final SpringContextHolder SINGLETON = new SpringContextHolder();
+
+    @Autowired
+    private ApplicationContext context;
 
     /**
      * Private Constructor.
      */
-    private SpringContextHelper() {
+    private SpringContextHolder() {
         // Utility class
     }
 
-    public static void setContext(final ApplicationContext context) {
-        SpringContextHelper.context = context;
+    /**
+     * @return the spring context holder singleton instance
+     */
+    public static SpringContextHolder getInstance() {
+        return SINGLETON;
     }
 
     /**
@@ -39,7 +46,7 @@ public final class SpringContextHelper {
      *            application context
      * @return the requested bean
      */
-    public static Object getBean(final String beanName) {
+    public Object getBean(final String beanName) {
         return context.getBean(beanName);
     }
 
@@ -51,7 +58,7 @@ public final class SpringContextHelper {
      *            application context
      * @return the requested bean
      */
-    public static <T> T getBean(final Class<T> beanClazz) {
+    public <T> T getBean(final Class<T> beanClazz) {
         return context.getBean(beanClazz);
     }
 
@@ -66,8 +73,7 @@ public final class SpringContextHelper {
      *            application context
      * @return the requested bean
      */
-    public static <T> T getBean(final String beanName, final Class<T> beanClazz) {
+    public <T> T getBean(final String beanName, final Class<T> beanClazz) {
         return context.getBean(beanName, beanClazz);
     }
-
 }

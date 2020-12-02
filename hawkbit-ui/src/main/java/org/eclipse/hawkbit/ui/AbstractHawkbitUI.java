@@ -18,7 +18,6 @@ import org.eclipse.hawkbit.ui.push.UIEventProvider;
 import org.eclipse.hawkbit.ui.themes.HawkbitTheme;
 import org.eclipse.hawkbit.ui.utils.HawkbitCommonUtil;
 import org.eclipse.hawkbit.ui.utils.SPDateTimeUtil;
-import org.eclipse.hawkbit.ui.utils.SpringContextHelper;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,7 +109,6 @@ public abstract class AbstractHawkbitUI extends UI implements DetachListener {
             pushStrategy.init(getUI());
         }
         addDetachListener(this);
-        SpringContextHelper.setContext(context);
 
         Responsive.makeResponsive(this);
         addStyleName(ValoTheme.UI_WITH_MENU);
