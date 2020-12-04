@@ -33,6 +33,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 /**
  * Checks if targets need a new distribution set (DS) based on the target filter
@@ -147,10 +148,17 @@ public class AutoAssignChecker implements AutoAssignExecutor {
                             targetFilterQuery.getAutoAssignWeight().orElse(null), PAGE_SIZE);
                     final int count = deploymentRequests.size();
                     if (count > 0) {
-                        deploymentManagement.assignDistributionSets(deploymentRequests, actionMessage);
+                        deploymentManagement.assignDistributionSets(getAutoAssignmentInitiatedBy(targetFilterQuery),
+                                deploymentRequests, actionMessage);
                     }
                     return count;
                 });
+    }
+
+    private static String getAutoAssignmentInitiatedBy(final TargetFilterQuery targetFilterQuery) {
+        return StringUtils.isEmpty(targetFilterQuery.getAutoAssignInitiatedBy()) ?
+                targetFilterQuery.getCreatedBy() :
+                targetFilterQuery.getAutoAssignInitiatedBy();
     }
 
     /**

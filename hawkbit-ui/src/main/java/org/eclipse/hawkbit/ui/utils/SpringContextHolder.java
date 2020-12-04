@@ -13,9 +13,6 @@ import org.springframework.context.ApplicationContext;
 
 /**
  * Singleton for the spring application context.
- *
- *
- *
  */
 public final class SpringContextHolder {
 

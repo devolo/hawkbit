@@ -9,9 +9,10 @@
 package org.eclipse.hawkbit.ui.common.detailslayout;
 
 import java.util.Collection;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-import org.eclipse.hawkbit.ui.SpPermissionChecker;
+import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.builder.GridComponentBuilder;
 import org.eclipse.hawkbit.ui.common.data.providers.AbstractMetaDataDataProvider;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyMetaData;
@@ -21,9 +22,6 @@ import org.eclipse.hawkbit.ui.common.grid.support.FilterSupport;
 import org.eclipse.hawkbit.ui.common.grid.support.SelectionSupport;
 import org.eclipse.hawkbit.ui.common.layout.MasterEntityAwareComponent;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
-import org.eclipse.hawkbit.ui.utils.UINotification;
-import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
-import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * Grid for MetaData pop up layout.
@@ -38,32 +36,28 @@ public class MetaDataWindowGrid<F> extends AbstractGrid<ProxyMetaData, F> implem
     public static final String META_DATA_VALUE_ID = "metaDataValue";
     public static final String META_DATA_DELETE_BUTTON_ID = "metaDataDeleteButton";
 
+    private final transient BooleanSupplier hasMetadataChangePermission;
     private final transient DeleteSupport<ProxyMetaData> metaDataDeleteSupport;
 
     /**
      * Constructor for MetaDataWindowGrid
      *
-     * @param i18n
-     *            VaadinMessageSource
-     * @param eventBus
-     *            UIEventBus
-     * @param permissionChecker
-     *            SpPermissionChecker
-     * @param notification
-     *            UINotification
+     * @param uiDependencies
+     *            {@link CommonUiDependencies}
      * @param dataProvider
-     *            AbstractMetaDataDataProvider for filter support
+     *            provides entity-specific metadata entities
+     * @param hasMetadataChangePermission
+     *            checks the permission allowing to change metadata entities
      * @param itemsDeletionCallback
-     *            Grid item deletion Call back for event listener
+     *            callback method to delete metadata entities
      *
      */
-    public MetaDataWindowGrid(final VaadinMessageSource i18n, final UIEventBus eventBus,
-            final SpPermissionChecker permissionChecker, final UINotification notification,
-            final AbstractMetaDataDataProvider<?, F> dataProvider,
+    public MetaDataWindowGrid(final CommonUiDependencies uiDependencies, final AbstractMetaDataDataProvider<?, F> dataProvider,final BooleanSupplier hasMetadataChangePermission,
             final Predicate<Collection<ProxyMetaData>> itemsDeletionCallback) {
-        super(i18n, eventBus, permissionChecker);
+        super(uiDependencies.getI18n(), uiDependencies.getEventBus(), uiDependencies.getPermChecker());
 
-        this.metaDataDeleteSupport = new DeleteSupport<>(this, i18n, notification, "caption.metadata",
+        this.hasMetadataChangePermission = hasMetadataChangePermission;
+        this.metaDataDeleteSupport = new DeleteSupport<>(this, i18n, uiDependencies.getUiNotification(), "caption.metadata",
                 "caption.metadata.plur", ProxyMetaData::getKey, itemsDeletionCallback,
                 UIComponentIdProvider.METADATA_DELETE_CONFIRMATION_DIALOG);
 
@@ -79,7 +73,7 @@ public class MetaDataWindowGrid<F> extends AbstractGrid<ProxyMetaData, F> implem
 
     @Override
     public String getGridId() {
-        return UIComponentIdProvider.METDATA_WINDOW_TABLE_ID;
+        return UIComponentIdProvider.METADATA_WINDOW_TABLE_ID;
     }
 
     @Override
@@ -91,7 +85,7 @@ public class MetaDataWindowGrid<F> extends AbstractGrid<ProxyMetaData, F> implem
                 .setCaption(i18n.getMessage("header.value")).setHidden(true).setHidable(true);
 
         GridComponentBuilder.addDeleteColumn(this, i18n, META_DATA_DELETE_BUTTON_ID, metaDataDeleteSupport,
-                UIComponentIdProvider.META_DATA_DELET_ICON, e -> permissionChecker.hasDeleteRepositoryPermission());
+                UIComponentIdProvider.META_DATA_DELET_ICON, e -> hasMetadataChangePermission.getAsBoolean());
     }
 
     @Override
