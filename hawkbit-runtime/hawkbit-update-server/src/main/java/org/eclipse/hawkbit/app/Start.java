@@ -11,7 +11,7 @@ package org.eclipse.hawkbit.app;
 import org.eclipse.hawkbit.autoconfigure.security.EnableHawkbitManagedSecurityConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableAsync;
+
 
 /**
  * A {@link SpringBootApplication} annotated class with a main method to start.
@@ -20,7 +20,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @SpringBootApplication
 @EnableHawkbitManagedSecurityConfiguration
-@EnableAsync
 // Exception squid:S1118 - Spring boot standard behavior
 @SuppressWarnings({ "squid:S1118" })
 public class Start {

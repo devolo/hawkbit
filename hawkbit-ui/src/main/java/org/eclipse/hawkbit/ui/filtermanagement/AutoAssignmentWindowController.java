@@ -24,6 +24,9 @@ import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
 import com.vaadin.server.Sizeable;
 import com.vaadin.ui.UI;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Controller for auto assignment window
  */
@@ -32,6 +35,7 @@ public class AutoAssignmentWindowController extends
 
     private final TargetManagement targetManagement;
     private final TargetFilterQueryManagement targetFilterQueryManagement;
+    private final DeploymentManagement deploymentManagement;
     private final AutoAssignmentWindowLayout layout;
 
     /**
@@ -48,11 +52,12 @@ public class AutoAssignmentWindowController extends
      */
     public AutoAssignmentWindowController(final CommonUiDependencies uiDependencies,
             final TargetManagement targetManagement, final TargetFilterQueryManagement targetFilterQueryManagement,
-            final AutoAssignmentWindowLayout layout) {
+            final DeploymentManagement deploymentManagement, final AutoAssignmentWindowLayout layout) {
+        
         super(uiDependencies);
-
         this.targetManagement = targetManagement;
         this.targetFilterQueryManagement = targetFilterQueryManagement;
+        this.deploymentManagement = deploymentManagement;
         this.layout = layout;
     }
 
@@ -120,6 +125,7 @@ public class AutoAssignmentWindowController extends
                                 getEntityFactory().targetFilterQuery().updateAutoAssign(targetFilterId)
                                         .ds(autoAssignDsId).actionType(autoAssignActionType));
                         publishModifiedEvent(createModifiedEventPayload(targetFilterQuery));
+                        instantAssign(entity);
                     }
                 }, UIComponentIdProvider.DIST_SET_SELECT_CONS_WINDOW_ID);
 
@@ -169,6 +175,31 @@ public class AutoAssignmentWindowController extends
     protected Class<? extends ProxyIdentifiableEntity> getEntityClass() {
         return ProxyTargetFilterQuery.class;
     }
+
+    private void instantAssign(ProxyTargetFilterQuery filterQuery){
+        final String ACTION_MESSAGE = "Auto assignment by target filter: %s";
+        final String actionMessage = String.format(ACTION_MESSAGE, filterQuery.getName());
+
+        final Page<Target> targets = targetManagement.findByTargetFilterQueryAndNonDS(PageRequest.of(0, 1000),
+                filterQuery.getDistributionSetInfo().getId(), filterQuery.getQuery());
+
+        final ActionType autoAssignActionType = filterQuery.getAutoAssignActionType() == null ?
+                ActionType.SOFT : filterQuery.getAutoAssignActionType();
+
+        List<DeploymentRequest> deploymentRequests =  targets.getContent().stream()
+                .map(t -> DeploymentManagement.deploymentRequest(
+                        t.getControllerId(), filterQuery.getDistributionSetInfo().getId())
+                        .setActionType(autoAssignActionType).build()).collect(Collectors.toList());
+
+        if (deploymentRequests.size() > 0) {
+            deploymentManagement.assignDistributionSets(deploymentRequests, actionMessage);
+        }
+    }
+
+    // private void publishModifiedEvent(final Long entityId) {
+    //     eventBus.publish(EventTopics.ENTITY_MODIFIED, this, new EntityModifiedEventPayload(
+    //             EntityModifiedEventType.ENTITY_UPDATED, ProxyTargetFilterQuery.class, entityId));
+    // }
 
     @Override
     protected boolean isEntityValid(final ProxyTargetFilterQuery entity) {

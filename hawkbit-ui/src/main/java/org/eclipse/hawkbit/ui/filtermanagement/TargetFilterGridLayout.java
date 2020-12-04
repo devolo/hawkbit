@@ -11,6 +11,7 @@ package org.eclipse.hawkbit.ui.filtermanagement;
 import java.util.Collections;
 import java.util.List;
 
+import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
@@ -53,13 +54,15 @@ public class TargetFilterGridLayout extends AbstractGridComponentLayout {
      */
     public TargetFilterGridLayout(final CommonUiDependencies uiDependencies,
             final TargetFilterQueryManagement targetFilterQueryManagement, final TargetManagement targetManagement,
-            final DistributionSetManagement distributionSetManagement,
+            final DistributionSetManagement distributionSetManagement, final DeploymentManagement deploymentManagement,
             final FilterManagementUIState filterManagementUIState) {
+                    
         this.targetFilterGridHeader = new TargetFilterGridHeader(uiDependencies,
                 filterManagementUIState.getGridLayoutUiState());
 
         final AutoAssignmentWindowBuilder autoAssignmentWindowBuilder = new AutoAssignmentWindowBuilder(uiDependencies,
-                targetManagement, targetFilterQueryManagement, distributionSetManagement);
+                targetManagement, targetFilterQueryManagement, distributionSetManagement, deploymentManagement);
+
 
         this.targetFilterGrid = new TargetFilterGrid(uiDependencies, filterManagementUIState.getGridLayoutUiState(),
                 targetFilterQueryManagement, autoAssignmentWindowBuilder);

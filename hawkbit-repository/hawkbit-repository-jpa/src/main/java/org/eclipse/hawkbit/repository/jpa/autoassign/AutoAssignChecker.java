@@ -129,22 +129,6 @@ public class AutoAssignChecker implements AutoAssignExecutor {
         }
     }
 
-    @Async
-    public void checkByTFQAndAssignDS(final TargetFilterQuery targetFilterQuery) {
-        try {
-            final DistributionSet distributionSet = targetFilterQuery.getAutoAssignDistributionSet();
-
-            LOGGER.debug("Running AutoAssignCheck. TFQ: " + targetFilterQuery.getQuery() + " with DS: " + distributionSet.getName());
-
-            int count = runTransactionalAssignment(targetFilterQuery, distributionSet.getId());
-
-            LOGGER.debug("Assigned " + count + " targets with DS: " + distributionSet.getName());
-
-        } catch (PersistenceException | AbstractServerRtException e) {
-            LOGGER.error("Error during auto assign check of target filter query " + targetFilterQuery.getId(), e);
-        }
-    }
-
     /**
      * Runs one page of target assignments within a dedicated transaction
      *

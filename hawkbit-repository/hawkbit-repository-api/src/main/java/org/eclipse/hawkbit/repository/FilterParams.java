@@ -59,8 +59,9 @@ public class FilterParams {
     }
 
     public boolean isSearchTextOnly() {
-        return filterByDistributionId == null && filterByStatus == null && overdueState == null
-                && filterBySearchText != null && (selectTargetWithNoTag == null || selectTargetWithNoTag == false);
+        return filterByDistributionId == null && (filterByStatus == null || filterByStatus.isEmpty())
+                && (overdueState == null || overdueState.booleanValue() == false) && filterBySearchText != null
+                && (selectTargetWithNoTag == null || selectTargetWithNoTag.booleanValue() == false);
     }
 
     /**

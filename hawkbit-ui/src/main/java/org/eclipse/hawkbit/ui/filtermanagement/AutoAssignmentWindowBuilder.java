@@ -8,6 +8,7 @@
  */
 package org.eclipse.hawkbit.ui.filtermanagement;
 
+import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
@@ -26,6 +27,7 @@ public class AutoAssignmentWindowBuilder extends AbstractEntityWindowBuilder<Pro
     private final TargetManagement targetManagement;
     private final TargetFilterQueryManagement targetFilterQueryManagement;
     private final DistributionSetManagement dsManagement;
+    private final DeploymentManagement deploymentManagement;
 
     /**
      * Constructor for AutoAssignmentWindowBuilder
@@ -47,6 +49,7 @@ public class AutoAssignmentWindowBuilder extends AbstractEntityWindowBuilder<Pro
         this.targetManagement = targetManagement;
         this.targetFilterQueryManagement = targetFilterQueryManagement;
         this.dsManagement = dsManagement;
+        this.deploymentManagement = deploymentManagement;
     }
 
     @Override
