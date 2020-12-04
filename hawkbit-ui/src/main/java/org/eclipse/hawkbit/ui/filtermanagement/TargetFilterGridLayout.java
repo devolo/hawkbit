@@ -13,10 +13,9 @@ import java.util.List;
 
 import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
-import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
-import org.eclipse.hawkbit.ui.SpPermissionChecker;
+import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.event.EventView;
 import org.eclipse.hawkbit.ui.common.event.EventViewAware;
@@ -26,9 +25,6 @@ import org.eclipse.hawkbit.ui.common.layout.listener.EntityModifiedListener.Enti
 import org.eclipse.hawkbit.ui.common.layout.listener.FilterChangedListener;
 import org.eclipse.hawkbit.ui.common.layout.listener.support.EntityModifiedGridRefreshAwareSupport;
 import org.eclipse.hawkbit.ui.filtermanagement.state.FilterManagementUIState;
-import org.eclipse.hawkbit.ui.utils.UINotification;
-import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
-import org.vaadin.spring.events.EventBus.UIEventBus;
 
 /**
  * TargetFilter table layout.
@@ -44,17 +40,9 @@ public class TargetFilterGridLayout extends AbstractGridComponentLayout {
 
     /**
      * TargetFilterGridLayout constructor
-     * 
-     * @param i18n
-     *            MessageSource
-     * @param eventBus
-     *            Bus to publish UI events
-     * @param permissionChecker
-     *            Checker for user permissions
-     * @param notification
-     *            helper to display messages
-     * @param entityFactory
-     *            entity factory
+     *
+     * @param uiDependencies
+     *            {@link CommonUiDependencies}
      * @param targetFilterQueryManagement
      *            management to CRUD target filters
      * @param targetManagement
@@ -64,26 +52,27 @@ public class TargetFilterGridLayout extends AbstractGridComponentLayout {
      * @param filterManagementUIState
      *            to persist the user interaction
      */
-    public TargetFilterGridLayout(final VaadinMessageSource i18n, final UIEventBus eventBus,
-            final SpPermissionChecker permissionChecker, final UINotification notification,
-            final EntityFactory entityFactory, final TargetFilterQueryManagement targetFilterQueryManagement,
-            final TargetManagement targetManagement, final DistributionSetManagement distributionSetManagement,
-            final DeploymentManagement deploymentManagement, final FilterManagementUIState filterManagementUIState) {
-        this.targetFilterGridHeader = new TargetFilterGridHeader(eventBus,
-                filterManagementUIState.getGridLayoutUiState(), permissionChecker, i18n);
+    public TargetFilterGridLayout(final CommonUiDependencies uiDependencies,
+            final TargetFilterQueryManagement targetFilterQueryManagement, final TargetManagement targetManagement,
+            final DistributionSetManagement distributionSetManagement, final DeploymentManagement deploymentManagement,
+            final FilterManagementUIState filterManagementUIState) {
+                    
+        this.targetFilterGridHeader = new TargetFilterGridHeader(uiDependencies,
+                filterManagementUIState.getGridLayoutUiState());
 
-        final AutoAssignmentWindowBuilder autoAssignmentWindowBuilder = new AutoAssignmentWindowBuilder(i18n, eventBus,
-                notification, entityFactory, targetManagement, targetFilterQueryManagement, distributionSetManagement,
-                deploymentManagement);
+        final AutoAssignmentWindowBuilder autoAssignmentWindowBuilder = new AutoAssignmentWindowBuilder(uiDependencies,
+                targetManagement, targetFilterQueryManagement, distributionSetManagement, deploymentManagement);
 
-        this.targetFilterGrid = new TargetFilterGrid(i18n, notification, eventBus,
-                filterManagementUIState.getGridLayoutUiState(), targetFilterQueryManagement, permissionChecker,
-                autoAssignmentWindowBuilder);
 
-        this.targetQueryFilterListener = new FilterChangedListener<>(eventBus, ProxyTargetFilterQuery.class,
-                new EventViewAware(EventView.TARGET_FILTER), targetFilterGrid.getFilterSupport());
-        this.filterQueryModifiedListener = new EntityModifiedListener.Builder<>(eventBus, ProxyTargetFilterQuery.class)
-                .entityModifiedAwareSupports(getFilterQueryModifiedAwareSupports()).build();
+        this.targetFilterGrid = new TargetFilterGrid(uiDependencies, filterManagementUIState.getGridLayoutUiState(),
+                targetFilterQueryManagement, autoAssignmentWindowBuilder);
+
+        this.targetQueryFilterListener = new FilterChangedListener<>(uiDependencies.getEventBus(),
+                ProxyTargetFilterQuery.class, new EventViewAware(EventView.TARGET_FILTER),
+                targetFilterGrid.getFilterSupport());
+        this.filterQueryModifiedListener = new EntityModifiedListener.Builder<>(uiDependencies.getEventBus(),
+                ProxyTargetFilterQuery.class).entityModifiedAwareSupports(getFilterQueryModifiedAwareSupports())
+                        .build();
 
         buildLayout(targetFilterGridHeader, targetFilterGrid);
     }
