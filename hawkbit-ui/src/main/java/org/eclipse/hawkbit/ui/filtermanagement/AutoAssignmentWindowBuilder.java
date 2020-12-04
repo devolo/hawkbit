@@ -43,7 +43,7 @@ public class AutoAssignmentWindowBuilder extends AbstractEntityWindowBuilder<Pro
      */
     public AutoAssignmentWindowBuilder(final CommonUiDependencies uiDependencies, final TargetManagement targetManagement,
             final TargetFilterQueryManagement targetFilterQueryManagement,
-            final DistributionSetManagement dsManagement) {
+            final DistributionSetManagement dsManagement, DeploymentManagement deploymentManagement) {
         super(uiDependencies);
 
         this.targetManagement = targetManagement;
@@ -67,7 +67,7 @@ public class AutoAssignmentWindowBuilder extends AbstractEntityWindowBuilder<Pro
      */
     public Window getWindowForAutoAssignment(final ProxyTargetFilterQuery proxyTargetFilter) {
         return getWindowForEntity(proxyTargetFilter, new AutoAssignmentWindowController(uiDependencies, targetManagement,
-                targetFilterQueryManagement, new AutoAssignmentWindowLayout(getI18n(), dsManagement)));
+                targetFilterQueryManagement, deploymentManagement, new AutoAssignmentWindowLayout(getI18n(), dsManagement)));
     }
 
     @Override

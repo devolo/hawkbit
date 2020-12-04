@@ -208,6 +208,13 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public List<DistributionSetAssignmentResult> assignDistributionSets(
+            final List<DeploymentRequest> deploymentRequests, String actionMessage) {
+        return assignDistributionSets(tenantAware.getCurrentUsername(), deploymentRequests, actionMessage);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public List<DistributionSetAssignmentResult> assignDistributionSets(
             final List<DeploymentRequest> deploymentRequests) {
         return assignDistributionSets(tenantAware.getCurrentUsername(), deploymentRequests, null);
     }

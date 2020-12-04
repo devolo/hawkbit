@@ -8,10 +8,14 @@
  */
 package org.eclipse.hawkbit.ui.filtermanagement;
 
+import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
+import org.eclipse.hawkbit.repository.model.DeploymentRequest;
+import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
+import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.eclipse.hawkbit.ui.common.AbstractUpdateEntityWindowController;
 import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.ConfirmationDialog;
@@ -23,6 +27,8 @@ import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
 
 import com.vaadin.server.Sizeable;
 import com.vaadin.ui.UI;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -125,7 +131,7 @@ public class AutoAssignmentWindowController extends
                                 getEntityFactory().targetFilterQuery().updateAutoAssign(targetFilterId)
                                         .ds(autoAssignDsId).actionType(autoAssignActionType));
                         publishModifiedEvent(createModifiedEventPayload(targetFilterQuery));
-                        instantAssign(entity);
+                        instantAssign(targetFilterQuery);
                     }
                 }, UIComponentIdProvider.DIST_SET_SELECT_CONS_WINDOW_ID);
 
@@ -176,30 +182,26 @@ public class AutoAssignmentWindowController extends
         return ProxyTargetFilterQuery.class;
     }
 
-    private void instantAssign(ProxyTargetFilterQuery filterQuery){
+    private void instantAssign(TargetFilterQuery filterQuery){
         final String ACTION_MESSAGE = "Auto assignment by target filter: %s";
         final String actionMessage = String.format(ACTION_MESSAGE, filterQuery.getName());
 
         final Page<Target> targets = targetManagement.findByTargetFilterQueryAndNonDS(PageRequest.of(0, 1000),
-                filterQuery.getDistributionSetInfo().getId(), filterQuery.getQuery());
+                filterQuery.getAutoAssignDistributionSet().getId(), filterQuery.getQuery());
 
         final ActionType autoAssignActionType = filterQuery.getAutoAssignActionType() == null ?
                 ActionType.SOFT : filterQuery.getAutoAssignActionType();
 
         List<DeploymentRequest> deploymentRequests =  targets.getContent().stream()
                 .map(t -> DeploymentManagement.deploymentRequest(
-                        t.getControllerId(), filterQuery.getDistributionSetInfo().getId())
+                        t.getControllerId(), filterQuery.getAutoAssignDistributionSet().getId())
                         .setActionType(autoAssignActionType).build()).collect(Collectors.toList());
+
 
         if (deploymentRequests.size() > 0) {
             deploymentManagement.assignDistributionSets(deploymentRequests, actionMessage);
         }
     }
-
-    // private void publishModifiedEvent(final Long entityId) {
-    //     eventBus.publish(EventTopics.ENTITY_MODIFIED, this, new EntityModifiedEventPayload(
-    //             EntityModifiedEventType.ENTITY_UPDATED, ProxyTargetFilterQuery.class, entityId));
-    // }
 
     @Override
     protected boolean isEntityValid(final ProxyTargetFilterQuery entity) {

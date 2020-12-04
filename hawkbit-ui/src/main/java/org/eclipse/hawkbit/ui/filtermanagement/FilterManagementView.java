@@ -72,7 +72,7 @@ public class FilterManagementView extends VerticalLayout implements View {
                 permissionChecker);
 
         this.targetFilterGridLayout = new TargetFilterGridLayout(uiDependencies, targetFilterQueryManagement,
-                targetManagement, distributionSetManagement, filterManagementUIState);
+                targetManagement, distributionSetManagement, deploymentManagement, filterManagementUIState);
 
         this.targetFilterDetailsLayout = new TargetFilterDetailsLayout(uiDependencies, uiProperties, rsqlValidationOracle,
                 targetManagement, targetFilterQueryManagement, filterManagementUIState.getDetailsLayoutUiState());
