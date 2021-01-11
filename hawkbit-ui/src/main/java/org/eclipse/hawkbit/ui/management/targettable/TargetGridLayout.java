@@ -67,7 +67,6 @@ public class TargetGridLayout extends AbstractGridComponentLayout {
     private final transient PinningChangedListener<Long> pinningChangedListener;
     private final transient SelectionChangedListener<ProxyTarget> targetChangedListener;
     private final transient SelectGridEntityListener<ProxyTarget> selectTargetListener;
-    private final transient EntityModifiedListener<ProxyTarget> targetModifiedListener;
     private final transient EntityModifiedListener<ProxyTag> tagModifiedListener;
     private final transient BulkUploadChangedListener bulkUploadListener;
 
@@ -146,8 +145,6 @@ public class TargetGridLayout extends AbstractGridComponentLayout {
         this.selectTargetListener = new SelectGridEntityListener<>(uiDependencies.getEventBus(),
                 new EventLayoutViewAware(EventLayout.TARGET_LIST, EventView.DEPLOYMENT),
                 targetGrid.getSelectionSupport());
-        this.targetModifiedListener = new EntityModifiedListener.Builder<>(uiDependencies.getEventBus(), ProxyTarget.class)
-                .entityModifiedAwareSupports(getTargetModifiedAwareSupports()).build();
         this.tagModifiedListener = new EntityModifiedListener.Builder<>(uiDependencies.getEventBus(), ProxyTag.class)
                 .entityModifiedAwareSupports(getTagModifiedAwareSupports()).parentEntityType(ProxyTarget.class).build();
         this.bulkUploadListener = new BulkUploadChangedListener(uiDependencies.getEventBus(),
@@ -163,14 +160,6 @@ public class TargetGridLayout extends AbstractGridComponentLayout {
 
     private List<MasterEntityAwareComponent<ProxyTarget>> getMasterTargetAwareComponents() {
         return Arrays.asList(targetDetailsHeader, targetDetails);
-    }
-
-    private List<EntityModifiedAwareSupport> getTargetModifiedAwareSupports() {
-        return Arrays.asList(
-                EntityModifiedSelectionAwareSupport.of(targetGrid.getSelectionSupport(),
-                        targetGrid::mapIdToProxyEntity),
-                EntityModifiedPinAwareSupport.of(targetGrid.getPinSupport(), true, true),
-                EntityModifiedGridRefreshAwareSupport.of(targetGrid::refreshAll));
     }
 
     private List<EntityModifiedAwareSupport> getTagModifiedAwareSupports() {
@@ -242,7 +231,6 @@ public class TargetGridLayout extends AbstractGridComponentLayout {
         pinningChangedListener.unsubscribe();
         targetChangedListener.unsubscribe();
         selectTargetListener.unsubscribe();
-        targetModifiedListener.unsubscribe();
         tagModifiedListener.unsubscribe();
         bulkUploadListener.unsubscribe();
     }
