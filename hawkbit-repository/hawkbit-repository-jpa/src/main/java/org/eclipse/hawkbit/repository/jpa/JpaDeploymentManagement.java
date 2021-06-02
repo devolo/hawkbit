@@ -112,7 +112,7 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
     /**
      * Maximum amount of Actions that are started at once.
      */
-    private static final int ACTION_PAGE_LIMIT = 1000;
+    private static final int ACTION_PAGE_LIMIT = 5000;
 
     private static final String QUERY_DELETE_ACTIONS_BY_STATE_AND_LAST_MODIFIED_DEFAULT = "DELETE FROM sp_action WHERE tenant=#tenant AND status IN (%s) AND last_modified_at<#last_modified_at LIMIT "
             + ACTION_PAGE_LIMIT;
