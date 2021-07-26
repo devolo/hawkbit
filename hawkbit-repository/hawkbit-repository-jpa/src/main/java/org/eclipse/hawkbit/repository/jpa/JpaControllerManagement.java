@@ -798,7 +798,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     @Override
     public void triggerDistributionSetAssignmentCheck(String controllerId){
-        LOG.debug("Auto assign check with ID triggered...");
+        LOG.debug("Auto assign check with ID: {} triggered...", controllerId);
         systemSecurityContext.runAsSystem(() -> executeAutoAssignCheck(controllerId));
     }
 
