@@ -813,10 +813,13 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             return null;
         }
 
+        LOG.info("Obtained lock with key: autoassign");
+
         try {
             systemManagement.forEachTenant(tenant -> checkForAutoAssignDS(controllerId, filterQueries));
         } finally {
             lock.unlock();
+            LOG.info("Unlocked lock with key: autoassign");
         }
 
         return null;

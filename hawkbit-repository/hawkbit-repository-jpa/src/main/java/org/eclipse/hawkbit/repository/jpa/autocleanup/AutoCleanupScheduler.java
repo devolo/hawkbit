@@ -79,12 +79,16 @@ public class AutoCleanupScheduler {
             if (!lock.tryLock()) {
                 return;
             }
+
+            LOGGER.info("Obtained lock with key: {}", AUTO_CLEANUP + SEP + task.getId() + SEP + tenant);
+
             try {
                 task.run();
             } catch (final RuntimeException e) {
                 LOGGER.error("Cleanup task failed.", e);
             } finally {
                 lock.unlock();
+                LOGGER.info("Unlocked lock with key: {}", AUTO_CLEANUP + SEP + task.getId() + SEP + tenant);
             }
         }));
         return null;
