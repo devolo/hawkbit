@@ -61,7 +61,7 @@ public class AutoAssignScheduler {
      * tenant the auto assignments defined in the target filter queries
      * {@link SystemSecurityContext}.
      */
-    @Scheduled(initialDelayString = PROP_SCHEDULER_DELAY_PLACEHOLDER, fixedDelayString = PROP_SCHEDULER_DELAY_PLACEHOLDER)
+    @Scheduled(initialDelay = 7200000, fixedDelayString = PROP_SCHEDULER_DELAY_PLACEHOLDER)
     public void autoAssignScheduler() {
         LOGGER.debug("auto assign schedule checker has been triggered.");
         // run this code in system code privileged to have the necessary
