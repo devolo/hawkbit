@@ -769,6 +769,9 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
         // get the modifiable attribute map
         final Map<String, String> controllerAttributes = target.getControllerAttributes();
+
+        LOG.info("Updating attributes for controller {} with new attributes: {}; and haveAttributesChanged: {}", controllerId, data.toString(), controllerAttributes.equals(data));
+
         final UpdateMode updateMode = mode != null ? mode : UpdateMode.MERGE;
         switch (updateMode) {
         case REMOVE:
@@ -813,13 +816,13 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             return null;
         }
 
-        LOG.info("Obtained lock with key: autoassign");
+        LOG.info("Obtained lock with key: autoassign for controller {}", controllerId);
 
         try {
             systemManagement.forEachTenant(tenant -> checkForAutoAssignDS(controllerId, filterQueries));
         } finally {
             lock.unlock();
-            LOG.info("Unlocked lock with key: autoassign");
+            LOG.info("Unlocked lock with key: autoassign for controller {}", controllerId);
         }
 
         return null;
