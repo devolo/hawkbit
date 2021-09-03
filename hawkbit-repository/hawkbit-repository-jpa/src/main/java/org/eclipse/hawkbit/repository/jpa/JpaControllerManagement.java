@@ -778,7 +778,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             return targetRepository.save(target);
         }
 
-        LOG.info("Updating attributes for controller {} with new attributes: {}; and same attributes: {}", controllerId, data.toString(), controllerAttributes.equals(data));
+        LOG.info("Updating attributes for controller {} with new attributes: {}; and same attributes: {} and targetStatus: {}", controllerId, data.toString(), controllerAttributes.equals(data), targetStatus);
 
         final UpdateMode updateMode = mode != null ? mode : UpdateMode.MERGE;
         switch (updateMode) {
@@ -802,9 +802,10 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             throw new IllegalStateException("The update mode " + updateMode + " is not supported.");
         }
         assertTargetAttributesQuota(target);
-
+	
+	targetRepository.save(target);
         triggerDistributionSetAssignmentCheck(controllerId);
-        return targetRepository.save(target);
+        return target;
     }
 
 
