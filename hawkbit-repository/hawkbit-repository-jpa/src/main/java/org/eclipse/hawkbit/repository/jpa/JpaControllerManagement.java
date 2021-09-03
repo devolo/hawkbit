@@ -854,8 +854,10 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             }
         }
 
-        if(matchedQuery == null)
+        if(matchedQuery == null) {
+            LOG.info("Returning from checkForAutoAssignDS since matchedQuery is null");
             return;
+        }
 
         assignDsToTarget(target, matchedQuery);
     }
