@@ -770,7 +770,13 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         // get the modifiable attribute map
         final Map<String, String> controllerAttributes = target.getControllerAttributes();
 
-        LOG.info("Updating attributes for controller {} with new attributes: {}; and haveAttributesChanged: {}", controllerId, data.toString(), controllerAttributes.equals(data));
+        // Check if attributes have actually changed; if not, return without updating distribution set
+        if (controllerAttributes.equals(data)) {
+            target.setRequestControllerAttributes(false);
+            return targetRepository.save(target);
+        }
+
+        LOG.info("Updating attributes for controller {} with new attributes: {}; and same attributes: {}", controllerId, data.toString(), controllerAttributes.equals(data));
 
         final UpdateMode updateMode = mode != null ? mode : UpdateMode.MERGE;
         switch (updateMode) {
@@ -795,6 +801,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         }
         assertTargetAttributesQuota(target);
 
+        triggerDistributionSetAssignmentCheck(controllerId);
         return targetRepository.save(target);
     }
 
