@@ -803,19 +803,20 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         }
         assertTargetAttributesQuota(target);
 	
-	targetRepository.save(target);
-        triggerDistributionSetAssignmentCheck(controllerId);
+	    targetRepository.save(target);
+        triggerDistributionSetAssignmentCheck(controllerId, controllerAttributes);
+
         return target;
     }
 
 
     @Override
-    public void triggerDistributionSetAssignmentCheck(String controllerId){
-        LOG.debug("Auto assign check with ID: {} triggered...", controllerId);
-        systemSecurityContext.runAsSystem(() -> executeAutoAssignCheck(controllerId));
+    public void triggerDistributionSetAssignmentCheck(String controllerId, final Map<String, String> controllerAttributes){
+        LOG.info("Auto assign check with ID: {} triggered...", controllerId);
+        systemSecurityContext.runAsSystem(() -> executeAutoAssignCheck(controllerId, controllerAttributes));
     }
 
-    private Object executeAutoAssignCheck(String controllerId) {
+    private Object executeAutoAssignCheck(String controllerId, final Map<String, String> controllerAttributes) {
 
         final int PAGE_SIZE = 1000;
         final PageRequest pageRequest = PageRequest.of(0, PAGE_SIZE);
@@ -823,13 +824,14 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
         final Lock lock = lockRegistry.obtain("autoassign");
         if (!lock.tryLock()) {
+            LOG.info("Failed to obtain lock for controller {}", controllerId);
             return null;
         }
 
         LOG.info("Obtained lock with key: autoassign for controller {}", controllerId);
 
         try {
-            systemManagement.forEachTenant(tenant -> checkForAutoAssignDS(controllerId, filterQueries));
+            systemManagement.forEachTenant(tenant -> checkForAutoAssignDS(controllerId, filterQueries, controllerAttributes));
         } finally {
             lock.unlock();
             LOG.info("Unlocked lock with key: autoassign for controller {}", controllerId);
@@ -838,12 +840,12 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         return null;
     }
 
-    private void checkForAutoAssignDS(String controllerId, Page<TargetFilterQuery> filterQueries){
+    private void checkForAutoAssignDS(String controllerId, Page<TargetFilterQuery> filterQueries, final Map<String, String> controllerAttributes){
 
         final JpaTarget target = (JpaTarget) targetRepository.findByControllerId(controllerId)
                 .orElseThrow(() -> new EntityNotFoundException(Target.class, controllerId));
 
-        TargetFieldData fieldData = fieldExtractor.extractData(target);
+        TargetFieldData fieldData = fieldExtractor.extractData(target, controllerAttributes);
 
         TargetFilterQuery matchedQuery = null;
 
@@ -855,7 +857,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         }
 
         if(matchedQuery == null) {
-            LOG.info("Returning from checkForAutoAssignDS since matchedQuery is null for controller {} with attributes {}", controllerId, target.getControllerAttributes());
+            LOG.info("Returning from checkForAutoAssignDS since matchedQuery is null for controller {}", controllerId);
             return;
         }
 
@@ -869,7 +871,8 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
         DeploymentHelper.runInNewTransaction(transactionManager, "AutoAssignDSToTarget",
                 Isolation.READ_COMMITTED.value(), status -> deploymentManagement.assignDistributionSet(target, deploymentRequest, actionMessage));
-        LOG.debug(actionMessage);
+
+        LOG.info(actionMessage);
     }
 
     private DeploymentRequest createDeploymentRequest(TargetFilterQuery tfq, Target target){

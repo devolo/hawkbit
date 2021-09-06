@@ -19,6 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.eclipse.hawkbit.repository.TargetFields.ASSIGNEDDS;
 import static org.eclipse.hawkbit.repository.TargetFields.ATTRIBUTE;
 import static org.eclipse.hawkbit.repository.TargetFields.CONTROLLERID;
@@ -37,6 +40,8 @@ import static org.eclipse.hawkbit.repository.TargetFields.UPDATESTATUS;
 @Service
 public class TargetFieldExtractor {
 
+    private static final Logger LOG = LoggerFactory.getLogger(TargetFieldExtractor.class);
+
     private String controllerId;
     private String name;
     private String description;
@@ -45,7 +50,6 @@ public class TargetFieldExtractor {
     private String lastQuery;
     private List<TargetTag> targetTagList;
     private List<TargetMetadata> metadata;
-    private Map<String, String> attributes;
     private DistributionSet assignedDs;
     private DistributionSet installedDs;
     private String createdAt;
@@ -55,7 +59,7 @@ public class TargetFieldExtractor {
 
     private TargetFieldData fieldData;
 
-    public TargetFieldData extractData(Target target){
+    public TargetFieldData extractData(Target target, final Map<String, String> controllerAttributes){
 
         fieldData = new TargetFieldData();
 
@@ -71,8 +75,11 @@ public class TargetFieldExtractor {
         fieldData.add(IPADDRESS, address);
         fieldData.add(LASTCONTROLLERREQUESTAT, lastQuery);
 
+        LOG.info("controllerAttributes in TargetFieldData.extractData(): {}", controllerAttributes);
+
+
         addMetadata();
-        addAttributes();
+        addAttributes(controllerAttributes);
         addAssignedDsData();
         addInstalledDsData();
         addTagData();
@@ -89,7 +96,6 @@ public class TargetFieldExtractor {
         lastQuery = (target.getLastTargetQuery() == null) ? EMPTY_STRING : target.getLastTargetQuery().toString();
         targetTagList = new ArrayList<>(target.getTags());
         metadata = target.getMetadata();
-        attributes = target.getControllerAttributes();
         assignedDs = target.getAssignedDistributionSet();
         installedDs = target.getInstalledDistributionSet();
         createdAt = Long.toString(target.getCreatedAt());
@@ -103,7 +109,7 @@ public class TargetFieldExtractor {
         targetTagList.forEach(tag -> fieldData.add(TAG, tag.getName()));
     }
 
-    private void addAttributes(){
+    private void addAttributes(final Map<String, String> attributes){
         attributes.forEach((key, value) -> fieldData.add(ATTRIBUTE, key, value));
     }
 

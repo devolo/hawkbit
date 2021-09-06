@@ -105,10 +105,10 @@ public class TargetFieldExtractorTest extends AbstractJpaIntegrationTest {
     public void extractFieldsTest() {
 
         Target testTarget = targetManagement.getByControllerID(targetId).orElseThrow(EntityNotFoundException::new);
-        TargetFieldData fieldData = extractorService.extractData(testTarget);
+        TargetFieldData fieldData = extractorService.extractData(testTarget, testTarget.getControllerAttributes());
 
         Target testTarget2 = targetManagement.getByControllerID(targetId2).orElseThrow(EntityNotFoundException::new);
-        TargetFieldData fieldData2 = extractorService.extractData(testTarget2);
+        TargetFieldData fieldData2 = extractorService.extractData(testTarget2, testTarget2.getControllerAttributes());
 
         assertTrue(fieldData.hasEntry(ID.name(), "targetId123"));
 

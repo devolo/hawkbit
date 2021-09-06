@@ -1624,8 +1624,8 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
                 .name("Test query 2")
                 .query(TEST_QUERY_2));
 
-        controllerManagement.triggerDistributionSetAssignmentCheck("0123");
-        controllerManagement.triggerDistributionSetAssignmentCheck("9999");
+        controllerManagement.triggerDistributionSetAssignmentCheck("0123", targetManagement.getControllerAttributes("0123"));
+        controllerManagement.triggerDistributionSetAssignmentCheck("9999", targetManagement.getControllerAttributes("9999"));
 
         Target target1 = targetManagement.getByControllerID("0123").get();
         Target target2 = targetManagement.getByControllerID("9999").get();
@@ -1643,7 +1643,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         updatedAttributes.put("device_type", "dev_test_type");
 
         controllerManagement.updateControllerAttributes("0123", updatedAttributes, UpdateMode.REPLACE);
-        controllerManagement.triggerDistributionSetAssignmentCheck("0123");
+        controllerManagement.triggerDistributionSetAssignmentCheck("0123", targetManagement.getControllerAttributes("0123"));
 
         target1 = targetManagement.getByControllerID("0123").get();
 
@@ -1651,7 +1651,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         assertThat(target1.getAssignedDistributionSet().getName()).isEqualTo("TestSet2");
 
         controllerManagement.updateControllerAttributes("9999", updatedAttributes, UpdateMode.REPLACE);
-        controllerManagement.triggerDistributionSetAssignmentCheck("9999");
+        controllerManagement.triggerDistributionSetAssignmentCheck("9999", targetManagement.getControllerAttributes("9999"));
 
         target2 = targetManagement.getByControllerID("9999").get();
 

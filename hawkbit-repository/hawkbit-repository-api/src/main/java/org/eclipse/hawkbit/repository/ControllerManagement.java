@@ -386,8 +386,19 @@ public interface ControllerManagement {
     Target updateControllerAttributes(@NotEmpty String controllerId, @NotNull Map<String, String> attributes,
             UpdateMode mode);
 
+    /**
+     * Check if the new target matches TFQ and assign appropriate distribution set
+     *
+     * @param controllerId
+     *            to update
+     * @param attributes
+     *            to insert
+     *
+     * @return void
+     *
+     */
     @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
-    void triggerDistributionSetAssignmentCheck(String controllerId);
+    void triggerDistributionSetAssignmentCheck(String controllerId, @NotNull Map<String, String> attributes);
 
     /**
      * Finds {@link Target} based on given controller ID returns found Target
