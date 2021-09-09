@@ -770,7 +770,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         // get the modifiable attribute map
         final Map<String, String> controllerAttributes = target.getControllerAttributes();
 	
-	final TargetUpdateStatus targetStatus = target.getUpdateStatus();
+	    final TargetUpdateStatus targetStatus = target.getUpdateStatus();
 	
         // Check if attributes have actually changed; if not, return without updating distribution set
         if ((controllerAttributes.equals(data)) && (!targetStatus.equals(TargetUpdateStatus.REGISTERED))) {
@@ -824,7 +824,12 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
         final Lock lock = lockRegistry.obtain("autoassign");
         if (!lock.tryLock()) {
-            LOG.info("Failed to obtain lock for controller {}", controllerId);
+            LOG.info("Failed to obtain lock for controller {}, will continue to request attributes from controller.", controllerId);
+            final JpaTarget target = (JpaTarget) targetRepository.findByControllerId(controllerId)
+                    .orElseThrow(() -> new EntityNotFoundException(Target.class, controllerId));
+
+            target.setRequestControllerAttributes(true);
+
             return null;
         }
 
