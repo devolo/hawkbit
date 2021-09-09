@@ -773,7 +773,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 	    final TargetUpdateStatus targetStatus = target.getUpdateStatus();
 	
         // Check if attributes have actually changed; if not, return without updating distribution set
-        if ((controllerAttributes.equals(data)) && (!targetStatus.equals(TargetUpdateStatus.REGISTERED))) {
+        if (controllerAttributes.equals(data)) {
             target.setRequestControllerAttributes(false);
             return targetRepository.save(target);
         }
