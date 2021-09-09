@@ -778,6 +778,12 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             return targetRepository.save(target);
         }
 
+        if (controllerAttributes.containsKey("device_type") && (!controllerAttributes.get("device_type").isEmpty())) {
+            if (data.containsKey("device_type") && (!data.get("device_type").isEmpty()) && (!data.get("device_type").equals(controllerAttributes.get("device_type")))) {
+                LOG.info("controller {} which had device type {} reported a new device type {}", controllerId, controllerAttributes.get("device_type"), data.get("device_type"));
+            }
+        }
+
         LOG.info("Updating attributes for controller {} with new attributes: {}; and same attributes: {} and targetStatus: {}", controllerId, data.toString(), controllerAttributes.equals(data), targetStatus);
 
         final UpdateMode updateMode = mode != null ? mode : UpdateMode.MERGE;
