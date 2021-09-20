@@ -19,9 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import static org.eclipse.hawkbit.repository.TargetFields.ASSIGNEDDS;
 import static org.eclipse.hawkbit.repository.TargetFields.ATTRIBUTE;
 import static org.eclipse.hawkbit.repository.TargetFields.CONTROLLERID;
@@ -39,8 +36,6 @@ import static org.eclipse.hawkbit.repository.TargetFields.UPDATESTATUS;
 
 @Service
 public class TargetFieldExtractor {
-
-    private static final Logger LOG = LoggerFactory.getLogger(TargetFieldExtractor.class);
 
     private String controllerId;
     private String name;
@@ -74,9 +69,6 @@ public class TargetFieldExtractor {
         fieldData.add(UPDATESTATUS, updateStatus);
         fieldData.add(IPADDRESS, address);
         fieldData.add(LASTCONTROLLERREQUESTAT, lastQuery);
-
-        LOG.info("controllerAttributes in TargetFieldData.extractData(): {}", controllerAttributes);
-
 
         addMetadata();
         addAttributes(controllerAttributes);

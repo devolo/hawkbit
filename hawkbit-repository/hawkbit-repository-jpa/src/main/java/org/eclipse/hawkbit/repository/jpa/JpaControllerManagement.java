@@ -778,13 +778,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             return targetRepository.save(target);
         }
 
-        if (controllerAttributes.containsKey("device_type") && (!controllerAttributes.get("device_type").isEmpty())) {
-            if (data.containsKey("device_type") && (!data.get("device_type").isEmpty()) && (!data.get("device_type").equals(controllerAttributes.get("device_type")))) {
-                LOG.info("controller {} which had device type {} reported a new device type {}", controllerId, controllerAttributes.get("device_type"), data.get("device_type"));
-            }
-        }
-
-        LOG.info("Updating attributes for controller {} with new attributes: {}; and same attributes: {} and targetStatus: {}", controllerId, data.toString(), controllerAttributes.equals(data), targetStatus);
+        LOG.debug("Updating attributes for controller {} with new attributes: {}; and same attributes: {} and targetStatus: {}", controllerId, data.toString(), controllerAttributes.equals(data), targetStatus);
 
         final UpdateMode updateMode = mode != null ? mode : UpdateMode.MERGE;
         switch (updateMode) {
@@ -818,7 +812,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     @Override
     public void triggerDistributionSetAssignmentCheck(String controllerId, final Map<String, String> controllerAttributes){
-        LOG.info("Auto assign check with ID: {} triggered...", controllerId);
+        LOG.debug("Auto assign check with ID: {} triggered...", controllerId);
         systemSecurityContext.runAsSystem(() -> executeAutoAssignCheck(controllerId, controllerAttributes));
     }
 
@@ -830,7 +824,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
         final Lock lock = lockRegistry.obtain("autoassign");
         if (!lock.tryLock()) {
-            LOG.info("Failed to obtain lock for controller {}, will continue to request attributes from controller.", controllerId);
+            LOG.debug("Failed to obtain lock for controller {}, will continue to request attributes from controller.", controllerId);
             final JpaTarget target = (JpaTarget) targetRepository.findByControllerId(controllerId)
                     .orElseThrow(() -> new EntityNotFoundException(Target.class, controllerId));
 
@@ -839,13 +833,13 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             return null;
         }
 
-        LOG.info("Obtained lock with key: autoassign for controller {}", controllerId);
+        LOG.debug("Obtained lock with key: autoassign for controller {}", controllerId);
 
         try {
             systemManagement.forEachTenant(tenant -> checkForAutoAssignDS(controllerId, filterQueries, controllerAttributes));
         } finally {
             lock.unlock();
-            LOG.info("Unlocked lock with key: autoassign for controller {}", controllerId);
+            LOG.debug("Unlocked lock with key: autoassign for controller {}", controllerId);
         }
 
         return null;
@@ -868,7 +862,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         }
 
         if(matchedQuery == null) {
-            LOG.info("Returning from checkForAutoAssignDS since matchedQuery is null for controller {}", controllerId);
+            LOG.debug("Returning from checkForAutoAssignDS since matchedQuery is null for controller {}", controllerId);
             return;
         }
 
