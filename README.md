@@ -1,8 +1,13 @@
 <img src=hawkbit_logo.png width=533 height=246 />
+<br/>
+<br/>
+<img src=devolo_logo.jpg width=533 />
 
-# Eclipse hawkBit™ - Update Server
+# Eclipse hawkBit™ - Update Server - Fork from devolo AG
 
-Eclipse [hawkBit](http://www.eclipse.org/hawkbit/index.html) is an domain independent back end solution for rolling out software updates to constrained edge devices as well as more powerful controllers and gateways connected to IP based networking infrastructure.
+Eclipse [hawkBit](http://www.eclipse.org/hawkbit/index.html) is an domain independent back end solution for rolling out software updates to constrained edge devices as well as more powerful controllers and gateways connected to IP based networking infrastructure. 
+
+This is a fork maintained by [devolo AG,](https://www.devolo.com) Germany.
 
 Build: [![Circle CI](https://circleci.com/gh/eclipse/hawkbit.svg?style=shield)](https://circleci.com/gh/eclipse/hawkbit)
 [![SonarQuality](https://sonar.ops.bosch-iot-rollouts.com/api/badges/gate?key=org.eclipse.hawkbit:hawkbit-parent)](https://sonar.ops.bosch-iot-rollouts.com)
