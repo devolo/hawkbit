@@ -63,7 +63,7 @@ public class AutoAssignScheduler {
      */
     @Scheduled(initialDelay = 7200000, fixedDelayString = PROP_SCHEDULER_DELAY_PLACEHOLDER)
     public void autoAssignScheduler() {
-        LOGGER.debug("auto assign schedule checker has been triggered.");
+        LOGGER.info("auto assign schedule checker has been triggered.");
         // run this code in system code privileged to have the necessary
         // permission to query and create entities.
         systemSecurityContext.runAsSystem(this::executeAutoAssign);

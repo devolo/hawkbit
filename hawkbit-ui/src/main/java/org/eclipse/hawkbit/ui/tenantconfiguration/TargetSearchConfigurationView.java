@@ -8,41 +8,50 @@
  */
 package org.eclipse.hawkbit.ui.tenantconfiguration;
 
-import com.vaadin.data.Binder;
+import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
+import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
+import org.eclipse.hawkbit.ui.UiProperties;
+import org.eclipse.hawkbit.ui.common.builder.FormComponentBuilder;
+import org.eclipse.hawkbit.ui.common.data.proxies.ProxySystemConfigWindow;
+import org.eclipse.hawkbit.ui.common.data.proxies.ProxySystemConfigTargetSearch;
+import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
+import org.eclipse.hawkbit.ui.tenantconfiguration.search.TargetSearchConfigurationItem;
+import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+
 import com.vaadin.ui.CheckBox;
-import com.vaadin.ui.CustomComponent;
 import com.vaadin.ui.GridLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.VerticalLayout;
-import org.eclipse.hawkbit.ui.UiProperties;
-import org.eclipse.hawkbit.ui.common.builder.FormComponentBuilder;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxySystemConfigWindow;
-import org.eclipse.hawkbit.ui.tenantconfiguration.search.TargetSearchConfigurationItem;
-import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
-import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 
 
 /**
  * Provides configuration for target search option
  * to include/exclude target attributes for the search.
  */
-public class TargetSearchConfigurationView extends CustomComponent {
+public class TargetSearchConfigurationView extends BaseConfigurationView<ProxySystemConfigTargetSearch> {
 
     private static final long serialVersionUID = 1L;
 
     private final VaadinMessageSource i18n;
     private final UiProperties uiProperties;
-    private final Binder<ProxySystemConfigWindow> binder;
     private final TargetSearchConfigurationItem targetSearchConfigurationItem;
 
     TargetSearchConfigurationView(final VaadinMessageSource i18n, final UiProperties uiProperties,
-            final Binder<ProxySystemConfigWindow> binder) {
+                                  final TenantConfigurationManagement tenantConfigurationManagement) {
+        super(tenantConfigurationManagement);
+
         this.i18n = i18n;
         this.targetSearchConfigurationItem = new TargetSearchConfigurationItem(i18n);
         this.uiProperties = uiProperties;
-        this.binder = binder;
         this.init();
+    }
+
+    @Override
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
+        init();
     }
 
     private void init() {
@@ -65,7 +74,7 @@ public class TargetSearchConfigurationView extends CustomComponent {
         gridLayout.setSizeFull();
 
         CheckBox attributeSearchCheckbox = FormComponentBuilder.getCheckBox(
-                UIComponentIdProvider.TARGET_SEARCH_ATTRIBUTES, binder,
+                UIComponentIdProvider.TARGET_SEARCH_ATTRIBUTES, getBinder(),
                 ProxySystemConfigWindow::isAttributeSearchEnabled, ProxySystemConfigWindow::setAttributeSearch);
 
         gridLayout.addComponent(attributeSearchCheckbox, 0, 0);
@@ -75,4 +84,18 @@ public class TargetSearchConfigurationView extends CustomComponent {
         rootPanel.setContent(vLayout);
         setCompositionRoot(rootPanel);
     }
+
+    @Override
+    protected ProxySystemConfigTargetSearch populateSystemConfig() {
+        ProxySystemConfigTargetSearch configBean = new ProxySystemConfigTargetSearch();
+        configBean.setAttributeSearch(readConfigOption(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED));
+        return configBean;
+    }
+
+    @Override
+    public void save() {
+        writeConfigOption(TenantConfigurationKey.TARGET_SEARCH_ATTRIBUTES_ENABLED, getBinderBean().isAttributeSearchEnabled());
+    }
+
+
 }

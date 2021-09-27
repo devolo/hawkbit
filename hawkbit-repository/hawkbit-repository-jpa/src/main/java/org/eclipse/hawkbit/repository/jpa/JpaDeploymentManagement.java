@@ -123,6 +123,9 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
         QUERY_DELETE_ACTIONS_BY_STATE_AND_LAST_MODIFIED = new EnumMap<>(Database.class);
         QUERY_DELETE_ACTIONS_BY_STATE_AND_LAST_MODIFIED.put(Database.SQL_SERVER, "DELETE TOP (" + ACTION_PAGE_LIMIT
                 + ") FROM sp_action WHERE tenant=#tenant AND status IN (%s) AND last_modified_at<#last_modified_at ");
+        QUERY_DELETE_ACTIONS_BY_STATE_AND_LAST_MODIFIED.put(Database.POSTGRESQL,
+                "DELETE FROM sp_action WHERE id IN (SELECT id FROM sp_action WHERE tenant=#tenant AND status IN (%s) AND last_modified_at<#last_modified_at LIMIT "
+                        + ACTION_PAGE_LIMIT + ")");
     }
 
     private final EntityManager entityManager;
@@ -235,8 +238,8 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
         final Map<Long, List<TargetWithActionType>> assignmentsByDsIds = convertRequest(validatedRequests);
 
         final List<DistributionSetAssignmentResult> results = assignmentsByDsIds.entrySet().stream()
-                .map(entry -> assignDistributionSetToTargetsWithRetry(initiatedBy, entry.getKey(), entry.getValue(), actionMessage,
-                        strategy))
+                .map(entry -> assignDistributionSetToTargetsWithRetry(initiatedBy, entry.getKey(), entry.getValue(),
+                        actionMessage, strategy))
                 .collect(Collectors.toList());
         strategy.sendDeploymentEvents(results);
         return results;
@@ -284,8 +287,8 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
     /**
      * method assigns the {@link DistributionSet} to all {@link Target}s by
      * their IDs with a specific {@link ActionType} and {@code forcetime}.
-     * 
-     * 
+     *
+     *
      * In case the update was executed offline (i.e. not managed by hawkBit) the
      * handling differs my means that:<br/>
      * A. it ignores targets completely that are in
@@ -514,9 +517,7 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
 
         return targetsWithActionType.stream()
                 .map(twt -> assignmentStrategy.createTargetAction(initiatedBy, twt, targets, set))
-                .filter(Objects::nonNull)
-                .map(actionRepository::save)
-                .collect(Collectors.toList());
+                .filter(Objects::nonNull).map(actionRepository::save).collect(Collectors.toList());
     }
 
     private void createActionsStatus(final Collection<JpaAction> actions,

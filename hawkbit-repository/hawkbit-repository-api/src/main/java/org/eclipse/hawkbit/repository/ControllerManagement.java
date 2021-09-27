@@ -139,7 +139,7 @@ public interface ControllerManagement {
     /**
      * Retrieves active {@link Action} with highest priority that is assigned to
      * a {@link Target}.
-     * 
+     *
      * For performance reasons this method does not throw
      * {@link EntityNotFoundException} in case target with given controllerId
      * does not exist but will return an {@link Optional#empty()} instead.
@@ -147,7 +147,7 @@ public interface ControllerManagement {
      * @param controllerId
      *            identifies the target to retrieve the action from
      * @return the action
-     * 
+     *
      */
     @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
     Optional<Action> findActiveActionWithHighestWeight(@NotEmpty String controllerId);
@@ -155,13 +155,13 @@ public interface ControllerManagement {
     /**
      * Retrieves active {@link Action}s with highest weight that are assigned to
      * a {@link Target}.
-     * 
+     *
      * @param controllerId
      *            identifies the target to retrieve the action from
      * @param maxActionCount
      *            max size of returned list
      * @return the action
-     * 
+     *
      */
     @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
     List<Action> findActiveActionsWithHighestWeight(@NotEmpty String controllerId, int maxActionCount);
@@ -169,7 +169,7 @@ public interface ControllerManagement {
     /**
      * Get weight of an Action. Returns the default value if the weight is null
      * according to the properties.
-     * 
+     *
      * @param action
      *            to extract the weight from
      * @return weight of the action
@@ -488,7 +488,7 @@ public interface ControllerManagement {
     /**
      * Retrieves list of {@link Action}s which matches the provided
      * externalRefs.
-     * 
+     *
      * @param externalRefs
      *            for which the actions need to be fetched.
      * @return list of {@link Action}s matching the externalRefs.
@@ -498,7 +498,7 @@ public interface ControllerManagement {
 
     /**
      * Retrieves an {@link Action} using {@link Action#getExternalRef()}
-     * 
+     *
      * @param externalRef
      *            of the action. See {@link Action#getExternalRef()}
      * @return {@link Action} or {@code null} if it does not exist
