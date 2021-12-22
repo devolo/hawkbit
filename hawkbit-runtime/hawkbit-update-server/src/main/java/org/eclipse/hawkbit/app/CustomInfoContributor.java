@@ -22,5 +22,7 @@ public class CustomInfoContributor implements InfoContributor {
     @Override
     public void contribute(Info.Builder builder) {
         builder.withDetail("sampleData", "Hello World!");
+        builder.withDetail("total_targets", targetManagement.count());
+        builder.withDetail("offline_targets", targetManagement.countByFilters(null, Boolean.TRUE, null, null, Boolean.FALSE));
     }
 }
