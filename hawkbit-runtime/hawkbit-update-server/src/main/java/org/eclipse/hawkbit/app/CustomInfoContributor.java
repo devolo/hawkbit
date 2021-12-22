@@ -63,7 +63,10 @@ public class CustomInfoContributor implements InfoContributor {
         rolloutsByState.put("waiting_for_approval", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.WAITING_FOR_APPROVAL.equals(rollout.getStatus())).count());
 
         builder.withDetail("rollouts_by_state", rolloutsByState);
+
         builder.withDetail("total_targets", targetManagement.count());
         builder.withDetail("offline_targets", targetManagement.countByFilters(null, Boolean.TRUE, null, null, Boolean.FALSE));
+        builder.withDetail("total_distribution_sets", distributionSetManagement.count());
+        builder.withDetail("total_rollouts", rolloutManagement.count());
     }
 }
