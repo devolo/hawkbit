@@ -87,7 +87,7 @@ public class DeploymentAssignmentWindowController {
     public void populateWithData() {
         proxyAssignmentWindow = new ProxyAssignmentWindow();
 
-        proxyAssignmentWindow.setActionType(ActionType.FORCED);
+        proxyAssignmentWindow.setActionType(ActionType.SOFT);
         proxyAssignmentWindow.setForcedTime(SPDateTimeUtil.twoWeeksFromNowEpochMilli());
         proxyAssignmentWindow.setMaintenanceTimeZone(SPDateTimeUtil.getClientTimeZoneOffsetId());
 
