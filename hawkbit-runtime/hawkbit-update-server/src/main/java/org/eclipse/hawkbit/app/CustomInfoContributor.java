@@ -71,14 +71,15 @@ public class CustomInfoContributor implements InfoContributor {
             rolloutsByState.put("starting", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.STARTING.equals(rollout.getStatus())).count());
             rolloutsByState.put("stopped", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.STOPPED.equals(rollout.getStatus())).count());
             rolloutsByState.put("waiting_for_approval", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.WAITING_FOR_APPROVAL.equals(rollout.getStatus())).count());
-        });
 
-        builder.withDetail("targets_by_state", targetsByState);
-        builder.withDetail("rollouts_by_state", rolloutsByState);
-        builder.withDetail("total_targets", targetManagement.count());
-        builder.withDetail("offline_targets", targetManagement.countByFilters(null, Boolean.TRUE, null, null, Boolean.FALSE));
-        builder.withDetail("total_distribution_sets", distributionSetManagement.count());
-        builder.withDetail("total_rollouts", rolloutManagement.count());
+            builder.withDetail("targets_by_state", targetsByState);
+            builder.withDetail("rollouts_by_state", rolloutsByState);
+            builder.withDetail("total_targets", targetManagement.count());
+            builder.withDetail("offline_targets", targetManagement.countByFilters(null, Boolean.TRUE, null, null, Boolean.FALSE));
+            builder.withDetail("total_distribution_sets", distributionSetManagement.count());
+            builder.withDetail("total_rollouts", rolloutManagement.count());
+        });
+        
         builder.withDetail("timestamp", dateFormat.format(System.currentTimeMillis()));
         builder.withDetail("elapsed_time_in_s", timer.totalTime(TimeUnit.SECONDS));
     }
