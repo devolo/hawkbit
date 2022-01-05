@@ -16,6 +16,6 @@ public class TraceRequestFilter extends HttpTraceFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getServletPath().contains("UI") || request.getServletPath().contains("httptrace");
+        return (request.getServletPath().contains("UI") || request.getServletPath().contains("httptrace") || request.getServletPath().contains("DEFAULT"));
     }
 }
