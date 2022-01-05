@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Component
@@ -29,6 +30,10 @@ public class CustomInfoContributor implements InfoContributor {
 
     @Override
     public void contribute(Info.Builder builder) {
+        // Get timestamp
+        final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.ENGLISH);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+
         Map<String, Object> targetsByState = new HashMap<String, Object>();
 
         final List<TargetUpdateStatus> pendingTargets = Collections.singletonList(TargetUpdateStatus.PENDING);
@@ -68,5 +73,6 @@ public class CustomInfoContributor implements InfoContributor {
         builder.withDetail("offline_targets", targetManagement.countByFilters(null, Boolean.TRUE, null, null, Boolean.FALSE));
         builder.withDetail("total_distribution_sets", distributionSetManagement.count());
         builder.withDetail("total_rollouts", rolloutManagement.count());
+        builder.withDetail("timestamp", dateFormat.format(System.currentTimeMillis()));
     }
 }
