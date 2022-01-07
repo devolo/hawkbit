@@ -15,16 +15,12 @@ import static org.eclipse.hawkbit.repository.model.Target.CONTROLLER_ATTRIBUTE_K
 import static org.eclipse.hawkbit.repository.model.Target.CONTROLLER_ATTRIBUTE_VALUE_SIZE;
 
 import java.net.URI;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
@@ -40,6 +36,7 @@ import javax.persistence.criteria.Root;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 
+import com.google.common.collect.MapDifference;
 import org.eclipse.hawkbit.repository.ControllerManagement;
 import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.EntityFactory;
@@ -771,9 +768,17 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         final Map<String, String> controllerAttributes = target.getControllerAttributes();
 	
 	    final TargetUpdateStatus targetStatus = target.getUpdateStatus();
+
+        // Add last_update attribute
+        final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.ENGLISH);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        data.put("last_update", dateFormat.format(System.currentTimeMillis()));
 	
-        // Check if attributes have actually changed; if not, return without updating distribution set
-        if (controllerAttributes.equals(data)) {
+        // Check if attributes except last_update have actually changed; if not, return without updating distribution set
+        MapDifference<String, String> diff = Maps.difference(data, controllerAttributes);
+        Map<String, MapDifference.ValueDifference<String>> entriesDiffering = diff.entriesDiffering();
+
+        if ((entriesDiffering.size() == 1) && entriesDiffering.containsKey("last_update")) {
             target.setRequestControllerAttributes(false);
             return targetRepository.save(target);
         }
