@@ -366,7 +366,14 @@ public abstract class AbstractAmqpServiceIntegrationTest extends AbstractAmqpInt
             try {
                 final Map<String, String> controllerAttributes = securityRule
                         .runAsPrivileged(() -> targetManagement.getControllerAttributes(controllerId));
-                assertThat(controllerAttributes.size()).isEqualTo(attributes.size());
+
+                if(controllerAttributes.containsKey("last_update") && !(attributes.containsKey("last_update"))) {
+                    assertThat(controllerAttributes.size()).isEqualTo(attributes.size()+1); // To account for last_update attribute
+                } else {
+                    assertThat(controllerAttributes.size()).isEqualTo(attributes.size()); // To account for last_update attribute
+                }
+
+                attributes.remove("last_update");
                 attributes.forEach((k, v) -> assertKeyValueInMap(k, v, controllerAttributes));
             } catch (final Exception e) {
                 throw new RuntimeException(e);

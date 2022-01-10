@@ -772,13 +772,16 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         // Add last_update attribute
         final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.ENGLISH);
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        data.put("last_update", dateFormat.format(System.currentTimeMillis()));
 	
-        // Check if attributes except last_update have actually changed; if not, return without updating distribution set
-        MapDifference<String, String> diff = Maps.difference(data, controllerAttributes);
-        Map<String, MapDifference.ValueDifference<String>> entriesDiffering = diff.entriesDiffering();
+        MapDifference<String, String> diff = Maps.difference(controllerAttributes, data);
+        Map<String, String> entriesOnlyOnLeft = diff.entriesOnlyOnLeft();
 
-        if ((entriesDiffering.size() == 1) && entriesDiffering.containsKey("last_update")) {
+        // Check if attributes except last_update have actually changed; if not, return without updating distribution set
+        if(controllerAttributes.containsKey("last_update")) { controllerAttributes.remove("last_update"); }
+
+        // Does "data" have updated or new attributes?
+        if (controllerAttributes.entrySet().containsAll(data.entrySet())) {
+            LOG.debug("Attributes have not changed, returning without updating distribution set.");
             target.setRequestControllerAttributes(false);
             return targetRepository.save(target);
         }
@@ -806,6 +809,9 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
             // unknown update mode
             throw new IllegalStateException("The update mode " + updateMode + " is not supported.");
         }
+
+        controllerAttributes.put("last_update", dateFormat.format(System.currentTimeMillis())); // Add / update last_update attribute
+
         assertTargetAttributesQuota(target);
 	
 	    targetRepository.save(target);

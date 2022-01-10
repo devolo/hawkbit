@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 
 import javax.validation.ConstraintViolationException;
 
+import com.google.common.collect.MapDifference;
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.eclipse.hawkbit.im.authentication.SpPermission;
 import org.eclipse.hawkbit.repository.FilterParams;
@@ -445,8 +447,14 @@ public class TargetManagementTest extends AbstractJpaIntegrationTest {
         targetManagement.create(entityFactory.target().create().controllerId(controllerId));
         final Target target = controllerManagement.updateControllerAttributes(controllerId, testData, null);
 
-        assertThat(targetManagement.getControllerAttributes(controllerId)).as("Controller Attributes are wrong")
-                .isEqualTo(testData);
+        MapDifference<String, String> diff = Maps.difference(targetManagement.getControllerAttributes(controllerId), testData);
+        Map<String, String> onlyOnLeft = diff.entriesOnlyOnLeft();
+        Map<String, String> entriesInCommon = diff.entriesInCommon();
+
+        assertThat(onlyOnLeft.size()).isEqualTo(1);
+        assertThat(onlyOnLeft.containsKey("last_update")).isTrue();
+        assertThat(entriesInCommon).as("Controller Attributes are wrong").isEqualTo(testData);
+
         return target;
     }
 

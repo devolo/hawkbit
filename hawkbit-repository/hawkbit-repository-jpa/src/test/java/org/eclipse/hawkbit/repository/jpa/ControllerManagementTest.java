@@ -34,6 +34,9 @@ import java.util.stream.IntStream;
 
 import javax.validation.ConstraintViolationException;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.MapDifference;
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.eclipse.hawkbit.repository.RepositoryProperties;
@@ -76,9 +79,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.ConcurrencyFailureException;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
@@ -855,19 +855,30 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         testData.put("test1", "testdata1");
         controllerManagement.updateControllerAttributes(controllerId, testData, null);
 
-        assertThat(targetManagement.getControllerAttributes(controllerId)).as("Controller Attributes are wrong")
-                .isEqualTo(testData);
+        MapDifference<String, String> diff = Maps.difference(targetManagement.getControllerAttributes(controllerId), testData);
+        Map<String, String> onlyOnLeft = diff.entriesOnlyOnLeft();
+        Map<String, String> entriesInCommon = diff.entriesInCommon();
+
+        assertThat(onlyOnLeft.size()).isEqualTo(1);
+        assertThat(onlyOnLeft.containsKey("last_update")).isTrue();
+        assertThat(entriesInCommon).as("Controller Attributes are wrong").isEqualTo(testData);
     }
 
     @Step
     private void addSecondAttributeAndVerify(final String controllerId) {
         final Map<String, String> testData = Maps.newHashMapWithExpectedSize(2);
         testData.put("test2", "testdata20");
-        controllerManagement.updateControllerAttributes(controllerId, testData, null);
+        controllerManagement.updateControllerAttributes(controllerId, testData, null); // Attributes now include `last_update`
 
         testData.put("test1", "testdata1");
-        assertThat(targetManagement.getControllerAttributes(controllerId)).as("Controller Attributes are wrong")
-                .isEqualTo(testData);
+
+        MapDifference<String, String> diff = Maps.difference(targetManagement.getControllerAttributes(controllerId), testData);
+        Map<String, String> onlyOnLeft = diff.entriesOnlyOnLeft();
+        Map<String, String> entriesInCommon = diff.entriesInCommon();
+
+        assertThat(onlyOnLeft.size()).isEqualTo(1);
+        assertThat(onlyOnLeft.containsKey("last_update")).isTrue();
+        assertThat(entriesInCommon).as("Controller Attributes are wrong").isEqualTo(testData);
     }
 
     @Step
@@ -878,8 +889,14 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         controllerManagement.updateControllerAttributes(controllerId, testData, null);
 
         testData.put("test2", "testdata20");
-        assertThat(targetManagement.getControllerAttributes(controllerId)).as("Controller Attributes are wrong")
-                .isEqualTo(testData);
+
+        MapDifference<String, String> diff = Maps.difference(targetManagement.getControllerAttributes(controllerId), testData);
+        Map<String, String> onlyOnLeft = diff.entriesOnlyOnLeft();
+        Map<String, String> entriesInCommon = diff.entriesInCommon();
+
+        assertThat(onlyOnLeft.size()).isEqualTo(1);
+        assertThat(onlyOnLeft.containsKey("last_update")).isTrue();
+        assertThat(entriesInCommon).as("Controller Attributes are wrong").isEqualTo(testData);
     }
 
     @Test
@@ -937,7 +954,8 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
         // verify attribute merge
         final Map<String, String> updatedAttributes = targetManagement.getControllerAttributes(controllerId);
-        assertThat(updatedAttributes.size()).isEqualTo(4);
+
+        assertThat(updatedAttributes.size()).isEqualTo(5); // Including last_update
         assertThat(updatedAttributes).containsAllEntriesOf(mergeAttributes);
         assertThat(updatedAttributes.get("k1")).isEqualTo("v1_modified_again");
         attributes.keySet().forEach(assertThat(updatedAttributes)::containsKey);
@@ -959,9 +977,11 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
         // verify attribute replacement
         final Map<String, String> updatedAttributes = targetManagement.getControllerAttributes(controllerId);
-        assertThat(updatedAttributes.size()).isEqualTo(replacementAttributes.size());
+
+        assertThat(updatedAttributes.size()).isEqualTo(replacementAttributes.size() + 1); // It should contain one additional attribute for last_update
         assertThat(updatedAttributes).containsAllEntriesOf(replacementAttributes);
         assertThat(updatedAttributes.get("k1")).isEqualTo("v1_modified");
+        attributes.remove("last_update");
         attributes.entrySet().forEach(assertThat(updatedAttributes)::doesNotContain);
     }
 
@@ -976,8 +996,15 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
         // verify initial attributes
         final Map<String, String> updatedAttributes = targetManagement.getControllerAttributes(controllerId);
-        assertThat(updatedAttributes.size()).isEqualTo(attributes.size());
-        assertThat(updatedAttributes).containsAllEntriesOf(attributes);
+
+        MapDifference<String, String> diff = Maps.difference(targetManagement.getControllerAttributes(controllerId), attributes);
+        Map<String, String> onlyOnLeft = diff.entriesOnlyOnLeft();
+        Map<String, String> entriesInCommon = diff.entriesInCommon();
+
+        assertThat(onlyOnLeft.size()).isEqualTo(1);
+        assertThat(onlyOnLeft.containsKey("last_update")).isTrue();
+        assertThat(entriesInCommon.size()).isEqualTo(attributes.size());
+        assertThat(entriesInCommon).containsAllEntriesOf(attributes);
     }
 
     @Test
@@ -987,6 +1014,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     public void updateTargetAttributesFailsIfTooManyEntries() throws Exception {
         final String controllerId = "test123";
         final int allowedAttributes = quotaManagement.getMaxAttributeEntriesPerTarget();
+
         testdataFactory.createTarget(controllerId);
 
         assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> securityRule
@@ -1007,20 +1035,19 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         });
         assertThat(targetManagement.getControllerAttributes(controllerId)).hasSize(10);
 
-        // Now rite one more
+        // Now write one more
         assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> securityRule
                 .runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
-                    writeAttributes(controllerId, 1, "additional", "value1");
+                    writeAttributes(controllerId, 2, "additional", "value1");
                     return null;
                 })).withMessageContaining("" + allowedAttributes);
         assertThat(targetManagement.getControllerAttributes(controllerId)).hasSize(10);
-
     }
 
     private void writeAttributes(final String controllerId, final int allowedAttributes, final String keyPrefix,
             final String valuePrefix) {
         final Map<String, String> testData = Maps.newHashMapWithExpectedSize(allowedAttributes);
-        for (int i = 0; i < allowedAttributes; i++) {
+        for (int i = 0; i < allowedAttributes-1; i++) { // Remove one allowed attribute to make room for 'last_update'
             testData.put(keyPrefix + i, valuePrefix);
         }
         controllerManagement.updateControllerAttributes(controllerId, testData, null);

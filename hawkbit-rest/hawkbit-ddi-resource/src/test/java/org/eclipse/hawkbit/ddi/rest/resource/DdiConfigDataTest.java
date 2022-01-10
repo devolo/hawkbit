@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.common.collect.MapDifference;
 import org.eclipse.hawkbit.ddi.rest.api.DdiRestConstants;
 import org.eclipse.hawkbit.exception.SpServerError;
 import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
@@ -67,7 +68,14 @@ public class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
                 .content(jsonToCbor(JsonBuilder.configData(attributes).toString()))
                 .contentType(DdiRestConstants.MEDIA_TYPE_CBOR)).andDo(MockMvcResultPrinter.print())
                 .andExpect(status().isOk());
-        assertThat(targetManagement.getControllerAttributes("4717")).isEqualTo(attributes);
+
+        MapDifference<String, String> diff = Maps.difference(targetManagement.getControllerAttributes("4717"), attributes);
+        Map<String, String> onlyOnLeft = diff.entriesOnlyOnLeft();
+        Map<String, String> entriesInCommon = diff.entriesInCommon();
+
+        assertThat(onlyOnLeft.size()).isEqualTo(1);
+        assertThat(onlyOnLeft.containsKey("last_update")).isTrue();
+        assertThat(entriesInCommon).isEqualTo(attributes);
     }
 
     @Test
@@ -123,14 +131,28 @@ public class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
         mvc.perform(put("/{tenant}/controller/v1/4717/configData", tenantAware.getCurrentTenant())
                 .content(JsonBuilder.configData(attributes).toString()).contentType(MediaType.APPLICATION_JSON))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk());
-        assertThat(targetManagement.getControllerAttributes("4717")).isEqualTo(attributes);
+
+        MapDifference<String, String> diff = Maps.difference(targetManagement.getControllerAttributes("4717"), attributes);
+        Map<String, String> onlyOnLeft = diff.entriesOnlyOnLeft();
+        Map<String, String> entriesInCommon = diff.entriesInCommon();
+
+        assertThat(onlyOnLeft.size()).isEqualTo(1);
+        assertThat(onlyOnLeft.containsKey("last_update")).isTrue();
+        assertThat(entriesInCommon).isEqualTo(attributes);
 
         // update
         attributes.put("sdsds", "123412");
         mvc.perform(put("/{tenant}/controller/v1/4717/configData", tenantAware.getCurrentTenant())
                 .content(JsonBuilder.configData(attributes).toString()).contentType(MediaType.APPLICATION_JSON))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk());
-        assertThat(targetManagement.getControllerAttributes("4717")).isEqualTo(attributes);
+
+        diff = Maps.difference(targetManagement.getControllerAttributes("4717"), attributes);
+        onlyOnLeft = diff.entriesOnlyOnLeft();
+        entriesInCommon = diff.entriesInCommon();
+
+        assertThat(onlyOnLeft.size()).isEqualTo(1);
+        assertThat(onlyOnLeft.containsKey("last_update")).isTrue();
+        assertThat(entriesInCommon).isEqualTo(attributes);
     }
 
     @Test
@@ -141,7 +163,7 @@ public class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
 
         // initial
         Map<String, String> attributes = new HashMap<>();
-        for (int i = 0; i < quotaManagement.getMaxAttributeEntriesPerTarget(); i++) {
+        for (int i = 0; i < quotaManagement.getMaxAttributeEntriesPerTarget()-1; i++) { //Dock one attribute for "last_update"
             attributes.put("dsafsdf" + i, "sdsds" + i);
         }
         mvc.perform(put("/{tenant}/controller/v1/4717/configData", tenantAware.getCurrentTenant())
@@ -253,7 +275,6 @@ public class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
 
         // invalid update mode
         putConfigDataWithInvalidUpdateMode(configDataPath);
-
     }
 
     @Step
@@ -313,9 +334,10 @@ public class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
 
         // verify attribute merge
         final Map<String, String> updatedAttributes = targetManagement.getControllerAttributes(controllerId);
-        assertThat(updatedAttributes.size()).isEqualTo(4);
+        assertThat(updatedAttributes.size()).isEqualTo(4+1);
         assertThat(updatedAttributes).containsAllEntriesOf(mergeAttributes);
         assertThat(updatedAttributes.get("k1")).isEqualTo("v1_modified_again");
+        attributes.remove("last_update");
         attributes.keySet().forEach(assertThat(updatedAttributes)::containsKey);
 
     }
@@ -339,9 +361,10 @@ public class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
 
         // verify attribute replacement
         final Map<String, String> updatedAttributes = targetManagement.getControllerAttributes(controllerId);
-        assertThat(updatedAttributes.size()).isEqualTo(replacementAttributes.size());
+        assertThat(updatedAttributes.size()).isEqualTo(replacementAttributes.size()+1);
         assertThat(updatedAttributes).containsAllEntriesOf(replacementAttributes);
         assertThat(updatedAttributes.get("k1")).isEqualTo("v1_modified");
+        attributes.remove("last_update");
         attributes.entrySet().forEach(assertThat(updatedAttributes)::doesNotContain);
 
     }
@@ -362,9 +385,13 @@ public class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
 
         // verify the initial parameters
         final Map<String, String> updatedAttributes = targetManagement.getControllerAttributes(controllerId);
-        assertThat(updatedAttributes.size()).isEqualTo(attributes.size());
-        assertThat(updatedAttributes).containsAllEntriesOf(attributes);
 
+        MapDifference<String, String> diff = Maps.difference(updatedAttributes, attributes);
+        Map<String, String> onlyOnLeft = diff.entriesOnlyOnLeft();
+        Map<String, String> entriesInCommon = diff.entriesInCommon();
+
+        assertThat(updatedAttributes.size()).isEqualTo(attributes.size()+1);
+        assertThat(updatedAttributes).containsAllEntriesOf(attributes);
     }
 
 }
