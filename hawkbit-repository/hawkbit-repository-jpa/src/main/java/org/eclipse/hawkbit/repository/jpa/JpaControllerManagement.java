@@ -770,9 +770,9 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 	    final TargetUpdateStatus targetStatus = target.getUpdateStatus();
 
         // Add last_update attribute
-        final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.ENGLISH);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-	
+        final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
         MapDifference<String, String> diff = Maps.difference(controllerAttributes, data);
         Map<String, String> entriesOnlyOnLeft = diff.entriesOnlyOnLeft();
 
@@ -780,9 +780,10 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         if(controllerAttributes.containsKey("last_update")) { controllerAttributes.remove("last_update"); }
 
         // Does "data" have updated or new attributes?
-        if (controllerAttributes.entrySet().containsAll(data.entrySet())) {
+        if (controllerAttributes.equals(data)) {
             LOG.debug("Attributes have not changed, returning without updating distribution set.");
             target.setRequestControllerAttributes(false);
+            controllerAttributes.put("last_update", dateFormat.format(System.currentTimeMillis())); // Add / update last_update attribute
             return targetRepository.save(target);
         }
 
