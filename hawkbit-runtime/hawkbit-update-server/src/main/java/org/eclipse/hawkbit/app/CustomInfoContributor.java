@@ -51,11 +51,15 @@ public class CustomInfoContributor implements InfoContributor {
             final List<TargetUpdateStatus> inSyncTargets = Collections.singletonList(TargetUpdateStatus.IN_SYNC);
             final List<TargetUpdateStatus> registeredTargets = Collections.singletonList(TargetUpdateStatus.REGISTERED);
 
-            targetsByState.put("pending", targetManagement.countByFilters(pendingTargets, null, null, null, Boolean.FALSE));
+            final long pendingTargetsCount = targetManagement.countByFilters(pendingTargets, null, null, null, Boolean.FALSE);
+            final long pendingOfflineTargetsCount = targetManagement.countByFilters(pendingTargets, Boolean.TRUE, null, null, Boolean.FALSE);
+
+            targetsByState.put("pending", pendingTargetsCount);
             targetsByState.put("unknown", targetManagement.countByFilters(unknownTargets, null, null, null, Boolean.FALSE));
             targetsByState.put("error", targetManagement.countByFilters(errorTargets, null, null, null, Boolean.FALSE));
             targetsByState.put("in_sync", targetManagement.countByFilters(inSyncTargets, null, null, null, Boolean.FALSE));
             targetsByState.put("registered", targetManagement.countByFilters(registeredTargets, null, null, null, Boolean.FALSE));
+            targetsByState.put("ready_for_update", pendingTargetsCount - pendingOfflineTargetsCount);
 
             final Page<Rollout> rolloutPage = rolloutManagement.findAllWithDetailedStatus(new OffsetBasedPageRequest(0, 100, Sort.by(Sort.Direction.ASC, "name")), false);
             final List<Rollout> rolloutList = rolloutPage.getContent();
