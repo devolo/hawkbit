@@ -826,14 +826,14 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
             return;
         }
 
-        LOGGER.info("Obtained lock with key: {}", handlerId);
+        LOGGER.debug("Obtained lock with key: {}", handlerId);
 
         try {
             rollouts.forEach(rolloutId -> DeploymentHelper.runInNewTransaction(txManager, handlerId + "-" + rolloutId,
                     status -> executeFittingHandler(rolloutId)));
         } finally {
             lock.unlock();
-            LOGGER.info("Unlocked lock with key: {}", handlerId);
+            LOGGER.debug("Unlocked lock with key: {}", handlerId);
         }
     }
 

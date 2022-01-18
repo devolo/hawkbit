@@ -82,13 +82,13 @@ public class AutoAssignScheduler {
             return null;
         }
 
-        LOGGER.info("Obtained lock with key: autoassign (scheduler)");
+        LOGGER.debug("Obtained lock with key: autoassign (scheduler)");
 
         try {
             systemManagement.forEachTenant(tenant -> autoAssignExecutor.check());
         } finally {
             lock.unlock();
-            LOGGER.info("Unlocked lock with key: autoassign (scheduler)");
+            LOGGER.debug("Unlocked lock with key: autoassign (scheduler)");
         }
 
         return null;

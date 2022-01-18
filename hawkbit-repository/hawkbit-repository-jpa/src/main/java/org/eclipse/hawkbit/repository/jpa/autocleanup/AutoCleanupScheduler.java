@@ -80,7 +80,7 @@ public class AutoCleanupScheduler {
                 return;
             }
 
-            LOGGER.info("Obtained lock with key: {}", AUTO_CLEANUP + SEP + task.getId() + SEP + tenant);
+            LOGGER.debug("Obtained lock with key: {}", AUTO_CLEANUP + SEP + task.getId() + SEP + tenant);
 
             try {
                 task.run();
@@ -88,7 +88,7 @@ public class AutoCleanupScheduler {
                 LOGGER.error("Cleanup task failed.", e);
             } finally {
                 lock.unlock();
-                LOGGER.info("Unlocked lock with key: {}", AUTO_CLEANUP + SEP + task.getId() + SEP + tenant);
+                LOGGER.debug("Unlocked lock with key: {}", AUTO_CLEANUP + SEP + task.getId() + SEP + tenant);
             }
         }));
         return null;
