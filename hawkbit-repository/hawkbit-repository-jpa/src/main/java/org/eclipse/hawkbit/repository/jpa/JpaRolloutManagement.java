@@ -215,6 +215,8 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     @Retryable(include = {
             ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
     public Rollout create(final RolloutCreate rollout, final int amountGroup, final RolloutGroupConditions conditions) {
+        LOGGER.debug("Attempting to create a simple rollout with {} groups...", amountGroup);
+
         RolloutHelper.verifyRolloutGroupParameter(amountGroup, quotaManagement);
         final JpaRollout savedRollout = createRollout((JpaRollout) rollout.build());
         return createRolloutGroups(amountGroup, conditions, savedRollout);
@@ -226,6 +228,8 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
             ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
     public Rollout create(final RolloutCreate rollout, final List<RolloutGroupCreate> groups,
             final RolloutGroupConditions conditions) {
+        LOGGER.debug("Attempting to create an advanced rollout with {} groups...", groups.size());
+
         RolloutHelper.verifyRolloutGroupParameter(groups.size(), quotaManagement);
         final JpaRollout savedRollout = createRollout((JpaRollout) rollout.build());
         return createRolloutGroups(groups, conditions, savedRollout);
@@ -234,6 +238,9 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     private JpaRollout createRollout(final JpaRollout rollout) {
         WeightValidationHelper.usingContext(systemSecurityContext, tenantConfigurationManagement).validate(rollout);
         final Long totalTargets = targetManagement.countByRsql(rollout.getTargetFilterQuery());
+
+        LOGGER.debug("Create rollout {} with {} total targets", rollout.getName(), totalTargets);
+
         if (totalTargets == 0) {
             throw new ValidationException("Rollout does not match any existing targets");
         }
@@ -243,6 +250,7 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
 
     private Rollout createRolloutGroups(final int amountOfGroups, final RolloutGroupConditions conditions,
             final JpaRollout rollout) {
+        LOGGER.debug("Creating rollout groups for the simple rollout {}", rollout.getName());
         RolloutHelper.verifyRolloutInStatus(rollout, RolloutStatus.CREATING);
         RolloutHelper.verifyRolloutGroupConditions(conditions);
 
@@ -276,6 +284,7 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
 
     private Rollout createRolloutGroups(final List<RolloutGroupCreate> groupList,
             final RolloutGroupConditions conditions, final Rollout rollout) {
+        LOGGER.debug("Creating rollout groups for the advanced rollout {}", rollout.getName());
         RolloutHelper.verifyRolloutInStatus(rollout, RolloutStatus.CREATING);
         final JpaRollout savedRollout = (JpaRollout) rollout;
 
@@ -838,7 +847,7 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     }
 
     private long executeFittingHandler(final long rolloutId) {
-        LOGGER.debug("handle rollout {}", rolloutId);
+        LOGGER.debug("Handling rollout with id {}", rolloutId);
         final JpaRollout rollout = rolloutRepository.findById(rolloutId)
                 .orElseThrow(() -> new EntityNotFoundException(Rollout.class, rolloutId));
 
