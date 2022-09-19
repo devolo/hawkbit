@@ -58,6 +58,8 @@ import org.eclipse.hawkbit.repository.jpa.autoassign.AutoAssignScheduler;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoActionCleanup;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoCleanupScheduler;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.CleanupTask;
+import org.eclipse.hawkbit.repository.jpa.autorolloutcleanup.AutoRolloutCleanup;
+import org.eclipse.hawkbit.repository.jpa.autorolloutcleanup.AutoRolloutCleanupScheduler;
 import org.eclipse.hawkbit.repository.jpa.builder.JpaDistributionSetBuilder;
 import org.eclipse.hawkbit.repository.jpa.builder.JpaDistributionSetTypeBuilder;
 import org.eclipse.hawkbit.repository.jpa.builder.JpaRolloutBuilder;
@@ -813,6 +815,25 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
     }
 
     /**
+     * {@link AutoRolloutCleanup} bean.
+     *
+     * @param deploymentManagement
+     *            Deployment management service
+     * @param configManagement
+     *            Tenant configuration service
+     * @param rolloutManagement
+     *            Rollout management service
+     *
+     * @return a new {@link AutoActionCleanup} bean
+     */
+    @Bean
+    CleanupTask rolloutCleanup(final DeploymentManagement deploymentManagement,
+                               final TenantConfigurationManagement configManagement,
+                               final RolloutManagement rolloutManagement) {
+        return new AutoRolloutCleanup(deploymentManagement, configManagement, rolloutManagement);
+    }
+
+    /**
      * {@link AutoCleanupScheduler} bean.
      * 
      * @param systemManagement
@@ -834,6 +855,30 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
             final SystemSecurityContext systemSecurityContext, final LockRegistry lockRegistry,
             final List<CleanupTask> cleanupTasks) {
         return new AutoCleanupScheduler(systemManagement, systemSecurityContext, lockRegistry, cleanupTasks);
+    }
+
+    /**
+     * {@link AutoRolloutCleanupScheduler} bean.
+     *
+     * @param systemManagement
+     *            to find all tenants
+     * @param systemSecurityContext
+     *            to run as system
+     * @param lockRegistry
+     *            to lock the tenant for auto assignment
+     * @param cleanupTasks
+     *            a list of cleanup tasks
+     *
+     * @return a new {@link AutoCleanupScheduler} bean
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @Profile("!test")
+    @ConditionalOnProperty(prefix = "hawkbit.autorolloutcleanup.scheduler", name = "enabled", matchIfMissing = true)
+    AutoRolloutCleanupScheduler autoRolloutCleanupScheduler(final SystemManagement systemManagement,
+                                                     final SystemSecurityContext systemSecurityContext, final LockRegistry lockRegistry,
+                                                     final List<CleanupTask> cleanupTasks) {
+        return new AutoRolloutCleanupScheduler(systemManagement, systemSecurityContext, lockRegistry, cleanupTasks);
     }
 
     /**

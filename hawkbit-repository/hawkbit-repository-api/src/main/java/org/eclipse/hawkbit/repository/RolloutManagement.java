@@ -438,4 +438,6 @@ public interface RolloutManagement {
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_DELETE)
     void delete(long rolloutId);
 
+    @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
+    int deleteRolloutsDeletedInUI();
 }

@@ -148,6 +148,11 @@ public class TenantConfigurationProperties {
         public static final String ACTION_CLEANUP_ACTION_STATUS = "action.cleanup.actionStatus";
 
         /**
+         * Switch to enable/disable automatic action cleanup.
+         */
+        public static final String ROLLOUT_CLEANUP_ENABLED = "rollout.cleanup.enabled";
+
+        /**
          * Switch to enable/disable the multi-assignment feature.
          */
         public static final String MULTI_ASSIGNMENTS_ENABLED = "multi.assignments.enabled";
