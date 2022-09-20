@@ -120,7 +120,7 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     /**
      * Max amount of targets that are handled in one transaction.
      */
-    private static final int TRANSACTION_TARGETS = 5_000;
+    private static final int TRANSACTION_TARGETS = 20_000;
 
     /**
      * Maximum amount of actions that are deleted in one transaction.
