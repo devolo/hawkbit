@@ -298,4 +298,9 @@ public class JpaRolloutGroupManagement implements RolloutGroupManagement {
         return rolloutGroupRepository.countByRolloutId(rolloutId);
     }
 
+    @Override
+    public void deleteByIds(final List<Long> rolloutIds) {
+        rolloutGroupRepository.deleteByIds(rolloutIds);
+    }
+
 }

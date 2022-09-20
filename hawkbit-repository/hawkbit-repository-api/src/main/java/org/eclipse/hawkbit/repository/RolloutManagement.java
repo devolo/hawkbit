@@ -252,6 +252,9 @@ public interface RolloutManagement {
     Slice<Rollout> findByFiltersWithDetailedStatus(@NotNull Pageable pageable, @NotEmpty String searchText,
             boolean deleted);
 
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
+    Page<Rollout> findByDeletedIsTrue(@NotNull Pageable pageable);
+
     /**
      * Retrieves a specific rollout by its ID.
      *
@@ -438,4 +441,6 @@ public interface RolloutManagement {
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_DELETE)
     void delete(long rolloutId);
 
+    @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
+    int deleteRolloutGroupsForRolloutsDeletedInUI();
 }

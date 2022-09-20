@@ -429,6 +429,9 @@ public final class SpPermission {
          */
         public static final String HAS_AUTH_TENANT_CONFIGURATION = HAS_AUTH_PREFIX + TENANT_CONFIGURATION
                 + HAS_AUTH_SUFFIX + HAS_AUTH_OR + IS_SYSTEM_CODE;
+        private static final String DELETE_ROLLOUT_GROUP = "DELETE_ROLLOUT_GROUP";
+        public static final String HAS_AUTH_DELETE_ROLLOUT_GROUP = HAS_AUTH_PREFIX + DELETE_ROLLOUT_GROUP
+                + HAS_AUTH_SUFFIX + HAS_AUTH_OR + IS_SYSTEM_CODE;
 
         private SpringEvalExpressions() {
             // utility class

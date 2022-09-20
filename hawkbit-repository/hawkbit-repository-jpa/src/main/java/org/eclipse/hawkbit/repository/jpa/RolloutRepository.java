@@ -18,6 +18,8 @@ import org.eclipse.hawkbit.repository.jpa.model.JpaRollout;
 import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.Rollout.RolloutStatus;
 import org.eclipse.hawkbit.repository.model.TenantAwareBaseEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -50,6 +52,8 @@ public interface RolloutRepository
      * @return {@link Rollout} for specific name
      */
     Optional<Rollout> findByName(String name);
+
+    Page<Rollout> findByDeletedIsTrue(Pageable pageRef);
 
     /**
      * Deletes all {@link TenantAwareBaseEntity} of a given tenant. For safety
