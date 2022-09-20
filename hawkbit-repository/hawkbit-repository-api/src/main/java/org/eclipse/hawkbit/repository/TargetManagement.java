@@ -330,6 +330,23 @@ public interface TargetManagement {
     Page<Target> findByAssignedDistributionSet(@NotNull Pageable pageReq, long distributionSetID);
 
     /**
+     * retrieves {@link Target}s by the prune state.
+     *
+     * @param pageReq
+     *            page parameter
+     * @param pruneState
+     *            the prune state (0 or 1) of the {@link Target}
+     *
+     *
+     * @return the found {@link Target}s
+     *
+     * @throws EntityNotFoundException
+     *             if distribution set with given ID does not exist
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_REPOSITORY_AND_READ_TARGET)
+    Page<Target> findByIsPrunedIsFalse(Pageable pageReq);
+
+    /**
      * Retrieves {@link Target}s by the assigned {@link DistributionSet}
      * possible including additional filtering based on the given {@code spec}.
      * 

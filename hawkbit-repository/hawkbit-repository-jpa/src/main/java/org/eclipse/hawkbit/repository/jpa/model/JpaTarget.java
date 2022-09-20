@@ -168,6 +168,9 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     @Column(name = "request_controller_attributes", nullable = false)
     private boolean requestControllerAttributes = true;
 
+    @Column(name = "is_pruned", nullable = false)
+    private boolean isPruned = false;
+
     @CascadeOnDelete
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, targetEntity = JpaTargetMetadata.class)
     private List<TargetMetadata> metadata;
@@ -255,6 +258,8 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     public void setControllerId(final String controllerId) {
         this.controllerId = controllerId;
     }
+
+    public void setPruned(final Boolean isPruned) { this.isPruned = isPruned; }
 
     public List<Action> getActions() {
         if (actions == null) {
@@ -349,6 +354,9 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     public TargetUpdateStatus getUpdateStatus() {
         return updateStatus;
     }
+
+    @Override
+    public Boolean getIsPruned() { return isPruned; }
 
     @Override
     public DistributionSet getInstalledDistributionSet() {

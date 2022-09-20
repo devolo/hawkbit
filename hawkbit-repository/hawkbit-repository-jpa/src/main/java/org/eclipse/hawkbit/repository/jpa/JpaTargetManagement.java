@@ -59,6 +59,7 @@ import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.orm.jpa.vendor.Database;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -381,6 +382,11 @@ public class JpaTargetManagement implements TargetManagement {
         throwEntityNotFoundIfDsDoesNotExist(distributionSetID);
 
         return targetRepository.findByAssignedDistributionSetId(pageReq, distributionSetID);
+    }
+
+    @Override
+    public Page<Target> findByIsPrunedIsFalse(final Pageable pageReq) {
+        return targetRepository.findByIsPrunedIsFalse(pageReq);
     }
 
     @Override

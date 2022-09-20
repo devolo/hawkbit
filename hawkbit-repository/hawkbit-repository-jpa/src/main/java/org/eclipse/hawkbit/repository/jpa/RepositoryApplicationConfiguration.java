@@ -57,6 +57,8 @@ import org.eclipse.hawkbit.repository.jpa.autoassign.AutoAssignChecker;
 import org.eclipse.hawkbit.repository.jpa.autoassign.AutoAssignScheduler;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoActionCleanup;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoCleanupScheduler;
+import org.eclipse.hawkbit.repository.jpa.autoactionstatuscleanup.AutoActionStatusCleanup;
+import org.eclipse.hawkbit.repository.jpa.autoactionstatuscleanup.AutoActionStatusCleanupScheduler;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.CleanupTask;
 import org.eclipse.hawkbit.repository.jpa.autorolloutcleanup.AutoRolloutCleanup;
 import org.eclipse.hawkbit.repository.jpa.autorolloutcleanup.AutoRolloutCleanupScheduler;
@@ -859,6 +861,33 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
 
     /**
      * {@link AutoRolloutCleanupScheduler} bean.
+     * {@link AutoActionStatusCleanup} bean.
+     *
+     * @param deploymentManagement
+     *            Deployment management service
+     * @param configManagement
+     *            Tenant configuration service
+     *
+     * @return a new {@link AutoActionStatusCleanup} bean
+     */
+    @Bean
+    CleanupTask actionStatusCleanup(final DeploymentManagement deploymentManagement,
+                              final TenantConfigurationManagement configManagement, final TargetManagement targetMgmt) {
+        return new AutoActionStatusCleanup(deploymentManagement, configManagement, targetMgmt);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @Profile("!test")
+    @ConditionalOnProperty(prefix = "hawkbit.autoactionstatuscleanup.scheduler", name = "enabled", matchIfMissing = true)
+    AutoActionStatusCleanupScheduler autoActionStatusCleanupScheduler(final SystemManagement systemManagement,
+                                                                      final SystemSecurityContext systemSecurityContext, final LockRegistry lockRegistry,
+                                                                      final List<CleanupTask> cleanupTasks) {
+        return new AutoActionStatusCleanupScheduler(systemManagement, systemSecurityContext, lockRegistry, cleanupTasks);
+    }
+
+    /**
+     * {@link AutoActionStatusCleanupScheduler} bean.
      *
      * @param systemManagement
      *            to find all tenants

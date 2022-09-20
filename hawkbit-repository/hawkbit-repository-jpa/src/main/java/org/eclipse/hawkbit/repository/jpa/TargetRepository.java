@@ -178,6 +178,14 @@ public interface TargetRepository extends BaseEntityRepository<JpaTarget, Long>,
     Page<Target> findByAssignedDistributionSetId(Pageable pageable, Long setID);
 
     /**
+     * Finds all targets that have given prune state.
+     *
+     * @param pruneState is the prune state of the {@link Target} to filter for.
+     * @return page of found targets
+     */
+    Page<Target> findByIsPrunedIsFalse(Pageable pageable);
+
+    /**
      * retrieves {@link Target}s where
      * {@link JpaTarget#isRequestControllerAttributes()}.
      * 
