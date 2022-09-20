@@ -1,21 +1,24 @@
+/**
+ * Copyright (c) 2022 devolo AG and others.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ */
 package org.eclipse.hawkbit.repository.jpa.autorolloutcleanup;
 
-import static org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey.ROLLOUT_CLEANUP_ENABLED;
-
-import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
-import org.eclipse.hawkbit.repository.RolloutManagement;
-import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
+import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.CleanupTask;
 import org.eclipse.hawkbit.repository.model.Rollout;
-import org.eclipse.hawkbit.repository.model.TenantConfigurationValue;
+import org.eclipse.hawkbit.repository.model.RolloutGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 
-import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class AutoRolloutCleanup implements CleanupTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoRolloutCleanup.class);
@@ -27,10 +30,13 @@ public class AutoRolloutCleanup implements CleanupTask {
     private final TenantConfigurationManagement configMgmt;
     private final RolloutManagement rolloutMgmt;
 
-    public AutoRolloutCleanup(final DeploymentManagement deploymentMgmt, final TenantConfigurationManagement configMgmt, final RolloutManagement rolloutMgmt) {
+    private final RolloutGroupManagement rolloutGroupMgmt;
+
+    public AutoRolloutCleanup(final DeploymentManagement deploymentMgmt, final TenantConfigurationManagement configMgmt, final RolloutManagement rolloutMgmt, RolloutGroupManagement rolloutGroupMgmt) {
         this.deploymentMgmt = deploymentMgmt;
         this.configMgmt = configMgmt;
         this.rolloutMgmt = rolloutMgmt;
+        this.rolloutGroupMgmt = rolloutGroupMgmt;
     }
 
     @Override
@@ -40,10 +46,24 @@ public class AutoRolloutCleanup implements CleanupTask {
             return;
         }
 
-        if(getRolloutDeletionStatus()){
-            final int rolloutCount = rolloutMgmt.deleteRolloutsDeletedInUI();
-            LOGGER.debug("Deleted {} rollouts which have been marked to be deleted in UI", rolloutCount);
-        }
+        List<Rollout> deletedRollouts = getDeletedRollouts();
+        LOGGER.debug("Fetched {} rollouts that were deleted in UI", deletedRollouts.size());
+
+        if (deletedRollouts.isEmpty()) { return; }
+
+        // Get rolloutGroups that match
+        deletedRollouts.forEach(rollout -> {
+            Page<RolloutGroup> rolloutGroupPage = rolloutGroupMgmt.findByRollout(new OffsetBasedPageRequest(0, 100, Sort.unsorted()), rollout.getId());
+            List<RolloutGroup> rolloutGroupList = rolloutGroupPage.getContent();
+
+            LOGGER.debug("Found {} rollout groups for rollout with ID {}", rolloutGroupList.size(), rollout.getId());
+
+            List<Long> rolloutGroupIds = rolloutGroupList.stream().map(RolloutGroup::getId).collect(Collectors.toList());
+            rolloutGroupMgmt.deleteByIds(rolloutGroupIds);
+
+            LOGGER.debug("Deleted {} rollout groups with ids: {}", rolloutGroupIds.size(), rolloutGroupIds);
+        });
+
     }
 
     @Override
@@ -51,22 +71,14 @@ public class AutoRolloutCleanup implements CleanupTask {
         return ID;
     }
 
-    private boolean getRolloutDeletionStatus() {
-        final Page<Rollout> rolloutPage = rolloutMgmt
-                .findAllWithDetailedStatus(new OffsetBasedPageRequest(0, 100, Sort.unsorted()), true);
+    private List<Rollout> getDeletedRollouts() {
+        final Page<Rollout> rolloutPage = rolloutMgmt.findByDeletedIsTrue(new OffsetBasedPageRequest(0, 100, Sort.unsorted()));
         final List<Rollout> rolloutList = rolloutPage.getContent();
 
-        return rolloutList.stream().anyMatch(Rollout::isDeleted);
+        return rolloutList;
     }
 
     private boolean isEnabled() {
-        final TenantConfigurationValue<Boolean> isEnabled = getConfigValue(ROLLOUT_CLEANUP_ENABLED, Boolean.class);
-        return isEnabled != null ? isEnabled.getValue() : ROLLOUT_CLEANUP_ENABLED_DEFAULT;
+        return ROLLOUT_CLEANUP_ENABLED_DEFAULT;
     }
-
-    private <T extends Serializable> TenantConfigurationValue<T> getConfigValue(final String key,
-                                                                                final Class<T> valueType) {
-        return configMgmt.getConfigurationValue(key, valueType);
-    }
-
 }

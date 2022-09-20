@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2022 devolo AG and others.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ */
 package org.eclipse.hawkbit.repository.jpa.autorolloutcleanup;
 
 import org.eclipse.hawkbit.repository.SystemManagement;
@@ -16,7 +24,7 @@ public class AutoRolloutCleanupScheduler {
 
     private static final String AUTO_ROLLOUT_CLEANUP = "auto-rollout-cleanup";
     private static final String SEP = ".";
-    private static final String PROP_AUTO_ROLLOUT_CLEANUP_INTERVAL = "${hawkbit.autorolloutcleanup.scheduler.fixedDelay:2592000000}"; // 30 days
+    private static final String PROP_AUTO_ROLLOUT_CLEANUP_INTERVAL = "${hawkbit.autorolloutcleanup.scheduler.interval:2592000000}"; // 30 days
 
     private final SystemManagement systemManagement;
     private final SystemSecurityContext systemSecurityContext;

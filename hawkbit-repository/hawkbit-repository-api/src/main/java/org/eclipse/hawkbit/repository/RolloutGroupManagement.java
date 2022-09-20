@@ -8,6 +8,7 @@
  */
 package org.eclipse.hawkbit.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import javax.validation.constraints.NotNull;
@@ -191,4 +192,7 @@ public interface RolloutGroupManagement {
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
     long countTargetsOfRolloutsGroup(long rolloutGroupId);
+
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_DELETE_ROLLOUT_GROUP)
+    void deleteByIds(List<Long> ids);
 }

@@ -829,8 +829,9 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
     @Bean
     CleanupTask rolloutCleanup(final DeploymentManagement deploymentManagement,
                                final TenantConfigurationManagement configManagement,
-                               final RolloutManagement rolloutManagement) {
-        return new AutoRolloutCleanup(deploymentManagement, configManagement, rolloutManagement);
+                               final RolloutManagement rolloutManagement,
+                               final RolloutGroupManagement rolloutGroupManagement) {
+        return new AutoRolloutCleanup(deploymentManagement, configManagement, rolloutManagement, rolloutGroupManagement);
     }
 
     /**

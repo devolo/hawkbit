@@ -209,6 +209,11 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     }
 
     @Override
+    public Page<Rollout> findByDeletedIsTrue(final Pageable pageable) {
+        return rolloutRepository.findByDeletedIsTrue(pageable);
+    }
+
+    @Override
     public Optional<Rollout> get(final long rolloutId) {
         return rolloutRepository.findById(rolloutId).map(r -> (Rollout) r);
     }
@@ -1165,7 +1170,7 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
 
     @Override
     @Transactional(readOnly = false)
-    public int deleteRolloutsDeletedInUI() {
+    public int deleteRolloutGroupsForRolloutsDeletedInUI() {
         final Query deleteQuery = entityManager.createNativeQuery(QUERY_DELETE_ROLLOUTS_MARKED_AS_DELETED_IN_UI);
 
         LOGGER.warn("Rollout cleanup: Executing the following (native) query: {}", deleteQuery);
