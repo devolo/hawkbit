@@ -1,2 +1,2 @@
 ALTER TABLE sp_action
-DROP CONSTRAINT fk_action_rolloutgroup;
+DROP FOREIGN KEY fk_action_rolloutgroup;
