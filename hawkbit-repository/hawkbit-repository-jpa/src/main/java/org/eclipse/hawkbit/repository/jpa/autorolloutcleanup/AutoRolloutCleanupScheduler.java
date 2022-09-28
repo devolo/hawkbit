@@ -25,7 +25,7 @@ public class AutoRolloutCleanupScheduler {
     private static final String AUTO_ROLLOUT_CLEANUP = "auto-rollout-cleanup";
     private static final String SEP = ".";
     private static final String PROP_AUTO_ROLLOUT_CLEANUP_INTERVAL = "${hawkbit.autorolloutcleanup.scheduler.interval:2592000000}"; // 30 days
-    private static final String PROP_AUTH_ROLLOUT_CLEANUP_INITIAL_DELAY = "${hawkbit.autorolloutcleanup.scheduler.interval:60000}"; // 1 minute
+    private static final String PROP_AUTH_ROLLOUT_CLEANUP_INITIAL_DELAY = "${hawkbit.autorolloutcleanup.scheduler.initialDelay:1000}"; // 1 second
 
     private final SystemManagement systemManagement;
     private final SystemSecurityContext systemSecurityContext;
