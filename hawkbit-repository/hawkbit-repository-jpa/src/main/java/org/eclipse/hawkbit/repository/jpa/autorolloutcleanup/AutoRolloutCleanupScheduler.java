@@ -25,6 +25,7 @@ public class AutoRolloutCleanupScheduler {
     private static final String AUTO_ROLLOUT_CLEANUP = "auto-rollout-cleanup";
     private static final String SEP = ".";
     private static final String PROP_AUTO_ROLLOUT_CLEANUP_INTERVAL = "${hawkbit.autorolloutcleanup.scheduler.interval:2592000000}"; // 30 days
+    private static final String PROP_AUTH_ROLLOUT_CLEANUP_INITIAL_DELAY = "${hawkbit.autorolloutcleanup.scheduler.interval:60000}"; // 1 minute
 
     private final SystemManagement systemManagement;
     private final SystemSecurityContext systemSecurityContext;
@@ -39,7 +40,7 @@ public class AutoRolloutCleanupScheduler {
         this.cleanupTasks = cleanupTasks;
     }
 
-    @Scheduled(initialDelayString = PROP_AUTO_ROLLOUT_CLEANUP_INTERVAL, fixedDelayString = PROP_AUTO_ROLLOUT_CLEANUP_INTERVAL)
+    @Scheduled(initialDelayString = PROP_AUTH_ROLLOUT_CLEANUP_INITIAL_DELAY, fixedDelayString = PROP_AUTO_ROLLOUT_CLEANUP_INTERVAL)
     public void run() {
         LOGGER.debug("Auto rollout cleanup scheduler has been triggered.");
 
