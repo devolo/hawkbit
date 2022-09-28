@@ -1008,6 +1008,15 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     }
 
     @Override
+    public long countByIsCleanUp() {
+        return rolloutRepository.count(RolloutSpecification.isCleanedUp(true));
+    }
+
+    public long countAllRolloutsInRepository() {
+        return rolloutRepository.count();
+    }
+
+    @Override
     public long countByFilters(final String searchText) {
         return rolloutRepository.count(JpaRolloutHelper.likeNameOrDescription(searchText, false));
     }

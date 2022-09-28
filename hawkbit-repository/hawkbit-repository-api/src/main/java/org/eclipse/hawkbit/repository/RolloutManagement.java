@@ -81,6 +81,12 @@ public interface RolloutManagement {
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
     long count();
 
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
+    long countByIsCleanUp();
+
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
+    long countAllRolloutsInRepository();
+
     /**
      * Count rollouts by given text in name or description.
      *
