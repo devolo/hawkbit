@@ -139,6 +139,9 @@ public class JpaRollout extends AbstractJpaNamedEntity implements Rollout, Event
     @Max(Action.WEIGHT_MAX)
     private Integer weight;
 
+    @Column(name = "is_cleaned_up", nullable = false)
+    private boolean isCleanedUp = false;
+
     @Transient
     private transient TotalTargetCountStatus totalTargetCountStatus;
 
@@ -220,6 +223,10 @@ public class JpaRollout extends AbstractJpaNamedEntity implements Rollout, Event
     public void setWeight(final Integer weight) {
         this.weight = weight;
     }
+
+    public boolean getIsCleanedUp() { return isCleanedUp; }
+
+    public void setIsCleanedUp(final boolean isCleanedUp) { this.isCleanedUp = isCleanedUp; }
 
     @Override
     public long getTotalTargets() {

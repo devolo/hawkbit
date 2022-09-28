@@ -42,6 +42,8 @@ public interface Rollout extends NamedEntity {
      */
     boolean isDeleted();
 
+    boolean getIsCleanedUp();
+
     /**
      * @return {@link DistributionSet} that is rolled out
      */

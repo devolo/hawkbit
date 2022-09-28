@@ -56,6 +56,14 @@ public interface RolloutRepository
     Page<Rollout> findByDeletedIsTrue(Pageable pageRef);
 
     /**
+     * Finds all rollouts that have `is_cleaned_up` set to false
+     *
+     * @param pageRef
+     * @return
+     */
+    Page<Rollout> findByIsCleanedUpIsFalse(Pageable pageRef);
+
+    /**
      * Deletes all {@link TenantAwareBaseEntity} of a given tenant. For safety
      * reasons (this is a "delete everything" query after all) we add the tenant
      * manually to query even if this will by done by {@link EntityManager}
