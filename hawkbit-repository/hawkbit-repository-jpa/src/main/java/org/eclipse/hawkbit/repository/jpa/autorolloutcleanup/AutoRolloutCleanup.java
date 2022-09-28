@@ -14,6 +14,8 @@ import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.RolloutGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 
@@ -32,6 +34,11 @@ public class AutoRolloutCleanup implements CleanupTask {
 
     private final RolloutGroupManagement rolloutGroupMgmt;
 
+    @Value("${hawkbit.autorolloutcleanup.rolloutsPerCleanup:100}")
+    private int rolloutsPerCleanup;
+    @Value("${hawkbit.autorolloutcleanup.rolloutGroupsPerRolloutCleanup:1000}")
+    private int rolloutGroupsPerRolloutCleanup;
+
     public AutoRolloutCleanup(final DeploymentManagement deploymentMgmt, final TenantConfigurationManagement configMgmt, final RolloutManagement rolloutMgmt, RolloutGroupManagement rolloutGroupMgmt) {
         this.deploymentMgmt = deploymentMgmt;
         this.configMgmt = configMgmt;
@@ -48,22 +55,24 @@ public class AutoRolloutCleanup implements CleanupTask {
 
         List<Rollout> deletedRollouts = getDeletedRollouts();
         LOGGER.debug("Fetched {} rollouts that were deleted in UI", deletedRollouts.size());
+        LOGGER.debug("rolloutsPerCleanup: {}; rolloutGroupsPerRolloutCleanup: {}", rolloutsPerCleanup, rolloutGroupsPerRolloutCleanup);
 
         if (deletedRollouts.isEmpty()) { return; }
 
         // Get rolloutGroups that match
         deletedRollouts.forEach(rollout -> {
-            Page<RolloutGroup> rolloutGroupPage = rolloutGroupMgmt.findByRollout(new OffsetBasedPageRequest(0, 100, Sort.unsorted()), rollout.getId());
+            Page<RolloutGroup> rolloutGroupPage = rolloutGroupMgmt.findByRollout(new OffsetBasedPageRequest(0, rolloutGroupsPerRolloutCleanup, Sort.unsorted()), rollout.getId());
             List<RolloutGroup> rolloutGroupList = rolloutGroupPage.getContent();
 
             LOGGER.debug("Found {} rollout groups for rollout with ID {}", rolloutGroupList.size(), rollout.getId());
+
+            if (rolloutGroupList.size() == 0) { return; }
 
             List<Long> rolloutGroupIds = rolloutGroupList.stream().map(RolloutGroup::getId).collect(Collectors.toList());
             rolloutGroupMgmt.deleteByIds(rolloutGroupIds);
 
             LOGGER.debug("Deleted {} rollout groups with ids: {}", rolloutGroupIds.size(), rolloutGroupIds);
         });
-
     }
 
     @Override
@@ -72,7 +81,7 @@ public class AutoRolloutCleanup implements CleanupTask {
     }
 
     private List<Rollout> getDeletedRollouts() {
-        final Page<Rollout> rolloutPage = rolloutMgmt.findByDeletedIsTrue(new OffsetBasedPageRequest(0, 100, Sort.unsorted()));
+        final Page<Rollout> rolloutPage = rolloutMgmt.findByDeletedIsTrue(new OffsetBasedPageRequest(0, rolloutsPerCleanup, Sort.unsorted()));
         final List<Rollout> rolloutList = rolloutPage.getContent();
 
         return rolloutList;
