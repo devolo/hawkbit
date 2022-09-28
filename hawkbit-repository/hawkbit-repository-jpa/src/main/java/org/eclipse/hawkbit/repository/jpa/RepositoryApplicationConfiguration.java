@@ -827,11 +827,10 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
      * @return a new {@link AutoActionCleanup} bean
      */
     @Bean
-    CleanupTask rolloutCleanup(final DeploymentManagement deploymentManagement,
-                               final TenantConfigurationManagement configManagement,
-                               final RolloutManagement rolloutManagement,
-                               final RolloutGroupManagement rolloutGroupManagement) {
-        return new AutoRolloutCleanup(deploymentManagement, configManagement, rolloutManagement, rolloutGroupManagement);
+    CleanupTask rolloutCleanup(final RolloutManagement rolloutManagement,
+                               final RolloutGroupManagement rolloutGroupManagement,
+                               final QuotaManagement quotaManagement) {
+        return new AutoRolloutCleanup(rolloutManagement, rolloutGroupManagement, quotaManagement);
     }
 
     /**

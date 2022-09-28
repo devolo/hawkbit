@@ -27,22 +27,17 @@ public class AutoRolloutCleanup implements CleanupTask {
     private static final String ID = "rollout-cleanup";
     private static final boolean ROLLOUT_CLEANUP_ENABLED_DEFAULT = true;
 
-    private final DeploymentManagement deploymentMgmt;
-    private final TenantConfigurationManagement configMgmt;
     private final RolloutManagement rolloutMgmt;
-
     private final RolloutGroupManagement rolloutGroupMgmt;
+    private final QuotaManagement quotaMgmt;
 
     @Value("${hawkbit.autorolloutcleanup.rolloutsPerCleanup:100}")
     private int rolloutsPerCleanup;
-    @Value("${hawkbit.autorolloutcleanup.rolloutGroupsPerRolloutCleanup:500}")
-    private int rolloutGroupsPerRolloutCleanup;
 
-    public AutoRolloutCleanup(final DeploymentManagement deploymentMgmt, final TenantConfigurationManagement configMgmt, final RolloutManagement rolloutMgmt, RolloutGroupManagement rolloutGroupMgmt) {
-        this.deploymentMgmt = deploymentMgmt;
-        this.configMgmt = configMgmt;
+    public AutoRolloutCleanup(final RolloutManagement rolloutMgmt, final RolloutGroupManagement rolloutGroupMgmt, final QuotaManagement quotaMgmt) {
         this.rolloutMgmt = rolloutMgmt;
         this.rolloutGroupMgmt = rolloutGroupMgmt;
+        this.quotaMgmt = quotaMgmt;
     }
 
     @Override
@@ -51,7 +46,7 @@ public class AutoRolloutCleanup implements CleanupTask {
             LOGGER.debug("Rollout cleanup is disabled for this tenant...");
             return;
         }
-        LOGGER.debug("rolloutsPerCleanup: {}; rolloutGroupsPerRolloutCleanup: {}", rolloutsPerCleanup, rolloutGroupsPerRolloutCleanup);
+        LOGGER.debug("rolloutsPerCleanup: {}; rolloutGroupsPerRolloutCleanup: {}", rolloutsPerCleanup, quotaMgmt.getMaxRolloutGroupsPerRollout());
 
         List<Rollout> rolloutsToCleanUp = getRolloutsNotYetCleanedUp();
         LOGGER.debug("Fetched {} rollouts that were deleted in UI and not yet cleaned up", rolloutsToCleanUp.size());
@@ -60,7 +55,7 @@ public class AutoRolloutCleanup implements CleanupTask {
 
         // Get rolloutGroups that match
         rolloutsToCleanUp.forEach(rollout -> {
-            Page<RolloutGroup> rolloutGroupPage = rolloutGroupMgmt.findByRollout(new OffsetBasedPageRequest(0, rolloutGroupsPerRolloutCleanup, Sort.unsorted()), rollout.getId());
+            Page<RolloutGroup> rolloutGroupPage = rolloutGroupMgmt.findByRollout(new OffsetBasedPageRequest(0, quotaMgmt.getMaxRolloutGroupsPerRollout(), Sort.unsorted()), rollout.getId());
             List<RolloutGroup> rolloutGroupList = rolloutGroupPage.getContent();
 
             LOGGER.debug("Found {} rollout groups for rollout with ID {}", rolloutGroupList.size(), rollout.getId());
