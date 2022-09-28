@@ -10,7 +10,6 @@ package org.eclipse.hawkbit.repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import javax.validation.ConstraintViolationException;
 import javax.validation.Valid;
@@ -85,7 +84,7 @@ public interface RolloutManagement {
     long countByIsCleanUp();
 
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
-    long countAllRolloutsInRepository();
+    long countRolloutsMarkedAsDeleted();
 
     /**
      * Count rollouts by given text in name or description.
@@ -258,7 +257,7 @@ public interface RolloutManagement {
     Page<Rollout> findByDeletedIsTrue(@NotNull Pageable pageable);
 
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
-    Page<Rollout> findByIsCleanedUpIsFalse(@NotNull Pageable pageable);
+    Page<Rollout> findByIsCleanedUpIsFalseAndDeletedIsTrue(@NotNull Pageable pageable);
 
     /**
      * Retrieves a specific rollout by its ID.

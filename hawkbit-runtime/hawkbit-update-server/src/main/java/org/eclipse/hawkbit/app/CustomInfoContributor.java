@@ -77,7 +77,7 @@ public class CustomInfoContributor implements InfoContributor {
             rolloutsByState.put("stopped", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.STOPPED.equals(rollout.getStatus())).count());
             rolloutsByState.put("waiting_for_approval", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.WAITING_FOR_APPROVAL.equals(rollout.getStatus())).count());
 
-            rolloutCleanupState.put("all", rolloutManagement.countAllRolloutsInRepository());
+            rolloutCleanupState.put("deleted_in_ui", rolloutManagement.countRolloutsMarkedAsDeleted());
             rolloutCleanupState.put("cleaned_up", rolloutManagement.countByIsCleanUp());
 
             builder.withDetail("targets_by_state", targetsByState);

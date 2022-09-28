@@ -1012,8 +1012,8 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
         return rolloutRepository.count(RolloutSpecification.isCleanedUp(true));
     }
 
-    public long countAllRolloutsInRepository() {
-        return rolloutRepository.count();
+    public long countRolloutsMarkedAsDeleted() {
+        return rolloutRepository.count(RolloutSpecification.deleted(true));
     }
 
     @Override
@@ -1030,8 +1030,8 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
         return JpaRolloutHelper.convertPage(findAll, pageable);
     }
 
-    public Page<Rollout> findByIsCleanedUpIsFalse(final Pageable pageReq) {
-        return rolloutRepository.findByIsCleanedUpIsFalse(pageReq);
+    public Page<Rollout> findByIsCleanedUpIsFalseAndDeletedIsTrue(final Pageable pageReq) {
+        return rolloutRepository.findByIsCleanedUpIsFalseAndDeletedIsTrue(pageReq);
     }
 
     @Override

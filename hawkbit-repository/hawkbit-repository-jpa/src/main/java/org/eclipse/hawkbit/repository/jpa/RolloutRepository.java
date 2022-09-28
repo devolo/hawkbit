@@ -61,7 +61,7 @@ public interface RolloutRepository
      * @param pageRef
      * @return
      */
-    Page<Rollout> findByIsCleanedUpIsFalse(Pageable pageRef);
+    Page<Rollout> findByIsCleanedUpIsFalseAndDeletedIsTrue(Pageable pageRef);
 
     /**
      * Deletes all {@link TenantAwareBaseEntity} of a given tenant. For safety

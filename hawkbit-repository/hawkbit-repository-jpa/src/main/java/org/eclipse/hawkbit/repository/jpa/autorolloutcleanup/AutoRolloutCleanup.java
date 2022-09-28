@@ -80,7 +80,7 @@ public class AutoRolloutCleanup implements CleanupTask {
     }
 
     private List<Rollout> getRolloutsNotYetCleanedUp() {
-        final Page<Rollout> rolloutPage = rolloutMgmt.findByIsCleanedUpIsFalse(new OffsetBasedPageRequest(0, rolloutsPerCleanup, Sort.unsorted()));
+        final Page<Rollout> rolloutPage = rolloutMgmt.findByIsCleanedUpIsFalseAndDeletedIsTrue(new OffsetBasedPageRequest(0, rolloutsPerCleanup, Sort.unsorted()));
         final List<Rollout> rolloutList = rolloutPage.getContent();
 
         return rolloutList;
