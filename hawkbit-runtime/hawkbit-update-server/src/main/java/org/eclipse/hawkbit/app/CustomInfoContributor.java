@@ -37,8 +37,9 @@ public class CustomInfoContributor implements InfoContributor {
         final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.ENGLISH);
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-        Map<String, Object> targetsByState = new HashMap<String, Object>();
-        Map<String, Object> rolloutsByState = new HashMap<String, Object>();
+        Map<String, Object> targetsByState = new HashMap<>();
+        Map<String, Object> rolloutsByState = new HashMap<>();
+        Map<String, Object> rolloutCleanupState = new HashMap<>();
 
         // Setup timer to record elapsed time for fetching statistics
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
@@ -76,8 +77,12 @@ public class CustomInfoContributor implements InfoContributor {
             rolloutsByState.put("stopped", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.STOPPED.equals(rollout.getStatus())).count());
             rolloutsByState.put("waiting_for_approval", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.WAITING_FOR_APPROVAL.equals(rollout.getStatus())).count());
 
+            rolloutCleanupState.put("deleted_in_ui", rolloutManagement.countRolloutsMarkedAsDeleted());
+            rolloutCleanupState.put("cleaned_up", rolloutManagement.countByIsCleanUp());
+
             builder.withDetail("targets_by_state", targetsByState);
             builder.withDetail("rollouts_by_state", rolloutsByState);
+            builder.withDetail("rollouts_by_cleanup_state", rolloutCleanupState);
             builder.withDetail("total_targets", targetManagement.count());
             builder.withDetail("offline_targets", targetManagement.countByFilters(null, Boolean.TRUE, null, null, Boolean.FALSE));
             builder.withDetail("total_distribution_sets", distributionSetManagement.count());

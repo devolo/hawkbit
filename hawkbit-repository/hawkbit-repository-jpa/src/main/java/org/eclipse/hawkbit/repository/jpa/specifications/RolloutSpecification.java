@@ -45,4 +45,37 @@ public final class RolloutSpecification {
 
     }
 
+    /**
+     * {@link Specification} for retrieving {@link Rollout}s by its DELETED
+     * attribute. Includes fetch for stuff that is required for {@link Rollout}
+     * queries.
+     *
+     * @param isCleanedUp
+     *            TRUE/FALSE are compared to the attribute isCleanedUp. If NULL the
+     *            attribute is ignored
+     * @return the {@link Rollout} {@link Specification}
+     */
+    public static Specification<JpaRollout> isCleanedUp(final boolean isCleanedUp) {
+        return (root, query, cb) -> {
+            final Predicate predicate = cb.equal(root.<Boolean> get(JpaRollout_.isCleanedUp), isCleanedUp);
+            return predicate;
+        };
+    }
+
+    /**
+     * {@link Specification} for retrieving {@link Rollout}s by its DELETED
+     * attribute. Includes fetch for stuff that is required for {@link Rollout}
+     * queries.
+     *
+     * @param deleted
+     *            TRUE/FALSE are compared to the attribute DELETED. If NULL the
+     *            attribute is ignored
+     * @return the {@link Rollout} {@link Specification}
+     */
+    public static Specification<JpaRollout> deleted(final boolean deleted) {
+        return (root, query, cb) -> {
+            final Predicate predicate = cb.equal(root.<Boolean> get(JpaRollout_.deleted), deleted);
+            return predicate;
+        };
+    }
 }

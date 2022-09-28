@@ -26,14 +26,9 @@ import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException
 import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
 import org.eclipse.hawkbit.repository.exception.RolloutIllegalStateException;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.Rollout;
+import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.repository.model.Rollout.RolloutStatus;
-import org.eclipse.hawkbit.repository.model.RolloutGroup;
 import org.eclipse.hawkbit.repository.model.RolloutGroup.RolloutGroupStatus;
-import org.eclipse.hawkbit.repository.model.RolloutGroupConditions;
-import org.eclipse.hawkbit.repository.model.RolloutGroupsValidation;
-import org.eclipse.hawkbit.repository.model.Target;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -84,6 +79,12 @@ public interface RolloutManagement {
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
     long count();
+
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
+    long countByIsCleanUp();
+
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
+    long countRolloutsMarkedAsDeleted();
 
     /**
      * Count rollouts by given text in name or description.
@@ -254,6 +255,9 @@ public interface RolloutManagement {
 
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
     Page<Rollout> findByDeletedIsTrue(@NotNull Pageable pageable);
+
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
+    Page<Rollout> findByIsCleanedUpIsFalseAndDeletedIsTrue(@NotNull Pageable pageable);
 
     /**
      * Retrieves a specific rollout by its ID.
@@ -442,5 +446,5 @@ public interface RolloutManagement {
     void delete(long rolloutId);
 
     @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
-    int deleteRolloutGroupsForRolloutsDeletedInUI();
+    void setRolloutAsCleanedUp(@NotNull final Rollout rollout);
 }

@@ -14,6 +14,7 @@ import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.RolloutGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 
@@ -26,17 +27,17 @@ public class AutoRolloutCleanup implements CleanupTask {
     private static final String ID = "rollout-cleanup";
     private static final boolean ROLLOUT_CLEANUP_ENABLED_DEFAULT = true;
 
-    private final DeploymentManagement deploymentMgmt;
-    private final TenantConfigurationManagement configMgmt;
     private final RolloutManagement rolloutMgmt;
-
     private final RolloutGroupManagement rolloutGroupMgmt;
+    private final QuotaManagement quotaMgmt;
 
-    public AutoRolloutCleanup(final DeploymentManagement deploymentMgmt, final TenantConfigurationManagement configMgmt, final RolloutManagement rolloutMgmt, RolloutGroupManagement rolloutGroupMgmt) {
-        this.deploymentMgmt = deploymentMgmt;
-        this.configMgmt = configMgmt;
+    @Value("${hawkbit.autorolloutcleanup.rolloutsPerCleanup:100}")
+    private int rolloutsPerCleanup;
+
+    public AutoRolloutCleanup(final RolloutManagement rolloutMgmt, final RolloutGroupManagement rolloutGroupMgmt, final QuotaManagement quotaMgmt) {
         this.rolloutMgmt = rolloutMgmt;
         this.rolloutGroupMgmt = rolloutGroupMgmt;
+        this.quotaMgmt = quotaMgmt;
     }
 
     @Override
@@ -45,25 +46,32 @@ public class AutoRolloutCleanup implements CleanupTask {
             LOGGER.debug("Rollout cleanup is disabled for this tenant...");
             return;
         }
+        LOGGER.debug("rolloutsPerCleanup: {}; rolloutGroupsPerRolloutCleanup: {}", rolloutsPerCleanup, quotaMgmt.getMaxRolloutGroupsPerRollout());
 
-        List<Rollout> deletedRollouts = getDeletedRollouts();
-        LOGGER.debug("Fetched {} rollouts that were deleted in UI", deletedRollouts.size());
+        List<Rollout> rolloutsToCleanUp = getRolloutsNotYetCleanedUp();
+        LOGGER.debug("Fetched {} rollouts that were deleted in UI and not yet cleaned up", rolloutsToCleanUp.size());
 
-        if (deletedRollouts.isEmpty()) { return; }
+        if (rolloutsToCleanUp.isEmpty()) { return; }
 
         // Get rolloutGroups that match
-        deletedRollouts.forEach(rollout -> {
-            Page<RolloutGroup> rolloutGroupPage = rolloutGroupMgmt.findByRollout(new OffsetBasedPageRequest(0, 100, Sort.unsorted()), rollout.getId());
+        rolloutsToCleanUp.forEach(rollout -> {
+            Page<RolloutGroup> rolloutGroupPage = rolloutGroupMgmt.findByRollout(new OffsetBasedPageRequest(0, quotaMgmt.getMaxRolloutGroupsPerRollout(), Sort.unsorted()), rollout.getId());
             List<RolloutGroup> rolloutGroupList = rolloutGroupPage.getContent();
 
             LOGGER.debug("Found {} rollout groups for rollout with ID {}", rolloutGroupList.size(), rollout.getId());
+
+            if (rolloutGroupList.size() == 0) {
+                rolloutMgmt.setRolloutAsCleanedUp(rollout);
+                return;
+            }
 
             List<Long> rolloutGroupIds = rolloutGroupList.stream().map(RolloutGroup::getId).collect(Collectors.toList());
             rolloutGroupMgmt.deleteByIds(rolloutGroupIds);
 
             LOGGER.debug("Deleted {} rollout groups with ids: {}", rolloutGroupIds.size(), rolloutGroupIds);
-        });
 
+            rolloutMgmt.setRolloutAsCleanedUp(rollout);
+        });
     }
 
     @Override
@@ -71,8 +79,8 @@ public class AutoRolloutCleanup implements CleanupTask {
         return ID;
     }
 
-    private List<Rollout> getDeletedRollouts() {
-        final Page<Rollout> rolloutPage = rolloutMgmt.findByDeletedIsTrue(new OffsetBasedPageRequest(0, 100, Sort.unsorted()));
+    private List<Rollout> getRolloutsNotYetCleanedUp() {
+        final Page<Rollout> rolloutPage = rolloutMgmt.findByIsCleanedUpIsFalseAndDeletedIsTrue(new OffsetBasedPageRequest(0, rolloutsPerCleanup, Sort.unsorted()));
         final List<Rollout> rolloutList = rolloutPage.getContent();
 
         return rolloutList;

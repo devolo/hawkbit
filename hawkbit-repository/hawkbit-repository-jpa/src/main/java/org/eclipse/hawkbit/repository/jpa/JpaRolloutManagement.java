@@ -136,8 +136,6 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     private static final List<Status> DEFAULT_ACTION_TERMINATION_STATUSES = Arrays.asList(Status.ERROR, Status.FINISHED,
             Status.CANCELED);
 
-    private static final String QUERY_DELETE_ROLLOUTS_MARKED_AS_DELETED_IN_UI = "DELETE FROM sp_rollout WHERE deleted = '1'";
-
     @Autowired
     private RolloutRepository rolloutRepository;
 
@@ -963,6 +961,11 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
         sendRolloutGroupDeletedEvents(rollout);
     }
 
+    public void setRolloutAsCleanedUp(final Rollout rollout) {
+        Optional<JpaRollout> rollout1 = rolloutRepository.findById(rollout.getId());
+        rollout1.get().setIsCleanedUp(true);
+    }
+
     private void sendRolloutGroupDeletedEvents(final JpaRollout rollout) {
         final List<Long> groupIds = rollout.getRolloutGroups().stream().map(RolloutGroup::getId)
                 .collect(Collectors.toList());
@@ -1005,6 +1008,15 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     }
 
     @Override
+    public long countByIsCleanUp() {
+        return rolloutRepository.count(RolloutSpecification.isCleanedUp(true));
+    }
+
+    public long countRolloutsMarkedAsDeleted() {
+        return rolloutRepository.count(RolloutSpecification.deleted(true));
+    }
+
+    @Override
     public long countByFilters(final String searchText) {
         return rolloutRepository.count(JpaRolloutHelper.likeNameOrDescription(searchText, false));
     }
@@ -1016,6 +1028,10 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
                 Arrays.asList(JpaRolloutHelper.likeNameOrDescription(searchText, deleted)));
         setRolloutStatusDetails(findAll);
         return JpaRolloutHelper.convertPage(findAll, pageable);
+    }
+
+    public Page<Rollout> findByIsCleanedUpIsFalseAndDeletedIsTrue(final Pageable pageReq) {
+        return rolloutRepository.findByIsCleanedUpIsFalseAndDeletedIsTrue(pageReq);
     }
 
     @Override
@@ -1166,14 +1182,5 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
         final int quota = quotaManagement.getMaxActionsPerTarget();
         QuotaHelper.assertAssignmentQuota(target.getId(), requested, quota, Action.class, Target.class,
                 actionRepository::countByTargetId);
-    }
-
-    @Override
-    @Transactional(readOnly = false)
-    public int deleteRolloutGroupsForRolloutsDeletedInUI() {
-        final Query deleteQuery = entityManager.createNativeQuery(QUERY_DELETE_ROLLOUTS_MARKED_AS_DELETED_IN_UI);
-
-        LOGGER.warn("Rollout cleanup: Executing the following (native) query: {}", deleteQuery);
-        return deleteQuery.executeUpdate();
     }
 }
