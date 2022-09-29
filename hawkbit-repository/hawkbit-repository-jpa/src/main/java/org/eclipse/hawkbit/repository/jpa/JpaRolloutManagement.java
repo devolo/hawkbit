@@ -83,6 +83,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.Page;
@@ -120,7 +121,8 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
     /**
      * Max amount of targets that are handled in one transaction.
      */
-    private static final int TRANSACTION_TARGETS = 20_000;
+    @Value("${hawkbit.rollout.maxTargetsPerTransaction:20000}")
+    private int maxTargetsPerTransaction;
 
     /**
      * Maximum amount of actions that are deleted in one transaction.
@@ -423,7 +425,7 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
                 // Add up to TRANSACTION_TARGETS of the left targets
                 // In case a TransactionException is thrown this loop aborts
                 targetsLeftToAdd -= assignTargetsToGroupInNewTransaction(rollout, group, groupTargetFilter,
-                        Math.min(TRANSACTION_TARGETS, targetsLeftToAdd));
+                        Math.min(maxTargetsPerTransaction, targetsLeftToAdd));
             } while (targetsLeftToAdd > 0);
 
             group.setStatus(RolloutGroupStatus.READY);
@@ -580,7 +582,7 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
             long actionsCreated;
             do {
                 actionsCreated = createActionsForTargetsInNewTransaction(rollout.getId(), group.getId(),
-                        TRANSACTION_TARGETS);
+                        maxTargetsPerTransaction);
                 totalActionsCreated += actionsCreated;
             } while (actionsCreated > 0);
 
