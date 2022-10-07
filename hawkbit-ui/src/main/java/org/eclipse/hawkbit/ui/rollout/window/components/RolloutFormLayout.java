@@ -10,6 +10,8 @@ package org.eclipse.hawkbit.ui.rollout.window.components;
 
 import java.util.function.Consumer;
 
+import com.vaadin.server.Sizeable;
+import org.eclipse.hawkbit.repository.jpa.autorolloutcleanup.AutoRolloutCleanupScheduler;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.builder.BoundComponent;
@@ -52,6 +54,8 @@ public class RolloutFormLayout extends ValidatableLayout {
 
     private static final int CAPTION_COLUMN = 0;
     private static final int FIELD_COLUMN = 1;
+
+    private static final float TEXT_BOX_WIDTH = 320.0F;
 
     private final VaadinMessageSource i18n;
 
@@ -115,6 +119,8 @@ public class RolloutFormLayout extends ValidatableLayout {
         final TextField textField = FormComponentBuilder
                 .createNameInput(binder, i18n, UIComponentIdProvider.ROLLOUT_NAME_FIELD_ID).getComponent();
         textField.setCaption(null);
+        textField.setWidth(TEXT_BOX_WIDTH, Sizeable.Unit.PIXELS);
+
         return textField;
     }
 
@@ -128,12 +134,17 @@ public class RolloutFormLayout extends ValidatableLayout {
                 distributionSetDataProvider, i18n, UIComponentIdProvider.ROLLOUT_DS_ID).getComponent();
         dsComboBox.setCaption(null);
 
+        dsComboBox.setWidth(TEXT_BOX_WIDTH, Sizeable.Unit.PIXELS);
+
         return dsComboBox;
     }
 
     private BoundComponent<ComboBox<ProxyTargetFilterQuery>> createTargetFilterQueryCombo() {
-        return FormComponentBuilder.createTargetFilterQueryCombo(binder, atLeastOneTargetPresentValidator(),
+        final BoundComponent<ComboBox<ProxyTargetFilterQuery>> targetFilterQueryComboBox = FormComponentBuilder.createTargetFilterQueryCombo(binder, atLeastOneTargetPresentValidator(),
                 targetFilterQueryDataProvider, i18n, UIComponentIdProvider.ROLLOUT_TARGET_FILTER_COMBO_ID);
+        targetFilterQueryComboBox.getComponent().setWidth(TEXT_BOX_WIDTH, Sizeable.Unit.PIXELS);
+
+        return targetFilterQueryComboBox;
 
     }
 
@@ -164,6 +175,7 @@ public class RolloutFormLayout extends ValidatableLayout {
         final TextArea description = FormComponentBuilder
                 .createDescriptionInput(binder, i18n, UIComponentIdProvider.ROLLOUT_DESCRIPTION_ID).getComponent();
         description.setCaption(null);
+        description.setWidth(TEXT_BOX_WIDTH, Sizeable.Unit.PIXELS);
 
         return description;
     }
