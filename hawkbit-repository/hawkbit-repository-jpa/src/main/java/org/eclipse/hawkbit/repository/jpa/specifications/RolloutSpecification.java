@@ -57,7 +57,7 @@ public final class RolloutSpecification {
      */
     public static Specification<JpaRollout> isCleanedUp(final boolean isCleanedUp) {
         return (root, query, cb) -> {
-            final Predicate predicate = cb.equal(root.<Boolean> get(JpaRollout_.isCleanedUp), isCleanedUp);
+            final Predicate predicate = cb.equal(root.get(JpaRollout_.isCleanedUp), isCleanedUp);
             return predicate;
         };
     }

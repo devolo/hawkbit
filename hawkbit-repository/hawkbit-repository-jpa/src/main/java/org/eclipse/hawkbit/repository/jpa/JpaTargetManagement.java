@@ -462,6 +462,11 @@ public class JpaTargetManagement implements TargetManagement {
         return countByCriteriaAPI(specList);
     }
 
+    @Override
+    public long countByIsCleanedUp() {
+        return targetRepository.count(TargetSpecifications.isCleanedUp(true));
+    }
+
     private boolean isAttributeSearchEnabled() {
         final TenantConfigurationValue<Boolean> isEnabled = systemSecurityContext.
                 runAsSystem(() -> tenantConfigurationManagement

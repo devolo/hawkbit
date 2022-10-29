@@ -259,6 +259,15 @@ public interface TargetManagement {
     long countByRsqlAndNonDS(long distributionSetId, @NotNull String rsqlParam);
 
     /**
+     * Counts all targets with `is_cleaned_up` set to true.
+     *
+     * @return the count of found {@link Target}s
+     *
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
+    long countByIsCleanedUp();
+
+    /**
      * Finds all targets for all the given parameter {@link TargetFilterQuery}
      * and that are not assigned to one of the {@link RolloutGroup}s
      *

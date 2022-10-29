@@ -370,4 +370,11 @@ public final class TargetSpecifications {
             return cb.equal(tags.get(JpaTargetTag_.id), tagId);
         };
     }
+
+    public static Specification<JpaTarget> isCleanedUp(final boolean isCleanedUp) {
+        return (root, query, cb) -> {
+            final Predicate predicate = cb.equal(root.get(JpaTarget_.isCleanedUp), isCleanedUp);
+            return predicate;
+        };
+    }
 }
