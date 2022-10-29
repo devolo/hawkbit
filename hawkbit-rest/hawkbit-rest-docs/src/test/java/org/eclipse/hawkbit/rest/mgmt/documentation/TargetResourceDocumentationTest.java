@@ -151,7 +151,8 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                 fieldWithPath("[]securityToken").description(MgmtApiModelProperties.SECURITY_TOKEN),
                                 fieldWithPath("[]requestAttributes")
                                         .description(MgmtApiModelProperties.REQUEST_ATTRIBUTES),
-                                fieldWithPath("[]_links.self").ignored())));
+                                fieldWithPath("[]_links.self").ignored(),
+                                fieldWithPath("[]requiresCleanup").description(MgmtApiModelProperties.REQUIRES_CLEANUP))));
     }
 
     @Test
