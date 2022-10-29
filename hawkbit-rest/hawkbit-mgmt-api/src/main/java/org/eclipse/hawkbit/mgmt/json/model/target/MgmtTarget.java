@@ -50,7 +50,7 @@ public class MgmtTarget extends MgmtNamedEntity {
     private boolean requestAttributes;
 
     @JsonProperty
-    private boolean isPruned;
+    private boolean requiresCleanup;
 
     /**
      * @return the controllerId
@@ -74,8 +74,8 @@ public class MgmtTarget extends MgmtNamedEntity {
         return updateStatus;
     }
 
-    public Boolean getIsPruned() {
-        return isPruned;
+    public Boolean getRequiresCleanup() {
+        return requiresCleanup;
     }
 
     /**

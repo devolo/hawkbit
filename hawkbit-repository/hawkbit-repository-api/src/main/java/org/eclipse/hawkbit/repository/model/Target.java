@@ -88,7 +88,7 @@ public interface Target extends NamedEntity {
      */
     TargetUpdateStatus getUpdateStatus();
 
-    Boolean getIsPruned();
+    Boolean getRequiresCleanup();
 
     /**
      * @return the poll time which holds the last poll time of the target, the

@@ -1,25 +1,15 @@
 package org.eclipse.hawkbit.repository.jpa.autoactionstatuscleanup;
 
-import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
-import org.eclipse.hawkbit.repository.TargetManagement;
-import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
-import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoActionCleanup;
+import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.CleanupTask;
-import org.eclipse.hawkbit.repository.model.Action;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TenantConfigurationValue;
+import org.eclipse.hawkbit.repository.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 import java.io.Serializable;
-import java.sql.Connection;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -30,7 +20,6 @@ import static org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationPrope
 
 public class AutoActionStatusCleanup implements CleanupTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoActionStatusCleanup.class);
-
     private static final String ID = "action-status-cleanup";
     private static final boolean ACTION_STATUS_CLEANUP_ENABLED_DEFAULT = false;
     private static final long ACTION_STATUS_CLEANUP_ACTION_EXPIRY_DEFAULT = TimeUnit.DAYS.toMillis(30);
@@ -39,6 +28,7 @@ public class AutoActionStatusCleanup implements CleanupTask {
     private final DeploymentManagement deploymentMgmt;
     private final TenantConfigurationManagement configMgmt;
     private final TargetManagement targetMgmt;
+    private final ControllerManagement controllerMgmt;
 
     /**
      * Constructs the action cleanup handler.
@@ -50,9 +40,11 @@ public class AutoActionStatusCleanup implements CleanupTask {
      */
     public AutoActionStatusCleanup(final DeploymentManagement deploymentMgmt,
                                    final TenantConfigurationManagement configMgmt,
+                                   final ControllerManagement controllerMgmt,
                                    final TargetManagement targetMgmt) {
         this.deploymentMgmt = deploymentMgmt;
         this.configMgmt = configMgmt;
+        this.controllerMgmt = controllerMgmt;
         this.targetMgmt = targetMgmt;
     }
 
@@ -64,34 +56,49 @@ public class AutoActionStatusCleanup implements CleanupTask {
             return;
         }
 
-        /**
-         * 1. Get the targets via targetManagement
-         * 2. Do the rest step by step
-         */
-        Pageable pageRef = new OffsetBasedPageRequest(0, 100, Sort.by(Sort.Direction.ASC, "controllerId"));
-        Page<Target> targetPage = targetMgmt.findByIsPrunedIsFalse(pageRef);
+        int N_TARGETS = 10;
+
+        // 1. Get 100 targets with `requires_cleanup == 0`
+        Pageable pageRef = new OffsetBasedPageRequest(0, N_TARGETS, Sort.by(Sort.Direction.ASC, "controllerId"));
+        Page<Target> targetPage = targetMgmt.findByRequiresCleanupIsFalse(pageRef);
         List<Target> targetList = targetPage.getContent();
 
-        LOGGER.warn("Fetched {} targets with is_pruned = 0", targetList.size());
+        LOGGER.warn("Fetched {} targets with requires_cleanup = 0", targetList.size());
+
+        // 2a. Get all actions for these targets with `status == 1`
+        targetList.forEach(target -> {
+            LOGGER.warn("Fetching actions for target with Id: {}", target.getId());
+
+            List<Long> actionIds = controllerMgmt.findActionsOfTargetWithId(target.getId());
+
+            LOGGER.warn("Fetched {} actions for target with Id: {}", actionIds.size(), target.getId());
+
+            // 2b. Remove all but recent action
+            if (actionIds.size() >= 2) {
+                LOGGER.warn("Excluding action {} for target with Id: {} from cleanup", actionIds.get(0), target.getId());
+                actionIds.remove(0);
+            }
+
+            if (actionIds.size() >= 1) {
+                actionIds.forEach(actionId -> {
+                    // ToDo: Set this to max.
+                    Pageable pageRefForActionStatus = new OffsetBasedPageRequest(0, 100, Sort.unsorted());
+                    List<ActionStatus> actionStatuses = deploymentMgmt.findActionStatusByAction(pageRefForActionStatus, actionId).getContent();
+
+                    LOGGER.warn("Fetched {} action statuses for action with Id: {}", actionStatuses.size(), actionId);
+
+                    controllerMgmt.deleteByIds(actionStatuses.stream().map(ActionStatus::getId).collect(Collectors.toList()));
+                });
+            }
+        });
+
+        // 4. Set requires_cleanup for these targets to "1"
+        targetMgmt.updateRequiresCleanupForTargetsWithIds(targetList.stream().map(Target::getId).collect(Collectors.toList()));
     }
 
     @Override
     public String getId() {
         return ID;
-    }
-
-    private long getExpiry() {
-        final TenantConfigurationValue<Long> expiry = getConfigValue(ACTION_CLEANUP_ACTION_EXPIRY, Long.class);
-        return expiry != null ? expiry.getValue() : ACTION_STATUS_CLEANUP_ACTION_EXPIRY_DEFAULT;
-    }
-
-    private EnumSet<Action.Status> getActionStatus() {
-        final TenantConfigurationValue<String> statusStr = getConfigValue(ACTION_CLEANUP_ACTION_STATUS, String.class);
-        if (statusStr != null) {
-            return Arrays.stream(statusStr.getValue().split("[;,]")).map(Action.Status::valueOf)
-                    .collect(Collectors.toCollection(() -> EnumSet.noneOf(Action.Status.class)));
-        }
-        return EMPTY_STATUS_SET;
     }
 
     private boolean isEnabled() {

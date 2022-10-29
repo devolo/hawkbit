@@ -59,7 +59,6 @@ import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.orm.jpa.vendor.Database;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -385,8 +384,8 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     @Override
-    public Page<Target> findByIsPrunedIsFalse(final Pageable pageReq) {
-        return targetRepository.findByIsPrunedIsFalse(pageReq);
+    public Page<Target> findByRequiresCleanupIsFalse(final Pageable pageReq) {
+        return targetRepository.findByRequiresCleanupIsFalse(pageReq);
     }
 
     @Override
@@ -866,4 +865,11 @@ public class JpaTargetManagement implements TargetManagement {
         return targetRepository.findByRequestControllerAttributesIsTrue(pageReq);
     }
 
+    @Override
+    @Transactional
+    @Retryable(include = {
+            ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
+    public void updateRequiresCleanupForTargetsWithIds(final List<Long> targetIds) {
+        targetRepository.setRequiresCleanup(targetIds);
+    }
 }

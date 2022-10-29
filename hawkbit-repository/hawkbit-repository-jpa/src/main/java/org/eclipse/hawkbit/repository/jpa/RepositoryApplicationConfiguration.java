@@ -872,8 +872,8 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
      */
     @Bean
     CleanupTask actionStatusCleanup(final DeploymentManagement deploymentManagement,
-                              final TenantConfigurationManagement configManagement, final TargetManagement targetMgmt) {
-        return new AutoActionStatusCleanup(deploymentManagement, configManagement, targetMgmt);
+                              final TenantConfigurationManagement configManagement, final ControllerManagement controllerManagement, final TargetManagement targetMgmt) {
+        return new AutoActionStatusCleanup(deploymentManagement, configManagement, controllerManagement, targetMgmt);
     }
 
     @Bean

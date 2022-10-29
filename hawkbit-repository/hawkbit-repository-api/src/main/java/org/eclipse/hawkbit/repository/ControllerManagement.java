@@ -36,7 +36,6 @@ import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
@@ -514,4 +513,10 @@ public interface ControllerManagement {
      */
     @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
     void deleteExistingTarget(@NotEmpty String controllerId);
+
+    @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
+    List<Long> findActionsOfTargetWithId(Long id);
+
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_DELETE_REPOSITORY)
+    void deleteByIds(List<Long> actionStatusIds);
 }

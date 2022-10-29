@@ -16,7 +16,7 @@ public class AutoActionStatusCleanupScheduler {
 
     private static final String AUTO_ACTION_STATUS_CLEANUP = "auto-action-status-cleanup";
     private static final String SEP = ".";
-    private static final String PROP_AUTO_ACTION_STATUS_DELAY = "${hawkbit.autoactionstatuscleanup.scheduler.fixedDelay:0}";
+    private static final String PROP_AUTO_ACTION_STATUS_DELAY = "${hawkbit.autoactionstatuscleanup.scheduler.fixedDelay:2000}";
 
     private static final String PROP_AUTO_ACTION_STATUS_CLEANUP_INTERVAL = "${hawkbit.autoactionstatuscleanup.scheduler.frequency:14400000}";
 

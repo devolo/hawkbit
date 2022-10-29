@@ -14,20 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import javax.persistence.Column;
-import javax.persistence.ConstraintMode;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.ForeignKey;
-import javax.persistence.Index;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.NamedAttributeNode;
-import javax.persistence.NamedEntityGraph;
-import javax.persistence.NamedEntityGraphs;
-import javax.persistence.NamedSubgraph;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
+import javax.persistence.*;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
@@ -238,6 +225,10 @@ public class JpaAction extends AbstractJpaTenantAwareBaseEntity implements Actio
 
     @Override
     public void fireCreateEvent(final DescriptorEvent descriptorEvent) {
+        if (target.getRequiresCleanup()) {
+            target.setRequiresCleanup(false);
+        }
+
         EventPublisherHolder.getInstance().getEventPublisher()
                 .publishEvent(new ActionCreatedEvent(this, BaseEntity.getIdOrNull(target),
                         BaseEntity.getIdOrNull(rollout), BaseEntity.getIdOrNull(rolloutGroup),

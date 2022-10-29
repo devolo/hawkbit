@@ -168,8 +168,8 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     @Column(name = "request_controller_attributes", nullable = false)
     private boolean requestControllerAttributes = true;
 
-    @Column(name = "is_pruned", nullable = false)
-    private boolean isPruned = false;
+    @Column(name = "requires_cleanup", nullable = false)
+    private boolean requiresCleanup = false;
 
     @CascadeOnDelete
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, targetEntity = JpaTargetMetadata.class)
@@ -259,7 +259,7 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         this.controllerId = controllerId;
     }
 
-    public void setPruned(final Boolean isPruned) { this.isPruned = isPruned; }
+    public void setRequiresCleanup(final Boolean requiresCleanup) { this.requiresCleanup = requiresCleanup; }
 
     public List<Action> getActions() {
         if (actions == null) {
@@ -356,7 +356,7 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     }
 
     @Override
-    public Boolean getIsPruned() { return isPruned; }
+    public Boolean getRequiresCleanup() { return requiresCleanup; }
 
     @Override
     public DistributionSet getInstalledDistributionSet() {
