@@ -10,7 +10,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -58,12 +57,12 @@ public class AutoActionStatusCleanup implements CleanupTask {
 
         int N_TARGETS = 10;
 
-        // 1. Get 100 targets with `requires_cleanup == 0`
+        // 1. Get 100 targets with `is_cleaned_up == 0`
         Pageable pageRef = new OffsetBasedPageRequest(0, N_TARGETS, Sort.by(Sort.Direction.ASC, "controllerId"));
-        Page<Target> targetPage = targetMgmt.findByRequiresCleanupIsFalse(pageRef);
+        Page<Target> targetPage = targetMgmt.findByIsCleanedUpIsFalse(pageRef);
         List<Target> targetList = targetPage.getContent();
 
-        LOGGER.warn("Fetched {} targets with requires_cleanup = 0", targetList.size());
+        LOGGER.warn("Fetched {} targets with is_cleaned_up = 0", targetList.size());
 
         // 2a. Get all actions for these targets with `status == 1`
         targetList.forEach(target -> {
@@ -92,8 +91,8 @@ public class AutoActionStatusCleanup implements CleanupTask {
             }
         });
 
-        // 4. Set requires_cleanup for these targets to "1"
-        targetMgmt.updateRequiresCleanupForTargetsWithIds(targetList.stream().map(Target::getId).collect(Collectors.toList()));
+        // 4. Set is_cleaned_up for these targets to "1"
+        targetMgmt.updateIsCleanedUpForTargetsWithIds(targetList.stream().map(Target::getId).collect(Collectors.toList()));
     }
 
     @Override

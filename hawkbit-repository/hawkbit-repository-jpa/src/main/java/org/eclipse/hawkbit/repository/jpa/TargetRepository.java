@@ -82,8 +82,8 @@ public interface TargetRepository extends BaseEntityRepository<JpaTarget, Long>,
 
     @Modifying
     @Transactional
-    @Query("UPDATE JpaTarget t SET t.requiresCleanup = 1 WHERE t.id IN :targets")
-    void setRequiresCleanup(@Param("targets") List<Long> targets);
+    @Query("UPDATE JpaTarget t SET t.isCleanedUp = 1 WHERE t.id IN :targets")
+    void setIsCleanedUp(@Param("targets") List<Long> targets);
 
     /**
      * Loads {@link Target} by given ID.
@@ -188,7 +188,7 @@ public interface TargetRepository extends BaseEntityRepository<JpaTarget, Long>,
      * @param pruneState is the prune state of the {@link Target} to filter for.
      * @return page of found targets
      */
-    Page<Target> findByRequiresCleanupIsFalse(Pageable pageable);
+    Page<Target> findByIsCleanedUpIsFalse(Pageable pageable);
 
     /**
      * retrieves {@link Target}s where

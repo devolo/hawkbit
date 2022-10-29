@@ -245,8 +245,8 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
                         .type("String"),
                 fieldWithPath(fieldArrayPrefix + "lastControllerRequestAt")
                         .description(MgmtApiModelProperties.LAST_REQUEST_AT).type("Number"),
-                fieldWithPath(fieldArrayPrefix + "requiresCleanup")
-                        .description(MgmtApiModelProperties.REQUIRES_CLEANUP),
+                fieldWithPath(fieldArrayPrefix + "isCleanedUp")
+                        .description(MgmtApiModelProperties.IS_CLEANED_UP),
                 fieldWithPath(fieldArrayPrefix + "_links.self").ignored());
 
         if (!isArray) {

@@ -335,7 +335,7 @@ public interface TargetManagement {
      *             if distribution set with given ID does not exist
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_REPOSITORY_AND_READ_TARGET)
-    Page<Target> findByRequiresCleanupIsFalse(Pageable pageReq);
+    Page<Target> findByIsCleanedUpIsFalse(Pageable pageReq);
 
     /**
      * Retrieves {@link Target}s by the assigned {@link DistributionSet}
@@ -835,5 +835,5 @@ public interface TargetManagement {
     TargetMetadata updateMetadata(@NotEmpty String controllerId, @NotNull MetaData metadata);
 
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_REPOSITORY)
-    void updateRequiresCleanupForTargetsWithIds(List<Long> targetIds);
+    void updateIsCleanedUpForTargetsWithIds(List<Long> targetIds);
 }

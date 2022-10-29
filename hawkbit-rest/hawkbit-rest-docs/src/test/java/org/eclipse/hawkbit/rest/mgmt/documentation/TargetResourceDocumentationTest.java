@@ -152,7 +152,7 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                 fieldWithPath("[]requestAttributes")
                                         .description(MgmtApiModelProperties.REQUEST_ATTRIBUTES),
                                 fieldWithPath("[]_links.self").ignored(),
-                                fieldWithPath("[]requiresCleanup").description(MgmtApiModelProperties.REQUIRES_CLEANUP))));
+                                fieldWithPath("[]requiresCleanup").description(MgmtApiModelProperties.IS_CLEANED_UP))));
     }
 
     @Test

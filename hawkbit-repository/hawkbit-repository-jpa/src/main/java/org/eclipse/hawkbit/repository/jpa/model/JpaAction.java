@@ -225,8 +225,8 @@ public class JpaAction extends AbstractJpaTenantAwareBaseEntity implements Actio
 
     @Override
     public void fireCreateEvent(final DescriptorEvent descriptorEvent) {
-        if (target.getRequiresCleanup()) {
-            target.setRequiresCleanup(false);
+        if (target.getIsCleanedUp()) {
+            target.setIsCleanedUp(false);
         }
 
         EventPublisherHolder.getInstance().getEventPublisher()

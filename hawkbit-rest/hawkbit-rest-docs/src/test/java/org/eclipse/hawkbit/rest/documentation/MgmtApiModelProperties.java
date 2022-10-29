@@ -151,7 +151,7 @@ public final class MgmtApiModelProperties {
 
     public static final String REQUEST_ATTRIBUTES = "Request re-transmission of target attributes.";
 
-    public static final String REQUIRES_CLEANUP = "A flag that indicates if the target's action statuses and action status messages require cleanup.";
+    public static final String IS_CLEANED_UP = "A flag that indicates if the target's action statuses and action status messages require cleanup.";
 
     public static final String META_DATA = "List of metadata.";
 

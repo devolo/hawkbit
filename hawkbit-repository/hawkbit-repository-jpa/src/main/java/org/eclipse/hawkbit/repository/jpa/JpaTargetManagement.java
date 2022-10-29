@@ -384,8 +384,8 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     @Override
-    public Page<Target> findByRequiresCleanupIsFalse(final Pageable pageReq) {
-        return targetRepository.findByRequiresCleanupIsFalse(pageReq);
+    public Page<Target> findByIsCleanedUpIsFalse(final Pageable pageReq) {
+        return targetRepository.findByIsCleanedUpIsFalse(pageReq);
     }
 
     @Override
@@ -869,7 +869,7 @@ public class JpaTargetManagement implements TargetManagement {
     @Transactional
     @Retryable(include = {
             ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
-    public void updateRequiresCleanupForTargetsWithIds(final List<Long> targetIds) {
-        targetRepository.setRequiresCleanup(targetIds);
+    public void updateIsCleanedUpForTargetsWithIds(final List<Long> targetIds) {
+        targetRepository.setIsCleanedUp(targetIds);
     }
 }
