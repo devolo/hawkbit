@@ -113,6 +113,4 @@ public interface Target extends NamedEntity {
     DistributionSet getAssignedDistributionSet();
 
     List<TargetMetadata> getMetadata();
-
-    void setIsCleanedUp(boolean isCleanedUp);
 }

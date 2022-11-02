@@ -80,6 +80,15 @@ public interface TargetRepository extends BaseEntityRepository<JpaTarget, Long>,
             @Param("set") JpaDistributionSet set, @Param("lastModifiedAt") Long modifiedAt,
             @Param("lastModifiedBy") String modifiedBy, @Param("targets") Collection<Long> targets);
 
+    /**
+     * Sets {@link JpaTarget#getIsCleanedUp()} for a list of targets
+     *
+     * @param targets
+     *            Ids of targets to update
+     * @param isCleanedUp
+     *            boolean value to set to
+     *
+     */
     @Modifying
     @Transactional
     @Query("UPDATE JpaTarget t SET t.isCleanedUp = :isCleanedUp WHERE t.id IN :targets")

@@ -843,6 +843,18 @@ public interface TargetManagement {
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_REPOSITORY)
     TargetMetadata updateMetadata(@NotEmpty String controllerId, @NotNull MetaData metadata);
 
+    /**
+     * Updates the `is_cleaned_up` value for targets with given Ids.
+     *
+     * @param targetIds
+     *            {@link Target} A list of Ids of targets to be updated
+     * @param isCleanedUp
+     *            The boolean value to update to
+     *
+     * @throws EntityNotFoundException
+     *             in case the targets do not exist and cannot be
+     *             updated
+     */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_REPOSITORY)
     void updateIsCleanedUpForTargetsWithIds(List<Long> targetIds, boolean isCleanedUp);
 }

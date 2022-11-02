@@ -52,7 +52,8 @@ public class AutoActionStatusCleanupScheduler {
      */
     @Scheduled(initialDelayString = PROP_AUTO_ACTION_STATUS_DELAY, fixedDelayString = PROP_AUTO_ACTION_STATUS_CLEANUP_INTERVAL)
     public void run() {
-        LOGGER.warn("Auto action status cleanup scheduler has been triggered.");
+        LOGGER.debug("Auto action status cleanup scheduler has been triggered.");
+
         // run this code in system code privileged to have the necessary
         // permission to query and create entities
         if (!cleanupTasks.isEmpty()) {

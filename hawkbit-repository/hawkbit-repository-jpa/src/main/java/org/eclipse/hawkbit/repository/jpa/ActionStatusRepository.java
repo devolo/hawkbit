@@ -96,6 +96,13 @@ public interface ActionStatusRepository
     Page<String> findMessagesByActionIdAndMessageNotLike(Pageable pageable, @Param("actionId") Long actionId,
             @Param("filter") String filter);
 
+    /**
+     * Delete action status messages with the given Ids
+     *
+     * @param actionStatusIds
+     *            Ids of action statuses to delete
+     *
+     */
     @Modifying
     @Query("DELETE FROM JpaActionStatus actionstatus where actionstatus.id in :actionStatusIds")
     void deleteByIds(@Param("actionStatusIds") List<Long> actionStatusIds);

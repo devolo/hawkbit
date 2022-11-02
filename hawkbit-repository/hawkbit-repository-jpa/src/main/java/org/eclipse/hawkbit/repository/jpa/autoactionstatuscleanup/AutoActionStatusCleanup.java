@@ -53,7 +53,6 @@ public class AutoActionStatusCleanup implements CleanupTask {
 
     @Override
     public void run() {
-
         if (!isEnabled()) {
             LOGGER.debug("Action action status cleanup is disabled for this tenant...");
             return;
@@ -61,40 +60,39 @@ public class AutoActionStatusCleanup implements CleanupTask {
 
         LOGGER.debug("targetsPerCleanup: {} and maxStatusEntriesPerAction: {}", targetsPerCleanup, quotaMgmt.getMaxStatusEntriesPerAction());
 
-        // 1. Get 100 targets with `is_cleaned_up == 0`
+        // Get targets with `is_cleaned_up == 0`
         Pageable pageRef = new OffsetBasedPageRequest(0, targetsPerCleanup, Sort.by(Sort.Direction.ASC, "controllerId"));
         Page<Target> targetPage = targetMgmt.findByIsCleanedUpIsFalse(pageRef);
         List<Target> targetList = targetPage.getContent();
 
-        LOGGER.warn("Fetched {} targets with is_cleaned_up = 0", targetList.size());
+        LOGGER.debug("Fetched {} targets with is_cleaned_up = 0", targetList.size());
 
         // 2a. Get all actions for these targets with `status == 1`
         targetList.forEach(target -> {
-            LOGGER.warn("Fetching actions for target with Id: {}", target.getId());
+            LOGGER.debug("Fetching actions for target with Id: {}", target.getId());
 
             List<Long> actionIds = controllerMgmt.findActionsOfTargetWithId(target.getId());
 
-            LOGGER.warn("Fetched {} actions for target with Id: {}", actionIds.size(), target.getId());
+            LOGGER.debug("Fetched {} actions for target with Id: {}", actionIds.size(), target.getId());
 
-            // 2b. Remove all but recent action
+            // Remove all but recent action
             if (actionIds.size() >= 1) {
-                LOGGER.warn("Excluding action {} for target with Id: {} from cleanup", actionIds.get(0), target.getId());
+                LOGGER.debug("Excluding action {} for target with Id: {} from cleanup", actionIds.get(0), target.getId());
                 actionIds.remove(0);
-            }
 
-            if (actionIds.size() >= 1) {
                 actionIds.forEach(actionId -> {
                     Pageable pageRefForActionStatus = new OffsetBasedPageRequest(0, quotaMgmt.getMaxStatusEntriesPerAction(), Sort.unsorted());
                     List<ActionStatus> actionStatuses = deploymentMgmt.findActionStatusByAction(pageRefForActionStatus, actionId).getContent();
 
-                    LOGGER.warn("Fetched {} action statuses for action with Id: {}", actionStatuses.size(), actionId);
+                    LOGGER.debug("Fetched {} action statuses for action with Id: {}", actionStatuses.size(), actionId);
 
+                    // Delete all action statuses for these actions (and cascade delete the messages)
                     controllerMgmt.deleteByIds(actionStatuses.stream().map(ActionStatus::getId).collect(Collectors.toList()));
                 });
             }
         });
 
-        // 4. Set is_cleaned_up for these targets to "1"
+        // Set is_cleaned_up for these targets to "1"
         if (!targetList.isEmpty()) {
             targetMgmt.updateIsCleanedUpForTargetsWithIds(targetList.stream().map(Target::getId).collect(Collectors.toList()), true);
         }

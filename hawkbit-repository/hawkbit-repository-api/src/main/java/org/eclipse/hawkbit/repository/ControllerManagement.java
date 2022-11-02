@@ -514,9 +514,21 @@ public interface ControllerManagement {
     @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
     void deleteExistingTarget(@NotEmpty String controllerId);
 
+    /**
+     * Find all actions of target with the given Id
+     *
+     * @param id
+     *            of the target
+     */
     @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
     List<Long> findActionsOfTargetWithId(Long id);
 
+    /**
+     * Delete action statuses with given Ids
+     *
+     * @param actionStatusIds
+     *            of the action statuses to delete
+     */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_DELETE_REPOSITORY)
     void deleteByIds(List<Long> actionStatusIds);
 }

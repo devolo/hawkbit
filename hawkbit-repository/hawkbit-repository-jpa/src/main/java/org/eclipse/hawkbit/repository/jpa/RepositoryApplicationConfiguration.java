@@ -876,18 +876,33 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
         return new AutoActionStatusCleanup(deploymentManagement, configManagement, controllerManagement, targetManagement, quotaManagement);
     }
 
+    /**
+     * {@link AutoActionStatusCleanupScheduler} bean.
+     *
+     * @param systemManagement
+     *            to find all tenants
+     * @param systemSecurityContext
+     *            to run as system
+     * @param lockRegistry
+     *            to lock the tenant for auto assignment
+     * @param cleanupTasks
+     *            a list of cleanup tasks
+     *
+     * @return a new {@link AutoActionStatusCleanupScheduler} bean
+     */
     @Bean
     @ConditionalOnMissingBean
     @Profile("!test")
     @ConditionalOnProperty(prefix = "hawkbit.autoactionstatuscleanup.scheduler", name = "enabled", matchIfMissing = true)
     AutoActionStatusCleanupScheduler autoActionStatusCleanupScheduler(final SystemManagement systemManagement,
-                                                                      final SystemSecurityContext systemSecurityContext, final LockRegistry lockRegistry,
+                                                                      final SystemSecurityContext systemSecurityContext,
+                                                                      final LockRegistry lockRegistry,
                                                                       final List<CleanupTask> cleanupTasks) {
         return new AutoActionStatusCleanupScheduler(systemManagement, systemSecurityContext, lockRegistry, cleanupTasks);
     }
 
     /**
-     * {@link AutoActionStatusCleanupScheduler} bean.
+     * {@link AutoCleanupScheduler} bean.
      *
      * @param systemManagement
      *            to find all tenants
