@@ -5,6 +5,7 @@ import org.eclipse.hawkbit.repository.jpa.autocleanup.CleanupTask;
 import org.eclipse.hawkbit.repository.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,13 +22,13 @@ public class AutoActionStatusCleanup implements CleanupTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoActionStatusCleanup.class);
     private static final String ID = "action-status-cleanup";
     private static final boolean ACTION_STATUS_CLEANUP_ENABLED_DEFAULT = false;
-    private static final long ACTION_STATUS_CLEANUP_ACTION_EXPIRY_DEFAULT = TimeUnit.DAYS.toMillis(30);
-    private static final EnumSet<Action.Status> EMPTY_STATUS_SET = EnumSet.noneOf(Action.Status.class);
-
     private final DeploymentManagement deploymentMgmt;
     private final TenantConfigurationManagement configMgmt;
     private final TargetManagement targetMgmt;
     private final ControllerManagement controllerMgmt;
+
+    @Value("${hawkbit.autoactionstatuscleanup.targetsPerCleanup:100}")
+    private int targetsPerCleanup;
 
     /**
      * Constructs the action cleanup handler.
@@ -55,10 +56,10 @@ public class AutoActionStatusCleanup implements CleanupTask {
             return;
         }
 
-        int N_TARGETS = 10;
+        LOGGER.debug("targetsPerCleanup: {}", targetsPerCleanup);
 
         // 1. Get 100 targets with `is_cleaned_up == 0`
-        Pageable pageRef = new OffsetBasedPageRequest(0, N_TARGETS, Sort.by(Sort.Direction.ASC, "controllerId"));
+        Pageable pageRef = new OffsetBasedPageRequest(0, targetsPerCleanup, Sort.by(Sort.Direction.ASC, "controllerId"));
         Page<Target> targetPage = targetMgmt.findByIsCleanedUpIsFalse(pageRef);
         List<Target> targetList = targetPage.getContent();
 
