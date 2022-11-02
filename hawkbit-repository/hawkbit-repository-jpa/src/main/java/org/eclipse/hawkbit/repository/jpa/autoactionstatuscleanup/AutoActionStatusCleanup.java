@@ -26,6 +26,7 @@ public class AutoActionStatusCleanup implements CleanupTask {
     private final TenantConfigurationManagement configMgmt;
     private final TargetManagement targetMgmt;
     private final ControllerManagement controllerMgmt;
+    private final QuotaManagement quotaMgmt;
 
     @Value("${hawkbit.autoactionstatuscleanup.targetsPerCleanup:100}")
     private int targetsPerCleanup;
@@ -41,11 +42,13 @@ public class AutoActionStatusCleanup implements CleanupTask {
     public AutoActionStatusCleanup(final DeploymentManagement deploymentMgmt,
                                    final TenantConfigurationManagement configMgmt,
                                    final ControllerManagement controllerMgmt,
-                                   final TargetManagement targetMgmt) {
+                                   final TargetManagement targetMgmt,
+                                   final QuotaManagement quotaMgmt) {
         this.deploymentMgmt = deploymentMgmt;
         this.configMgmt = configMgmt;
         this.controllerMgmt = controllerMgmt;
         this.targetMgmt = targetMgmt;
+        this.quotaMgmt = quotaMgmt;
     }
 
     @Override
@@ -56,7 +59,7 @@ public class AutoActionStatusCleanup implements CleanupTask {
             return;
         }
 
-        LOGGER.debug("targetsPerCleanup: {}", targetsPerCleanup);
+        LOGGER.debug("targetsPerCleanup: {} and maxStatusEntriesPerAction: {}", targetsPerCleanup, quotaMgmt.getMaxStatusEntriesPerAction());
 
         // 1. Get 100 targets with `is_cleaned_up == 0`
         Pageable pageRef = new OffsetBasedPageRequest(0, targetsPerCleanup, Sort.by(Sort.Direction.ASC, "controllerId"));
@@ -81,8 +84,7 @@ public class AutoActionStatusCleanup implements CleanupTask {
 
             if (actionIds.size() >= 1) {
                 actionIds.forEach(actionId -> {
-                    // ToDo: Set this to max.
-                    Pageable pageRefForActionStatus = new OffsetBasedPageRequest(0, 100, Sort.unsorted());
+                    Pageable pageRefForActionStatus = new OffsetBasedPageRequest(0, quotaMgmt.getMaxStatusEntriesPerAction(), Sort.unsorted());
                     List<ActionStatus> actionStatuses = deploymentMgmt.findActionStatusByAction(pageRefForActionStatus, actionId).getContent();
 
                     LOGGER.warn("Fetched {} action statuses for action with Id: {}", actionStatuses.size(), actionId);
