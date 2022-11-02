@@ -114,4 +114,5 @@ public interface Target extends NamedEntity {
 
     List<TargetMetadata> getMetadata();
 
+    void setIsCleanedUp(boolean isCleanedUp);
 }

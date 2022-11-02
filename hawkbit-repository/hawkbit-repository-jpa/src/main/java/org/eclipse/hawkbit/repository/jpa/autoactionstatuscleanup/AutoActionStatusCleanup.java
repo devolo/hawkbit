@@ -73,7 +73,7 @@ public class AutoActionStatusCleanup implements CleanupTask {
             LOGGER.warn("Fetched {} actions for target with Id: {}", actionIds.size(), target.getId());
 
             // 2b. Remove all but recent action
-            if (actionIds.size() >= 2) {
+            if (actionIds.size() >= 1) {
                 LOGGER.warn("Excluding action {} for target with Id: {} from cleanup", actionIds.get(0), target.getId());
                 actionIds.remove(0);
             }
@@ -92,7 +92,9 @@ public class AutoActionStatusCleanup implements CleanupTask {
         });
 
         // 4. Set is_cleaned_up for these targets to "1"
-        targetMgmt.updateIsCleanedUpForTargetsWithIds(targetList.stream().map(Target::getId).collect(Collectors.toList()));
+        if (!targetList.isEmpty()) {
+            targetMgmt.updateIsCleanedUpForTargetsWithIds(targetList.stream().map(Target::getId).collect(Collectors.toList()), true);
+        }
     }
 
     @Override

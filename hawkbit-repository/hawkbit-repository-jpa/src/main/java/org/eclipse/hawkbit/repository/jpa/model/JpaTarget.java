@@ -259,8 +259,6 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         this.controllerId = controllerId;
     }
 
-    public void setIsCleanedUp(final Boolean isCleanedup) { this.isCleanedUp = isCleanedup; }
-
     public List<Action> getActions() {
         if (actions == null) {
             return Collections.emptyList();
@@ -380,6 +378,10 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         }
 
         return Collections.unmodifiableList(metadata);
+    }
+
+    public void setIsCleanedUp(final boolean isCleanedUp) {
+        this.isCleanedUp = isCleanedUp;
     }
 
     @Override

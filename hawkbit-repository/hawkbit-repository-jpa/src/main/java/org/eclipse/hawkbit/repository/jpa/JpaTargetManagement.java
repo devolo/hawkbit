@@ -874,7 +874,7 @@ public class JpaTargetManagement implements TargetManagement {
     @Transactional
     @Retryable(include = {
             ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
-    public void updateIsCleanedUpForTargetsWithIds(final List<Long> targetIds) {
-        targetRepository.setIsCleanedUp(targetIds);
+    public void updateIsCleanedUpForTargetsWithIds(final List<Long> targetIds, final boolean isCleanedUp) {
+        targetRepository.setIsCleanedUpForTargetsWithIds(targetIds, isCleanedUp);
     }
 }

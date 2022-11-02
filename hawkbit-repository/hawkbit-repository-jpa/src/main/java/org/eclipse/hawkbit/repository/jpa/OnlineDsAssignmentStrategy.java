@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.hawkbit.repository.QuotaManagement;
+import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.event.remote.MultiActionAssignEvent;
 import org.eclipse.hawkbit.repository.event.remote.MultiActionCancelEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetAssignDistributionSetEvent;
@@ -47,10 +48,11 @@ import com.google.common.collect.Lists;
 public class OnlineDsAssignmentStrategy extends AbstractDsAssignmentStrategy {
 
     OnlineDsAssignmentStrategy(final TargetRepository targetRepository,
+            final TargetManagement targetManagement,
             final AfterTransactionCommitExecutor afterCommit, final EventPublisherHolder eventPublisherHolder,
             final ActionRepository actionRepository, final ActionStatusRepository actionStatusRepository,
             final QuotaManagement quotaManagement, final BooleanSupplier multiAssignmentsConfig) {
-        super(targetRepository, afterCommit, eventPublisherHolder, actionRepository, actionStatusRepository,
+        super(targetRepository, targetManagement, afterCommit, eventPublisherHolder, actionRepository, actionStatusRepository,
                 quotaManagement, multiAssignmentsConfig);
     }
 

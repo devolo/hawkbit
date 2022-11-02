@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.repository.QuotaManagement;
 import org.eclipse.hawkbit.repository.RepositoryConstants;
+import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.executor.AfterTransactionCommitExecutor;
 import org.eclipse.hawkbit.repository.jpa.model.JpaAction;
@@ -43,10 +44,10 @@ import com.google.common.collect.Lists;
 public class OfflineDsAssignmentStrategy extends AbstractDsAssignmentStrategy {
 
     OfflineDsAssignmentStrategy(final TargetRepository targetRepository,
-            final AfterTransactionCommitExecutor afterCommit, final EventPublisherHolder eventPublisherHolder,
-            final ActionRepository actionRepository, final ActionStatusRepository actionStatusRepository,
-            final QuotaManagement quotaManagement, final BooleanSupplier multiAssignmentsConfig) {
-        super(targetRepository, afterCommit, eventPublisherHolder, actionRepository, actionStatusRepository,
+                                final AfterTransactionCommitExecutor afterCommit, final EventPublisherHolder eventPublisherHolder,
+                                final ActionRepository actionRepository, final ActionStatusRepository actionStatusRepository,
+                                final QuotaManagement quotaManagement, final BooleanSupplier multiAssignmentsConfig, final TargetManagement targetManagement) {
+        super(targetRepository, targetManagement, afterCommit, eventPublisherHolder, actionRepository, actionStatusRepository,
                 quotaManagement, multiAssignmentsConfig);
     }
 

@@ -82,8 +82,8 @@ public interface TargetRepository extends BaseEntityRepository<JpaTarget, Long>,
 
     @Modifying
     @Transactional
-    @Query("UPDATE JpaTarget t SET t.isCleanedUp = 1 WHERE t.id IN :targets")
-    void setIsCleanedUp(@Param("targets") List<Long> targets);
+    @Query("UPDATE JpaTarget t SET t.isCleanedUp = :isCleanedUp WHERE t.id IN :targets")
+    void setIsCleanedUpForTargetsWithIds(@Param("targets") List<Long> targets, @Param("isCleanedUp") boolean isCleanedUp);
 
     /**
      * Loads {@link Target} by given ID.

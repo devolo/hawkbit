@@ -33,12 +33,7 @@ import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.ListJoin;
 import javax.persistence.criteria.Root;
 
-import org.eclipse.hawkbit.repository.ActionFields;
-import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.repository.QuotaManagement;
-import org.eclipse.hawkbit.repository.RepositoryConstants;
-import org.eclipse.hawkbit.repository.RepositoryProperties;
-import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
+import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.event.remote.TargetAssignDistributionSetEvent;
 import org.eclipse.hawkbit.repository.exception.CancelActionNotAllowedException;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
@@ -145,13 +140,13 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
     private final RetryTemplate retryTemplate;
 
     protected JpaDeploymentManagement(final EntityManager entityManager, final ActionRepository actionRepository,
-            final DistributionSetRepository distributionSetRepository, final TargetRepository targetRepository,
-            final ActionStatusRepository actionStatusRepository, final AuditorAware<String> auditorProvider,
-            final EventPublisherHolder eventPublisherHolder, final AfterTransactionCommitExecutor afterCommit,
-            final VirtualPropertyReplacer virtualPropertyReplacer, final PlatformTransactionManager txManager,
-            final TenantConfigurationManagement tenantConfigurationManagement, final QuotaManagement quotaManagement,
-            final SystemSecurityContext systemSecurityContext, final TenantAware tenantAware, final Database database,
-            final RepositoryProperties repositoryProperties) {
+                                      final DistributionSetRepository distributionSetRepository, final TargetRepository targetRepository,
+                                      final ActionStatusRepository actionStatusRepository, final AuditorAware<String> auditorProvider,
+                                      final EventPublisherHolder eventPublisherHolder, final AfterTransactionCommitExecutor afterCommit,
+                                      final VirtualPropertyReplacer virtualPropertyReplacer, final PlatformTransactionManager txManager,
+                                      final TenantConfigurationManagement tenantConfigurationManagement, final QuotaManagement quotaManagement,
+                                      final SystemSecurityContext systemSecurityContext, final TenantAware tenantAware, final Database database,
+                                      final RepositoryProperties repositoryProperties, final TargetManagement targetManagement) {
         super(actionRepository, repositoryProperties);
         this.entityManager = entityManager;
         this.distributionSetRepository = distributionSetRepository;
@@ -160,11 +155,11 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
         this.auditorProvider = auditorProvider;
         this.virtualPropertyReplacer = virtualPropertyReplacer;
         this.txManager = txManager;
-        onlineDsAssignmentStrategy = new OnlineDsAssignmentStrategy(targetRepository, afterCommit, eventPublisherHolder,
+        onlineDsAssignmentStrategy = new OnlineDsAssignmentStrategy(targetRepository, targetManagement, afterCommit, eventPublisherHolder,
                 actionRepository, actionStatusRepository, quotaManagement, this::isMultiAssignmentsEnabled);
         offlineDsAssignmentStrategy = new OfflineDsAssignmentStrategy(targetRepository, afterCommit,
                 eventPublisherHolder, actionRepository, actionStatusRepository, quotaManagement,
-                this::isMultiAssignmentsEnabled);
+                this::isMultiAssignmentsEnabled, targetManagement);
         this.tenantConfigurationManagement = tenantConfigurationManagement;
         this.quotaManagement = quotaManagement;
         this.systemSecurityContext = systemSecurityContext;

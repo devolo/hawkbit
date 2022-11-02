@@ -844,5 +844,5 @@ public interface TargetManagement {
     TargetMetadata updateMetadata(@NotEmpty String controllerId, @NotNull MetaData metadata);
 
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_REPOSITORY)
-    void updateIsCleanedUpForTargetsWithIds(List<Long> targetIds);
+    void updateIsCleanedUpForTargetsWithIds(List<Long> targetIds, boolean isCleanedUp);
 }

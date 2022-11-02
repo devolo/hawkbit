@@ -10,17 +10,12 @@ package org.eclipse.hawkbit.repository.jpa;
 
 import static org.eclipse.hawkbit.repository.jpa.builder.JpaRolloutGroupCreate.addSuccessAndErrorConditionsAndActions;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import javax.persistence.EntityManager;
-import javax.persistence.Query;
 import javax.validation.ConstraintDeclarationException;
 import javax.validation.ValidationException;
 
@@ -48,10 +43,7 @@ import org.eclipse.hawkbit.repository.exception.EntityReadOnlyException;
 import org.eclipse.hawkbit.repository.exception.RolloutIllegalStateException;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.executor.AfterTransactionCommitExecutor;
-import org.eclipse.hawkbit.repository.jpa.model.JpaAction;
-import org.eclipse.hawkbit.repository.jpa.model.JpaRollout;
-import org.eclipse.hawkbit.repository.jpa.model.JpaRolloutGroup;
-import org.eclipse.hawkbit.repository.jpa.model.RolloutTargetGroup;
+import org.eclipse.hawkbit.repository.jpa.model.*;
 import org.eclipse.hawkbit.repository.jpa.rollout.condition.RolloutGroupActionEvaluator;
 import org.eclipse.hawkbit.repository.jpa.rollout.condition.RolloutGroupConditionEvaluator;
 import org.eclipse.hawkbit.repository.jpa.rsql.RSQLUtility;
@@ -149,6 +141,9 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
 
     @Autowired
     private ActionRepository actionRepository;
+
+    @Autowired
+    private TargetRepository targetRepository;
 
     @Autowired
     private AfterTransactionCommitExecutor afterCommit;
@@ -643,8 +638,19 @@ public class JpaRolloutManagement extends AbstractRolloutManagement {
             action.setRolloutGroup(rolloutGroup);
             action.setInitiatedBy(rollout.getCreatedBy());
             rollout.getWeight().ifPresent(action::setWeight);
+
+            setIsCleanedUpToFalseForTargetWithId(target.getId());
             actionRepository.save(action);
         });
+    }
+
+    @Transactional
+    @Retryable(include = {
+            ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
+    public void setIsCleanedUpToFalseForTargetWithId(final long targetId) {
+        List<Long> targetIds = new ArrayList<>();
+        targetIds.add(targetId);
+        targetManagement.updateIsCleanedUpForTargetsWithIds(targetIds, false);
     }
 
     @Override
