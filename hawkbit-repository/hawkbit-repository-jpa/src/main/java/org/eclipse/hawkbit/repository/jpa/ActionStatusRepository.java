@@ -17,9 +17,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.EntityGraph.EntityGraphType;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * {@link ActionStatus} repository.
@@ -92,4 +95,15 @@ public interface ActionStatusRepository
     @Query("SELECT message FROM JpaActionStatus actionstatus JOIN actionstatus.messages message WHERE actionstatus.action.id = :actionId AND message NOT LIKE :filter")
     Page<String> findMessagesByActionIdAndMessageNotLike(Pageable pageable, @Param("actionId") Long actionId,
             @Param("filter") String filter);
+
+    /**
+     * Delete action status messages with the given Ids
+     *
+     * @param actionStatusIds
+     *            Ids of action statuses to delete
+     *
+     */
+    @Modifying
+    @Query("DELETE FROM JpaActionStatus actionstatus where actionstatus.id in :actionStatusIds")
+    void deleteByIds(@Param("actionStatusIds") List<Long> actionStatusIds);
 }

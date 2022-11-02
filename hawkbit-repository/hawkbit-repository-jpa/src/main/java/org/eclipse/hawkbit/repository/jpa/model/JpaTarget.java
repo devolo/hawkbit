@@ -168,6 +168,9 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     @Column(name = "request_controller_attributes", nullable = false)
     private boolean requestControllerAttributes = true;
 
+    @Column(name = "is_cleaned_up", nullable = false)
+    private boolean isCleanedUp = false;
+
     @CascadeOnDelete
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, targetEntity = JpaTargetMetadata.class)
     private List<TargetMetadata> metadata;
@@ -351,6 +354,9 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     }
 
     @Override
+    public Boolean getIsCleanedUp() { return isCleanedUp; }
+
+    @Override
     public DistributionSet getInstalledDistributionSet() {
         return installedDistributionSet;
     }
@@ -372,6 +378,10 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         }
 
         return Collections.unmodifiableList(metadata);
+    }
+
+    public void setIsCleanedUp(final boolean isCleanedUp) {
+        this.isCleanedUp = isCleanedUp;
     }
 
     @Override

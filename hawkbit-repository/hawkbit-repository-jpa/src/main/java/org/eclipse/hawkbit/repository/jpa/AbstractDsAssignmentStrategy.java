@@ -8,15 +8,13 @@
  */
 package org.eclipse.hawkbit.repository.jpa;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.repository.QuotaManagement;
 import org.eclipse.hawkbit.repository.RepositoryConstants;
+import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.event.remote.entity.CancelTargetAssignmentEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.TargetUpdatedEvent;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
@@ -35,8 +33,12 @@ import org.eclipse.hawkbit.repository.model.TargetWithActionType;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * {@link DistributionSet} to {@link Target} assignment strategy as utility for
@@ -48,6 +50,7 @@ public abstract class AbstractDsAssignmentStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractDsAssignmentStrategy.class);
 
     protected final TargetRepository targetRepository;
+    protected final TargetManagement targetManagement;
     protected final AfterTransactionCommitExecutor afterCommit;
     protected final EventPublisherHolder eventPublisherHolder;
     protected final ActionRepository actionRepository;
@@ -56,10 +59,11 @@ public abstract class AbstractDsAssignmentStrategy {
     private final BooleanSupplier multiAssignmentsConfig;
 
     AbstractDsAssignmentStrategy(final TargetRepository targetRepository,
-            final AfterTransactionCommitExecutor afterCommit, final EventPublisherHolder eventPublisherHolder,
-            final ActionRepository actionRepository, final ActionStatusRepository actionStatusRepository,
-            final QuotaManagement quotaManagement, final BooleanSupplier multiAssignmentsConfig) {
+                                 TargetManagement targetManagement, final AfterTransactionCommitExecutor afterCommit, final EventPublisherHolder eventPublisherHolder,
+                                 final ActionRepository actionRepository, final ActionStatusRepository actionStatusRepository,
+                                 final QuotaManagement quotaManagement, final BooleanSupplier multiAssignmentsConfig) {
         this.targetRepository = targetRepository;
+        this.targetManagement = targetManagement;
         this.afterCommit = afterCommit;
         this.eventPublisherHolder = eventPublisherHolder;
         this.actionRepository = actionRepository;
@@ -227,11 +231,23 @@ public abstract class AbstractDsAssignmentStrategy {
             actionForTarget.setMaintenanceWindowDuration(targetWithActionType.getMaintenanceWindowDuration());
             actionForTarget.setMaintenanceWindowTimeZone(targetWithActionType.getMaintenanceWindowTimeZone());
             actionForTarget.setInitiatedBy(initiatedBy);
+
+            setIsCleanedUpToFalseForTargetWithId(target.getId());
+
             return actionForTarget;
         }).orElseGet(() -> {
             LOG.warn("Cannot find target for targetWithActionType '{}'.", targetWithActionType.getControllerId());
             return null;
         });
+    }
+
+    @Transactional
+    @Retryable(include = {
+            ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
+    public void setIsCleanedUpToFalseForTargetWithId(final long targetId) {
+        List<Long> targetIds = new ArrayList<>();
+        targetIds.add(targetId);
+        targetManagement.updateIsCleanedUpForTargetsWithIds(targetIds, false);
     }
 
     JpaActionStatus createActionStatus(final JpaAction action, final String actionMessage) {

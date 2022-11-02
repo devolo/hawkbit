@@ -26,16 +26,7 @@ import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.MetaData;
-import org.eclipse.hawkbit.repository.model.RolloutGroup;
-import org.eclipse.hawkbit.repository.model.Tag;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
-import org.eclipse.hawkbit.repository.model.TargetMetadata;
-import org.eclipse.hawkbit.repository.model.TargetTag;
-import org.eclipse.hawkbit.repository.model.TargetTagAssignmentResult;
-import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
+import org.eclipse.hawkbit.repository.model.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -268,6 +259,15 @@ public interface TargetManagement {
     long countByRsqlAndNonDS(long distributionSetId, @NotNull String rsqlParam);
 
     /**
+     * Counts all targets with `is_cleaned_up` set to true.
+     *
+     * @return the count of found {@link Target}s
+     *
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
+    long countByIsCleanedUp();
+
+    /**
      * Finds all targets for all the given parameter {@link TargetFilterQuery}
      * and that are not assigned to one of the {@link RolloutGroup}s
      *
@@ -328,6 +328,23 @@ public interface TargetManagement {
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_REPOSITORY_AND_READ_TARGET)
     Page<Target> findByAssignedDistributionSet(@NotNull Pageable pageReq, long distributionSetID);
+
+    /**
+     * retrieves {@link Target}s by the prune state.
+     *
+     * @param pageReq
+     *            page parameter
+     * @param pruneState
+     *            the prune state (0 or 1) of the {@link Target}
+     *
+     *
+     * @return the found {@link Target}s
+     *
+     * @throws EntityNotFoundException
+     *             if distribution set with given ID does not exist
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_REPOSITORY_AND_READ_TARGET)
+    Page<Target> findByIsCleanedUpIsFalse(Pageable pageReq);
 
     /**
      * Retrieves {@link Target}s by the assigned {@link DistributionSet}
@@ -825,4 +842,19 @@ public interface TargetManagement {
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_REPOSITORY)
     TargetMetadata updateMetadata(@NotEmpty String controllerId, @NotNull MetaData metadata);
+
+    /**
+     * Updates the `is_cleaned_up` value for targets with given Ids.
+     *
+     * @param targetIds
+     *            {@link Target} A list of Ids of targets to be updated
+     * @param isCleanedUp
+     *            The boolean value to update to
+     *
+     * @throws EntityNotFoundException
+     *             in case the targets do not exist and cannot be
+     *             updated
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_REPOSITORY)
+    void updateIsCleanedUpForTargetsWithIds(List<Long> targetIds, boolean isCleanedUp);
 }

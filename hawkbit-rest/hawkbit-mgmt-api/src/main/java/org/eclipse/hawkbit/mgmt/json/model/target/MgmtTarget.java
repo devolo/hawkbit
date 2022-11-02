@@ -49,6 +49,9 @@ public class MgmtTarget extends MgmtNamedEntity {
     @JsonProperty
     private boolean requestAttributes;
 
+    @JsonProperty
+    private boolean isCleanedUp;
+
     /**
      * @return the controllerId
      */
@@ -69,6 +72,10 @@ public class MgmtTarget extends MgmtNamedEntity {
      */
     public String getUpdateStatus() {
         return updateStatus;
+    }
+
+    public Boolean getCleanedUp() {
+        return isCleanedUp;
     }
 
     /**

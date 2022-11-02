@@ -384,6 +384,11 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     @Override
+    public Page<Target> findByIsCleanedUpIsFalse(final Pageable pageReq) {
+        return targetRepository.findByIsCleanedUpIsFalse(pageReq);
+    }
+
+    @Override
     public Page<Target> findByAssignedDistributionSetAndRsql(final Pageable pageReq, final long distributionSetID,
             final String rsqlParam) {
         throwEntityNotFoundIfDsDoesNotExist(distributionSetID);
@@ -455,6 +460,11 @@ public class JpaTargetManagement implements TargetManagement {
         final List<Specification<JpaTarget>> specList = buildSpecificationList(new FilterParams(status, overdueState,
                 searchText, installedOrAssignedDistributionSetId, selectTargetWithNoTag, tagNames));
         return countByCriteriaAPI(specList);
+    }
+
+    @Override
+    public long countByIsCleanedUp() {
+        return targetRepository.count(TargetSpecifications.isCleanedUp(true));
     }
 
     private boolean isAttributeSearchEnabled() {
@@ -860,4 +870,11 @@ public class JpaTargetManagement implements TargetManagement {
         return targetRepository.findByRequestControllerAttributesIsTrue(pageReq);
     }
 
+    @Override
+    @Transactional
+    @Retryable(include = {
+            ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
+    public void updateIsCleanedUpForTargetsWithIds(final List<Long> targetIds, final boolean isCleanedUp) {
+        targetRepository.setIsCleanedUpForTargetsWithIds(targetIds, isCleanedUp);
+    }
 }

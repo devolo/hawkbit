@@ -37,17 +37,7 @@ import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 
 import com.google.common.collect.MapDifference;
-import org.eclipse.hawkbit.repository.ControllerManagement;
-import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.repository.EntityFactory;
-import org.eclipse.hawkbit.repository.MaintenanceScheduleHelper;
-import org.eclipse.hawkbit.repository.QuotaManagement;
-import org.eclipse.hawkbit.repository.RepositoryConstants;
-import org.eclipse.hawkbit.repository.RepositoryProperties;
-import org.eclipse.hawkbit.repository.SystemManagement;
-import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
-import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
-import org.eclipse.hawkbit.repository.UpdateMode;
+import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
 import org.eclipse.hawkbit.repository.event.remote.TargetAttributesRequestedEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetPollEvent;
@@ -1191,5 +1181,28 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
     // for testing
     void setTargetRepository(final TargetRepository targetRepositorySpy) {
         this.targetRepository = targetRepositorySpy;
+    }
+
+    @Override
+    @Transactional
+    @Retryable(include = {
+            ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
+    public List<Long> findActionsOfTargetWithId(Long targetId) {
+        final CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        final CriteriaQuery<Long> queryAction = cb.createQuery(Long.class);
+        final Root<JpaAction> actionRoot = queryAction.from(JpaAction.class);
+        final CriteriaQuery<Long> query = queryAction
+                .multiselect(actionRoot.get(JpaAction_.id))
+                .where(cb.and(
+                        cb.equal(actionRoot.get(JpaAction_.target).get(JpaTarget_.id), targetId),
+                        cb.notEqual(actionRoot.get(JpaAction_.status), Status.ERROR)
+                )).orderBy(cb.desc(actionRoot.get(JpaAction_.createdAt)));
+
+        return entityManager.createQuery(query).getResultList();
+    }
+
+    @Override
+    public void deleteByIds(final List<Long> actionStatusIds) {
+        actionStatusRepository.deleteByIds(actionStatusIds);
     }
 }

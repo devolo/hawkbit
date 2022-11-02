@@ -88,6 +88,8 @@ public interface Target extends NamedEntity {
      */
     TargetUpdateStatus getUpdateStatus();
 
+    Boolean getIsCleanedUp();
+
     /**
      * @return the poll time which holds the last poll time of the target, the
      *         next poll time and the overdue time. In case the
@@ -111,5 +113,4 @@ public interface Target extends NamedEntity {
     DistributionSet getAssignedDistributionSet();
 
     List<TargetMetadata> getMetadata();
-
 }

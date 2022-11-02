@@ -81,6 +81,20 @@ public interface TargetRepository extends BaseEntityRepository<JpaTarget, Long>,
             @Param("lastModifiedBy") String modifiedBy, @Param("targets") Collection<Long> targets);
 
     /**
+     * Sets {@link JpaTarget#getIsCleanedUp()} for a list of targets
+     *
+     * @param targets
+     *            Ids of targets to update
+     * @param isCleanedUp
+     *            boolean value to set to
+     *
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE JpaTarget t SET t.isCleanedUp = :isCleanedUp WHERE t.id IN :targets")
+    void setIsCleanedUpForTargetsWithIds(@Param("targets") List<Long> targets, @Param("isCleanedUp") boolean isCleanedUp);
+
+    /**
      * Loads {@link Target} by given ID.
      *
      * @param controllerID
@@ -176,6 +190,14 @@ public interface TargetRepository extends BaseEntityRepository<JpaTarget, Long>,
      * @return page of found targets
      */
     Page<Target> findByAssignedDistributionSetId(Pageable pageable, Long setID);
+
+    /**
+     * Finds all targets that have given prune state.
+     *
+     * @param pruneState is the prune state of the {@link Target} to filter for.
+     * @return page of found targets
+     */
+    Page<Target> findByIsCleanedUpIsFalse(Pageable pageable);
 
     /**
      * retrieves {@link Target}s where

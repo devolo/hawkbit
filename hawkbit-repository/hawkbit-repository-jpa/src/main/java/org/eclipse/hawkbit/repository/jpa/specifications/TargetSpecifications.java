@@ -370,4 +370,19 @@ public final class TargetSpecifications {
             return cb.equal(tags.get(JpaTargetTag_.id), tagId);
         };
     }
+
+    /**
+     * {@link Specification} for retrieving {@link Target}s by isCleanedUp value.
+     *
+     * @param isCleanedUp
+     *            the value of isCleanedUp to find by
+     * @return the {@link Target} {@link Specification}
+     */
+    public static Specification<JpaTarget> isCleanedUp(final boolean isCleanedUp) {
+
+        return (root, query, cb) -> {
+            final Predicate predicate = cb.equal(root.get(JpaTarget_.isCleanedUp), isCleanedUp);
+            return predicate;
+        };
+    }
 }

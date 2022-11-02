@@ -57,6 +57,8 @@ import org.eclipse.hawkbit.repository.jpa.autoassign.AutoAssignChecker;
 import org.eclipse.hawkbit.repository.jpa.autoassign.AutoAssignScheduler;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoActionCleanup;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoCleanupScheduler;
+import org.eclipse.hawkbit.repository.jpa.autoactionstatuscleanup.AutoActionStatusCleanup;
+import org.eclipse.hawkbit.repository.jpa.autoactionstatuscleanup.AutoActionStatusCleanupScheduler;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.CleanupTask;
 import org.eclipse.hawkbit.repository.jpa.autorolloutcleanup.AutoRolloutCleanup;
 import org.eclipse.hawkbit.repository.jpa.autorolloutcleanup.AutoRolloutCleanupScheduler;
@@ -681,11 +683,11 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
             final PlatformTransactionManager txManager,
             final TenantConfigurationManagement tenantConfigurationManagement, final QuotaManagement quotaManagement,
             final SystemSecurityContext systemSecurityContext, final TenantAware tenantAware,
-            final JpaProperties properties, final RepositoryProperties repositoryProperties) {
+            final JpaProperties properties, final RepositoryProperties repositoryProperties, final TargetManagement targetManagement) {
         return new JpaDeploymentManagement(entityManager, actionRepository, distributionSetRepository, targetRepository,
                 actionStatusRepository, auditorProvider, eventPublisherHolder, afterCommit, virtualPropertyReplacer,
                 txManager, tenantConfigurationManagement, quotaManagement, systemSecurityContext, tenantAware,
-                properties.getDatabase(), repositoryProperties);
+                properties.getDatabase(), repositoryProperties, targetManagement);
     }
 
     /**
@@ -859,6 +861,48 @@ public class RepositoryApplicationConfiguration extends JpaBaseConfiguration {
 
     /**
      * {@link AutoRolloutCleanupScheduler} bean.
+     * {@link AutoActionStatusCleanup} bean.
+     *
+     * @param deploymentManagement
+     *            Deployment management service
+     * @param configManagement
+     *            Tenant configuration service
+     *
+     * @return a new {@link AutoActionStatusCleanup} bean
+     */
+    @Bean
+    CleanupTask actionStatusCleanup(final DeploymentManagement deploymentManagement, final TenantConfigurationManagement configManagement,
+                                    final ControllerManagement controllerManagement, final TargetManagement targetManagement, final QuotaManagement quotaManagement) {
+        return new AutoActionStatusCleanup(deploymentManagement, configManagement, controllerManagement, targetManagement, quotaManagement);
+    }
+
+    /**
+     * {@link AutoActionStatusCleanupScheduler} bean.
+     *
+     * @param systemManagement
+     *            to find all tenants
+     * @param systemSecurityContext
+     *            to run as system
+     * @param lockRegistry
+     *            to lock the tenant for auto assignment
+     * @param cleanupTasks
+     *            a list of cleanup tasks
+     *
+     * @return a new {@link AutoActionStatusCleanupScheduler} bean
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @Profile("!test")
+    @ConditionalOnProperty(prefix = "hawkbit.autoactionstatuscleanup.scheduler", name = "enabled", matchIfMissing = true)
+    AutoActionStatusCleanupScheduler autoActionStatusCleanupScheduler(final SystemManagement systemManagement,
+                                                                      final SystemSecurityContext systemSecurityContext,
+                                                                      final LockRegistry lockRegistry,
+                                                                      final List<CleanupTask> cleanupTasks) {
+        return new AutoActionStatusCleanupScheduler(systemManagement, systemSecurityContext, lockRegistry, cleanupTasks);
+    }
+
+    /**
+     * {@link AutoCleanupScheduler} bean.
      *
      * @param systemManagement
      *            to find all tenants
