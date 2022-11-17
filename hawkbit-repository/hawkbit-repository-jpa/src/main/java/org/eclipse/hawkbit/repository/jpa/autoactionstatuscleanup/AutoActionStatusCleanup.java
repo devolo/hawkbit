@@ -81,13 +81,23 @@ public class AutoActionStatusCleanup implements CleanupTask {
                 actionIds.remove(0);
 
                 actionIds.forEach(actionId -> {
-                    Pageable pageRefForActionStatus = new OffsetBasedPageRequest(0, quotaMgmt.getMaxStatusEntriesPerAction(), Sort.unsorted());
-                    List<ActionStatus> actionStatuses = deploymentMgmt.findActionStatusByAction(pageRefForActionStatus, actionId).getContent();
+                    Pageable pageRefForActionStatus = new OffsetBasedPageRequest(0, quotaMgmt.getMaxStatusEntriesPerAction(), Sort.by(Sort.Direction.DESC, "createdAt"));
 
-                    LOGGER.debug("Fetched {} action statuses for action with Id: {}", actionStatuses.size(), actionId);
+                    List<ActionStatus> actionStatuses = deploymentMgmt.findActionStatusByAction(pageRefForActionStatus, actionId).getContent().stream().filter(actionStatus -> !actionStatus.getStatus().equals(Action.Status.ERROR)).collect(Collectors.toList());
 
-                    // Delete all action statuses for these actions (and cascade delete the messages)
-                    controllerMgmt.deleteByIds(actionStatuses.stream().map(ActionStatus::getId).collect(Collectors.toList()));
+                    List<Long> actionStatusIds = actionStatuses.stream().map(ActionStatus::getId).collect(Collectors.toList());
+
+                    LOGGER.debug("Fetched {} action statuses for action with Id: {}", actionStatusIds.size(), actionId);
+
+                    // Ignore the most recent action status
+                    if (actionStatusIds.size() >= 1) {
+                        LOGGER.debug("Excluding action status {} for action with Id {}", actionStatusIds.get(0), actionId);
+                        actionStatusIds.remove(0);
+
+                        // Delete all action statuses for these actions (and cascade delete the messages)
+                        if (actionStatusIds.size() >= 1)
+                            controllerMgmt.deleteByIds(actionStatusIds);
+                    }
                 });
             }
         });
