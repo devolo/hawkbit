@@ -83,7 +83,7 @@ public class AutoActionStatusCleanupTest extends AbstractJpaIntegrationTest {
 
         assertThat(target.getIsCleanedUp()).isEqualTo(true);
         assertThat(actionRepository.count()).isEqualTo(2);
-        assertThat(actionStatusRepository.count()).isEqualTo(2); // Remove status only for previous action
+        assertThat(actionStatusRepository.count()).isEqualTo(3); // Remove only the penultimate status only for previous action
     }
 
     @Test
