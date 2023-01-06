@@ -855,6 +855,6 @@ public interface TargetManagement {
      *             in case the targets do not exist and cannot be
      *             updated
      */
-    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_REPOSITORY)
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_TARGET)
     void updateIsCleanedUpForTargetsWithIds(List<Long> targetIds, boolean isCleanedUp);
 }
