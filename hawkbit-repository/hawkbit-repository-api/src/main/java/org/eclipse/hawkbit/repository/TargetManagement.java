@@ -102,6 +102,15 @@ public interface TargetManagement {
     long countByFilters(Collection<TargetUpdateStatus> status, Boolean overdueState, String searchText,
             Long installedOrAssignedDistributionSetId, Boolean selectTargetWithNoTag, String... tagNames);
 
+
+    /**
+     * Count {@link Target}s in each update status.
+     *
+     * @return an array of target counts per update status.
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
+    List<Long> countByUpdateStatus();
+
     /**
      * Counts number of targets with given with given distribution set Id
      *

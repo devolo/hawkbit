@@ -463,6 +463,11 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     @Override
+    public List<Long> countByUpdateStatus() {
+        return targetRepository.countByUpdateStatus();
+    }
+
+    @Override
     public long countByIsCleanedUp() {
         return targetRepository.count(TargetSpecifications.isCleanedUp(true));
     }
