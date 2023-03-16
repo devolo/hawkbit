@@ -8,6 +8,8 @@ import org.eclipse.hawkbit.repository.RolloutManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.info.Info;
 import org.springframework.boot.actuate.info.InfoContributor;
 import org.springframework.data.domain.Page;
@@ -20,11 +22,11 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class CustomInfoContributor implements InfoContributor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CustomInfoContributor.class);
 
     private final TargetManagement targetManagement;
     private final DistributionSetManagement distributionSetManagement;
     private final RolloutManagement rolloutManagement;
-
     public CustomInfoContributor(TargetManagement targetManagement, DistributionSetManagement distributionSetManagement, RolloutManagement rolloutManagement) {
         this.targetManagement = targetManagement;
         this.distributionSetManagement = distributionSetManagement;
@@ -47,20 +49,21 @@ public class CustomInfoContributor implements InfoContributor {
         Timer timer = registry.timer("elapsedTimeForInfoEndpoint");
 
         timer.record(() -> {
-            final List<TargetUpdateStatus> pendingTargets = Collections.singletonList(TargetUpdateStatus.PENDING);
-            final List<TargetUpdateStatus> unknownTargets = Collections.singletonList(TargetUpdateStatus.UNKNOWN);
-            final List<TargetUpdateStatus> errorTargets = Collections.singletonList(TargetUpdateStatus.ERROR);
-            final List<TargetUpdateStatus> inSyncTargets = Collections.singletonList(TargetUpdateStatus.IN_SYNC);
-            final List<TargetUpdateStatus> registeredTargets = Collections.singletonList(TargetUpdateStatus.REGISTERED);
-
-            final long pendingTargetsCount = targetManagement.countByFilters(pendingTargets, null, null, null, Boolean.FALSE);
-            final long pendingOfflineTargetsCount = targetManagement.countByFilters(pendingTargets, Boolean.TRUE, null, null, Boolean.FALSE);
+            List<Long> targetCountByUpdateStatus = targetManagement.countByUpdateStatus();
+            final long pendingTargetsCount = targetCountByUpdateStatus.get(2);
+            final long pendingOfflineTargetsCount = targetManagement.countByFilters(
+                    Collections.singletonList(TargetUpdateStatus.PENDING),
+                    Boolean.TRUE,
+                    null,
+                    null,
+                    Boolean.FALSE
+                );
 
             targetsByState.put("pending", pendingTargetsCount);
-            targetsByState.put("unknown", targetManagement.countByFilters(unknownTargets, null, null, null, Boolean.FALSE));
-            targetsByState.put("error", targetManagement.countByFilters(errorTargets, null, null, null, Boolean.FALSE));
-            targetsByState.put("in_sync", targetManagement.countByFilters(inSyncTargets, null, null, null, Boolean.FALSE));
-            targetsByState.put("registered", targetManagement.countByFilters(registeredTargets, null, null, null, Boolean.FALSE));
+            targetsByState.put("unknown", targetCountByUpdateStatus.get(0));
+            targetsByState.put("error", targetCountByUpdateStatus.get(3));
+            targetsByState.put("in_sync", targetCountByUpdateStatus.get(1));
+            targetsByState.put("registered", targetCountByUpdateStatus.get(4));
             targetsByState.put("ready_for_update", pendingTargetsCount - pendingOfflineTargetsCount);
 
             final Page<Rollout> rolloutPage = rolloutManagement.findAllWithDetailedStatus(new OffsetBasedPageRequest(0, 100, Sort.by(Sort.Direction.ASC, "name")), false);
