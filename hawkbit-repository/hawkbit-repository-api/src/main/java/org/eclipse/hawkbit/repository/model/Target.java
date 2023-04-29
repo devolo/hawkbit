@@ -91,12 +91,25 @@ public interface Target extends NamedEntity {
     Boolean getIsCleanedUp();
 
     /**
+     * @return Target type {@link TargetType}.
+     */
+    TargetType getTargetType();
+
+    /**
      * @return the poll time which holds the last poll time of the target, the
      *         next poll time and the overdue time. In case the
      *         {@link #lastTargetQuery} is not set e.g. the target never polled
      *         before this method returns {@code null}
      */
     PollStatus getPollStatus();
+
+    /**
+     * The auto confirmation status is present, when it's active for the target.
+     * Will only be considered in case the confirmation flow is active.
+     *
+     * @return the {@link AutoConfirmationStatus} if activated
+     */
+    AutoConfirmationStatus getAutoConfirmationStatus();
 
     /**
      * @return <code>true</code> if the {@link Target} has not jet provided

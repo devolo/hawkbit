@@ -8,14 +8,13 @@
  */
 package org.eclipse.hawkbit.amqp;
 
-import java.time.Duration;
-import java.util.Map;
-
+import com.google.common.collect.Maps;
 import org.eclipse.hawkbit.api.ArtifactUrlHandler;
 import org.eclipse.hawkbit.api.HostnameResolver;
 import org.eclipse.hawkbit.cache.DownloadIdCache;
 import org.eclipse.hawkbit.dmf.amqp.api.AmqpSettings;
 import org.eclipse.hawkbit.repository.ArtifactManagement;
+import org.eclipse.hawkbit.repository.ConfirmationManagement;
 import org.eclipse.hawkbit.repository.ControllerManagement;
 import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
@@ -53,7 +52,9 @@ import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.ErrorHandler;
 
-import com.google.common.collect.Maps;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Spring configuration for AMQP based DMF communication for indirect device
@@ -80,15 +81,48 @@ public class AmqpConfiguration {
     private ServiceMatcher serviceMatcher;
 
     /**
-     * Register the bean for the custom error handler.
+     * Creates a custom error handler bean.
      *
-     * @return custom error handler
+     *  @param handlers
+     *                  list of {@link AmqpErrorHandler} handlers
+
+     * @return the delegating error handler bean
      */
     @Bean
-    @ConditionalOnMissingBean(ErrorHandler.class)
-    public ErrorHandler errorHandler() {
-        return new ConditionalRejectingErrorHandler(
-                new DelayedRequeueExceptionStrategy(amqpProperties.getRequeueDelay()));
+    @ConditionalOnMissingBean
+    public ErrorHandler errorHandler(final List<AmqpErrorHandler> handlers) {
+        return new DelegatingConditionalErrorHandler(handlers, new ConditionalRejectingErrorHandler(
+                new DelayedRequeueExceptionStrategy(amqpProperties.getRequeueDelay())));
+    }
+
+    /**
+     * Error handler bean for all target attributes related fatal errors
+     *
+     * @return the invalid target attribute exception handler bean
+     */
+    @Bean
+    public AmqpErrorHandler invalidTargetAttributeConditionalExceptionHandler() {
+        return new InvalidTargetAttributeExceptionHandler();
+    }
+
+    /**
+     * Error handler bean for entity not found errors
+     *
+     * @return the entity not found exception handler bean
+     */
+    @Bean
+    public AmqpErrorHandler entityNotFoundExceptionHandler() {
+        return new EntityNotFoundExceptionHandler();
+    }
+
+    /**
+     * Error handler bean for amqp message conversion errors
+     *
+     * @return the amqp message conversion exception handler bean
+     */
+    @Bean
+    public AmqpErrorHandler messageConversionExceptionHandler() {
+        return new MessageConversionExceptionHandler();
     }
 
     /**
@@ -242,9 +276,10 @@ public class AmqpConfiguration {
             final AmqpMessageDispatcherService amqpMessageDispatcherService,
             final ControllerManagement controllerManagement, final EntityFactory entityFactory,
             final SystemSecurityContext systemSecurityContext,
-            final TenantConfigurationManagement tenantConfigurationManagement) {
+            final TenantConfigurationManagement tenantConfigurationManagement,
+            final ConfirmationManagement confirmationManagement) {
         return new AmqpMessageHandlerService(rabbitTemplate, amqpMessageDispatcherService, controllerManagement,
-                entityFactory, systemSecurityContext, tenantConfigurationManagement);
+                entityFactory, systemSecurityContext, tenantConfigurationManagement, confirmationManagement);
     }
 
     /**
@@ -321,10 +356,11 @@ public class AmqpConfiguration {
             final AmqpMessageSenderService amqpSenderService, final ArtifactUrlHandler artifactUrlHandler,
             final SystemSecurityContext systemSecurityContext, final SystemManagement systemManagement,
             final TargetManagement targetManagement, final DistributionSetManagement distributionSetManagement,
-            final SoftwareModuleManagement softwareModuleManagement, final DeploymentManagement deploymentManagement) {
+            final SoftwareModuleManagement softwareModuleManagement, final DeploymentManagement deploymentManagement,
+            final TenantConfigurationManagement tenantConfigurationManagement) {
         return new AmqpMessageDispatcherService(rabbitTemplate, amqpSenderService, artifactUrlHandler,
                 systemSecurityContext, systemManagement, targetManagement, serviceMatcher, distributionSetManagement,
-                softwareModuleManagement, deploymentManagement);
+                softwareModuleManagement, deploymentManagement, tenantConfigurationManagement);
     }
 
     private static Map<String, Object> getTTLMaxArgsAuthenticationQueue() {

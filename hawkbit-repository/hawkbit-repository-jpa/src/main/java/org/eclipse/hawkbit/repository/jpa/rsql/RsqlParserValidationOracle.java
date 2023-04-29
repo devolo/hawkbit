@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.repository.TargetFields;
-import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
 import org.eclipse.hawkbit.repository.jpa.rsql.ParseExceptionWrapper.TokenWrapper;
@@ -33,7 +32,7 @@ import org.eclipse.hawkbit.repository.rsql.ValidationOracleContext;
 import org.eclipse.persistence.exceptions.ConversionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.util.CollectionUtils;
 
@@ -60,9 +59,6 @@ public class RsqlParserValidationOracle implements RsqlValidationOracle {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RsqlParserValidationOracle.class);
 
-    @Autowired
-    private TargetManagement targetManagement;
-
     @Override
     public ValidationOracleContext suggest(final String rsqlQuery, final int cursorPosition) {
 
@@ -75,7 +71,8 @@ public class RsqlParserValidationOracle implements RsqlValidationOracle {
         context.setSyntaxErrorContext(errorContext);
 
         try {
-            RSQLUtility.isValid(rsqlQuery, TargetFields.class);
+            RSQLUtility.validateRsqlFor(rsqlQuery, TargetFields.class);
+
             context.setSyntaxError(false);
             suggestionContext.getSuggestions().addAll(getLogicalOperatorSuggestion(rsqlQuery));
         } catch (final RSQLParameterSyntaxException | RSQLParserException ex) {
@@ -121,7 +118,7 @@ public class RsqlParserValidationOracle implements RsqlValidationOracle {
     private static List<SuggestToken> getNextTokens(final ParseException parseException) {
         final List<SuggestToken> listTokens = new ArrayList<>();
         final ParseExceptionWrapper parseExceptionWrapper = new ParseExceptionWrapper(parseException);
-        final int[][] expectedTokenSequence = parseExceptionWrapper.getExpectedTokenSequence();
+        final int[][] expectedTokenSequence = parseException.expectedTokenSequences;
         final TokenWrapper currentToken = parseExceptionWrapper.getCurrentToken();
         if (currentToken == null) {
             return Collections.emptyList();
@@ -248,8 +245,8 @@ public class RsqlParserValidationOracle implements RsqlValidationOracle {
         }
         builder = builder.replace('\r', ' ');
         builder = builder.replace('\n', ' ');
-        builder = builder.replaceAll(">", " ");
-        builder = builder.replaceAll("<", " ");
+        builder = builder.replace(">", " ");
+        builder = builder.replace("<", " ");
 
         return builder;
     }

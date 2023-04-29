@@ -9,6 +9,9 @@
 package org.eclipse.hawkbit.rest.mgmt.documentation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants.TARGET_V1_ACTIVATE_AUTO_CONFIRM;
+import static org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants.TARGET_V1_AUTO_CONFIRM;
+import static org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants.TARGET_V1_DEACTIVATE_AUTO_CONFIRM;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
@@ -24,26 +27,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.hawkbit.im.authentication.SpPermission;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAutoConfirmUpdate;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.repository.ActionStatusFields;
 import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
+import org.eclipse.hawkbit.repository.model.DistributionSetType;
 import org.eclipse.hawkbit.repository.model.Target;
+import org.eclipse.hawkbit.repository.model.TargetType;
 import org.eclipse.hawkbit.rest.documentation.AbstractApiRestDocumentation;
 import org.eclipse.hawkbit.rest.documentation.ApiModelPropertiesGeneric;
 import org.eclipse.hawkbit.rest.documentation.MgmtApiModelProperties;
 import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.hateoas.MediaTypes;
@@ -69,15 +75,15 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
     private final String targetId = "137";
 
     @Override
-    @Before
-    public void setUp() {
-        resourceName = "targets";
-        super.setUp();
+    public String getResourceName() {
+        return "targets";
     }
 
     @Test
     @Description("Handles the GET request of retrieving all targets within SP. Required Permission: READ_TARGET.")
     public void getTargets() throws Exception {
+        enableConfirmationFlow();
+
         createTargetByGivenNameWithAttributes(targetId, createDistributionSet());
 
         mockMvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING)).andExpect(status().isOk())
@@ -98,6 +104,8 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                         fieldWithPath("content[].securityToken").description(MgmtApiModelProperties.SECURITY_TOKEN),
                         fieldWithPath("content[].requestAttributes")
                                 .description(MgmtApiModelProperties.REQUEST_ATTRIBUTES),
+                        fieldWithPath("content[].autoConfirmActive")
+                                .description(MgmtApiModelProperties.AUTO_CONFIRM_ACTIVE),
                         fieldWithPath("content[].installedAt").description(MgmtApiModelProperties.INSTALLED_AT),
                         fieldWithPath("content[].lastModifiedAt")
                                 .description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT).type("Number"),
@@ -107,6 +115,10 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                 .type("String"),
                         fieldWithPath("content[].lastControllerRequestAt")
                                 .description(MgmtApiModelProperties.LAST_REQUEST_AT).type("Number"),
+                        fieldWithPath("content[].targetType").description(MgmtApiModelProperties.TARGETTYPE_ID)
+                                .type("Number"),
+                        fieldWithPath("content[].targetTypeName").description(MgmtApiModelProperties.TARGETTYPE_NAME)
+                                .type("String"),
                         fieldWithPath("content[]._links.self").ignored())));
     }
 
@@ -121,7 +133,10 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
     @Test
     @Description("Handles the POST request of creating new targets within SP. The request body must always be a list of targets. Required Permission: CREATE_TARGET.")
     public void postTargets() throws Exception {
-        final String target = createTargetJsonForPostRequest("123456", "controllerId", "test");
+        enableConfirmationFlow();
+
+        final TargetType defaultType = testdataFactory.createTargetType("defaultType", Collections.emptyList());
+        final String target = createTargetJsonForPostRequest("123456", "controllerId", "test", defaultType);
 
         mockMvc.perform(post(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING)
                 .contentType(MediaType.APPLICATION_JSON).content(target)).andExpect(status().isCreated())
@@ -132,7 +147,8 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                         optionalRequestFieldWithPath("[]description").description(ApiModelPropertiesGeneric.DESCRPTION),
                         optionalRequestFieldWithPath("[]address").description(MgmtApiModelProperties.ADDRESS),
                         optionalRequestFieldWithPath("[]securityToken")
-                                .description(MgmtApiModelProperties.SECURITY_TOKEN)),
+                                .description(MgmtApiModelProperties.SECURITY_TOKEN),
+                        optionalRequestFieldWithPath("[]targetType").description(MgmtApiModelProperties.TARGETTYPE_ID)),
                         responseFields(fieldWithPath("[]controllerId").description(ApiModelPropertiesGeneric.ITEM_ID),
                                 fieldWithPath("[]name").description(ApiModelPropertiesGeneric.NAME),
                                 fieldWithPath("[]description").description(ApiModelPropertiesGeneric.DESCRPTION),
@@ -153,6 +169,10 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                         .description(MgmtApiModelProperties.REQUEST_ATTRIBUTES),
                                 fieldWithPath("[]cleanedUp").description(MgmtApiModelProperties.IS_CLEANED_UP),
                                 fieldWithPath("[]isCleanedUp").description(MgmtApiModelProperties.IS_CLEANED_UP),
+                                fieldWithPath("[]autoConfirmActive")
+                                        .description(MgmtApiModelProperties.AUTO_CONFIRM_ACTIVE),
+                                fieldWithPath("[]targetType").description(MgmtApiModelProperties.TARGETTYPE_ID),
+                                fieldWithPath("[]targetTypeName").description(MgmtApiModelProperties.TARGETTYPE_NAME),
                                 fieldWithPath("[]_links.self").ignored())));
     }
 
@@ -169,6 +189,8 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
     @Test
     @Description("Handles the GET request of retrieving a single target within SP. Required Permission: READ_TARGET.")
     public void getTarget() throws Exception {
+        enableConfirmationFlow();
+
         final Target target = createTargetByGivenNameWithAttributes(targetId, createDistributionSet());
 
         mockMvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}", target.getControllerId()))
@@ -181,6 +203,8 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
     @Test
     @Description("Handles the PUT request of updating a target within SP. Required Permission: UPDATE_TARGET.")
     public void putTarget() throws Exception {
+        enableConfirmationFlow();
+
         final Target target = createTargetByGivenNameWithAttributes(targetId, createDistributionSet());
         final String targetAsJson = createJsonTarget(targetId, "newTargetName", "I've been updated");
 
@@ -206,7 +230,7 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
     @Description("Handles the GET request of retrieving the full action history of a specific target. Required Permission: READ_TARGET.")
     public void getActionsFromTarget() throws Exception {
         enableMultiAssignments();
-        generateActionForTarget(targetId);
+        generateRolloutActionForTarget(targetId);
 
         mockMvc.perform(
                 get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + MgmtRestConstants.TARGET_V1_ACTIONS,
@@ -231,9 +255,16 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                 fieldWithPath("content[].status")
                                         .description(MgmtApiModelProperties.ACTION_EXECUTION_STATUS)
                                         .attributes(key("value").value("['finished', 'pending']")),
+                                fieldWithPath("content[].detailStatus")
+                                        .description(MgmtApiModelProperties.ACTION_DETAIL_STATUS)
+                                        .attributes(key("value").value(
+                                                "['finished', 'error', 'running', 'warning', 'scheduled', 'canceling', 'canceled', 'download', 'downloaded', 'retrieved', 'cancel_rejected']")),
                                 fieldWithPath("content[]._links").description(MgmtApiModelProperties.LINK_TO_ACTION),
                                 fieldWithPath("content[].id").description(MgmtApiModelProperties.ACTION_ID),
-                                fieldWithPath("content[].weight").description(MgmtApiModelProperties.ACTION_WEIGHT))));
+                                fieldWithPath("content[].weight").description(MgmtApiModelProperties.ACTION_WEIGHT),
+                                fieldWithPath("content[].rollout").description(MgmtApiModelProperties.ACTION_ROLLOUT),
+                                fieldWithPath("content[].rolloutName")
+                                        .description(MgmtApiModelProperties.ACTION_ROLLOUT_NAME))));
     }
 
     @Test
@@ -261,11 +292,15 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                         .description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT).type("String"),
                                 fieldWithPath("content[].type").description(MgmtApiModelProperties.ACTION_TYPE)
                                         .attributes(key("value").value("['update', 'cancel']")),
-
                                 fieldWithPath("content[].status")
                                         .description(MgmtApiModelProperties.ACTION_EXECUTION_STATUS)
                                         .attributes(key("value").value("['finished', 'pending']")),
-                                fieldWithPath("content[]._links").description(MgmtApiModelProperties.LINK_TO_ACTION),
+                                fieldWithPath("content[].detailStatus")
+                                        .description(MgmtApiModelProperties.ACTION_DETAIL_STATUS)
+                                        .attributes(key("value").value(
+                                                "['finished', 'error', 'running', 'warning', 'scheduled', 'canceling', 'canceled', 'download', 'downloaded', 'retrieved', 'cancel_rejected']")),
+                                fieldWithPath("content[]._links.self")
+                                        .description(MgmtApiModelProperties.LINK_TO_ACTION),
                                 fieldWithPath("content[].id").description(MgmtApiModelProperties.ACTION_ID),
                                 fieldWithPath("content[].weight").description(MgmtApiModelProperties.ACTION_WEIGHT),
                                 fieldWithPath("content[].maintenanceWindow")
@@ -314,7 +349,7 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
     public void deleteActionFromTargetWithParameters() throws Exception {
         final Action action = generateActionForTarget(targetId, false);
         deploymentManagement.cancelAction(action.getId());
-        
+
         mockMvc.perform(delete(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/"
                 + MgmtRestConstants.TARGET_V1_ACTIONS + "/{actionId}?force=true", targetId, action.getId()))
                 .andExpect(status().isNoContent()).andDo(MockMvcResultPrinter.print())
@@ -328,7 +363,9 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
     @Description("Handles the GET request of retrieving a specific action on a specific target. Required Permission: READ_TARGET.")
     public void getActionFromTarget() throws Exception {
         enableMultiAssignments();
-        final Action action = generateActionForTarget(targetId, true, true);
+        final Action action = generateRolloutActionForTarget(targetId, true, true);
+        provideCodeFeedback(action, 200);
+        
         assertThat(deploymentManagement.findAction(action.getId()).get().getActionType())
                 .isEqualTo(ActionType.TIMEFORCED);
 
@@ -354,10 +391,19 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                         .type("String"),
                                 fieldWithPath("status").description(MgmtApiModelProperties.ACTION_EXECUTION_STATUS)
                                         .attributes(key("value").value("['finished', 'pending']")),
+                                fieldWithPath("detailStatus").description(MgmtApiModelProperties.ACTION_DETAIL_STATUS)
+                                        .attributes(key("value").value(
+                                                "['finished', 'error', 'running', 'warning', 'scheduled', 'canceling', 'canceled', 'download', 'downloaded', 'retrieved', 'cancel_rejected']")),
+                                optionalRequestFieldWithPath("lastStatusCode")
+                                        .description(MgmtApiModelProperties.ACTION_LAST_STATUS_CODE).type("Integer"),
+                                fieldWithPath("rollout").description(MgmtApiModelProperties.ACTION_ROLLOUT),
+                                fieldWithPath("rolloutName").description(MgmtApiModelProperties.ACTION_ROLLOUT_NAME),
                                 fieldWithPath("_links.self").ignored(),
                                 fieldWithPath("_links.distributionset").description(MgmtApiModelProperties.LINK_TO_DS),
                                 fieldWithPath("_links.status")
-                                        .description(MgmtApiModelProperties.LINKS_ACTION_STATUSES))));
+                                        .description(MgmtApiModelProperties.LINKS_ACTION_STATUSES),
+                                fieldWithPath("_links.rollout").description(MgmtApiModelProperties.LINK_TO_ROLLOUT),
+                                fieldWithPath("_links.target").description(MgmtApiModelProperties.LINK_TO_TARGET))));
     }
 
     @Test
@@ -366,6 +412,7 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
         enableMultiAssignments();
         final Action action = generateActionForTarget(targetId, true, true, getTestSchedule(2), getTestDuration(1),
                 getTestTimeZone());
+        provideCodeFeedback(action, 200);
 
         mockMvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/"
                 + MgmtRestConstants.TARGET_V1_ACTIONS + "/{actionId}", targetId, action.getId()))
@@ -389,6 +436,11 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                         .type("String"),
                                 fieldWithPath("status").description(MgmtApiModelProperties.ACTION_EXECUTION_STATUS)
                                         .attributes(key("value").value("['finished', 'pending']")),
+                                fieldWithPath("detailStatus").description(MgmtApiModelProperties.ACTION_DETAIL_STATUS)
+                                        .attributes(key("value").value(
+                                                "['finished', 'error', 'running', 'warning', 'scheduled', 'canceling', 'canceled', 'download', 'downloaded', 'retrieved', 'cancel_rejected']")),
+                                optionalRequestFieldWithPath("lastStatusCode")
+                                        .description(MgmtApiModelProperties.ACTION_LAST_STATUS_CODE).type("Integer"),
                                 fieldWithPath("maintenanceWindow")
                                         .description(MgmtApiModelProperties.MAINTENANCE_WINDOW),
                                 fieldWithPath("maintenanceWindow.schedule")
@@ -402,7 +454,8 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                 fieldWithPath("_links.self").ignored(),
                                 fieldWithPath("_links.distributionset").description(MgmtApiModelProperties.LINK_TO_DS),
                                 fieldWithPath("_links.status")
-                                        .description(MgmtApiModelProperties.LINKS_ACTION_STATUSES))));
+                                        .description(MgmtApiModelProperties.LINKS_ACTION_STATUSES),
+                                fieldWithPath("_links.target").description(MgmtApiModelProperties.LINK_TO_TARGET))));
     }
 
     @Test
@@ -417,10 +470,9 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
         final Map<String, Object> body = new HashMap<>();
         body.put("forceType", "forced");
 
-        mockMvc.perform(
-                put(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + MgmtRestConstants.TARGET_V1_ACTIONS
-                        + "/{actionId}", targetId, actionId).content(this.objectMapper.writeValueAsString(body))
-                                .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(put(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/"
+                + MgmtRestConstants.TARGET_V1_ACTIONS + "/{actionId}", targetId, actionId)
+                        .content(this.objectMapper.writeValueAsString(body)).contentType(MediaType.APPLICATION_JSON))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
                 .andDo(this.document.document(
                         pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID),
@@ -440,16 +492,21 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                         .attributes(key("value").value("['forced', 'soft', 'timeforced']")),
                                 fieldWithPath("status").description(MgmtApiModelProperties.ACTION_EXECUTION_STATUS)
                                         .attributes(key("value").value("['finished', 'pending']")),
+                                fieldWithPath("detailStatus").description(MgmtApiModelProperties.ACTION_DETAIL_STATUS)
+                                        .attributes(key("value").value(
+                                                "['finished', 'error', 'running', 'warning', 'scheduled', 'canceling', 'canceled', 'download', 'downloaded', 'retrieved', 'cancel_rejected']")),
                                 fieldWithPath("_links.self").ignored(),
                                 fieldWithPath("_links.distributionset").description(MgmtApiModelProperties.LINK_TO_DS),
                                 fieldWithPath("_links.status")
-                                        .description(MgmtApiModelProperties.LINKS_ACTION_STATUSES))));
+                                        .description(MgmtApiModelProperties.LINKS_ACTION_STATUSES),
+                                fieldWithPath("_links.target").description(MgmtApiModelProperties.LINK_TO_TARGET))));
     }
 
     @Test
     @Description("Handles the GET request of retrieving a specific action on a specific target. Required Permission: READ_TARGET.")
     public void getStatusFromAction() throws Exception {
-        final Action action = generateActionForTarget(targetId);
+        final Action action = generateActionForTarget(targetId, false);
+        provideCodeFeedback(action, 200);
 
         mockMvc.perform(
                 get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + MgmtRestConstants.TARGET_V1_ACTIONS
@@ -468,9 +525,13 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                         .description(MgmtApiModelProperties.ACTION_STATUS_MESSAGES).type("String"),
                                 fieldWithPath("content[].reportedAt")
                                         .description(MgmtApiModelProperties.ACTION_STATUS_REPORTED_AT).type("String"),
+                                optionalRequestFieldWithPath("content[].code")
+                                        .description(MgmtApiModelProperties.ACTION_STATUS_CODE).type("Integer"),
                                 fieldWithPath("content[].type").description(MgmtApiModelProperties.ACTION_STATUS_TYPE)
                                         .attributes(key("value").value(
-                                                "['finished', 'error', 'warning', 'pending', 'running', 'canceled', 'retrieved', 'canceling']")))));
+                                                "['finished', 'error', 'warning', 'running', 'canceled', 'canceling', " //
+                                                        + "'retrieved', 'download', 'scheduled', 'cancel_rejected', " //
+                                                        + "'downloaded', 'wait_for_confirmation']")))));
     }
 
     @Test
@@ -500,7 +561,7 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                         pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID)),
                         getResponseFieldsDistributionSet(false)));
     }
-    
+
     @Test
     @Description("Handles the POST request for assigning a distribution set to a specific target. Required Permission: READ_REPOSITORY and UPDATE_TARGET.")
     public void postAssignDistributionSetToTarget() throws Exception {
@@ -520,18 +581,20 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
 
         mockMvc.perform(post(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/"
                 + MgmtRestConstants.TARGET_V1_ASSIGNED_DISTRIBUTION_SET, targetId).content(body)
-                .contentType(MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
                 .andDo(this.document.document(
                         pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID)),
                         requestParameters(parameterWithName("offline")
                                 .description(MgmtApiModelProperties.OFFLINE_UPDATE).optional()),
-                        requestFields(
-                                requestFieldWithPath("id").description(ApiModelPropertiesGeneric.ITEM_ID),
+                        requestFields(requestFieldWithPath("id").description(ApiModelPropertiesGeneric.ITEM_ID),
                                 requestFieldWithPathMandatoryInMultiAssignMode("weight")
                                         .description(MgmtApiModelProperties.ASSIGNMENT_WEIGHT)
                                         .type(JsonFieldType.NUMBER).attributes(key("value").value("0 - 1000")),
                                 optionalRequestFieldWithPath("forcetime").description(MgmtApiModelProperties.FORCETIME),
+                                optionalRequestFieldWithPath("[].confirmationRequired")
+                                        .description(MgmtApiModelProperties.ASSIGNMENT_CONFIRMATION_REQUIRED)
+                                        .type(JsonFieldType.BOOLEAN.toString()),
                                 optionalRequestFieldWithPath("maintenanceWindow")
                                         .description(MgmtApiModelProperties.MAINTENANCE_WINDOW),
                                 optionalRequestFieldWithPath("maintenanceWindow.schedule")
@@ -541,7 +604,8 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                 optionalRequestFieldWithPath("maintenanceWindow.timezone")
                                         .description(MgmtApiModelProperties.MAINTENANCE_WINDOW_TIMEZONE),
                                 optionalRequestFieldWithPath("type").description(MgmtApiModelProperties.ASSIGNMENT_TYPE)
-                                        .attributes(key("value").value("['soft', 'forced','timeforced', 'downloadonly']"))),
+                                        .attributes(
+                                                key("value").value("['soft', 'forced','timeforced', 'downloadonly']"))),
                         responseFields(getDsAssignmentResponseFieldDescriptors())));
     }
 
@@ -554,29 +618,33 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
 
         final long forceTime = System.currentTimeMillis();
         final JSONArray body = new JSONArray();
-        body.put(new JSONObject().put("id", sets.get(1).getId()).put("weight", 500).put("type", "timeforced")
-                .put("forcetime", forceTime)
-                .put("maintenanceWindow", new JSONObject().put("schedule", getTestSchedule(100))
-                        .put("duration", getTestDuration(10)).put("timezone", getTestTimeZone())))
+        body.put(
+                new JSONObject().put("id", sets.get(1).getId()).put("weight", 500).put("type", "timeforced")
+                        .put("forcetime", forceTime).put("maintenanceWindow",
+                                new JSONObject().put("schedule", getTestSchedule(100))
+                                        .put("duration", getTestDuration(10)).put("timezone", getTestTimeZone())))
                 .toString();
-        body.put(new JSONObject().put("id", sets.get(0).getId()).put("type", "forced").put("weight", 800));
+        body.put(new JSONObject().put("id", sets.get(0).getId()).put("type", "forced").put("weight", 800)
+                .put("confirmationRequired", true));
 
         enableMultiAssignments();
         mockMvc.perform(post(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/"
                 + MgmtRestConstants.TARGET_V1_ASSIGNED_DISTRIBUTION_SET, targetId).content(body.toString())
-                .contentType(MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
                 .andDo(this.document.document(
                         pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID)),
                         requestParameters(parameterWithName("offline")
                                 .description(MgmtApiModelProperties.OFFLINE_UPDATE).optional()),
-                        requestFields(
-                                requestFieldWithPath("[].id").description(ApiModelPropertiesGeneric.ITEM_ID),
+                        requestFields(requestFieldWithPath("[].id").description(ApiModelPropertiesGeneric.ITEM_ID),
                                 requestFieldWithPathMandatoryInMultiAssignMode("[].weight")
                                         .description(MgmtApiModelProperties.ASSIGNMENT_WEIGHT)
                                         .attributes(key("value").value("0 - 1000")),
                                 optionalRequestFieldWithPath("[].forcetime")
                                         .description(MgmtApiModelProperties.FORCETIME),
+                                optionalRequestFieldWithPath("[].confirmationRequired")
+                                        .description(MgmtApiModelProperties.ASSIGNMENT_CONFIRMATION_REQUIRED)
+                                        .type(JsonFieldType.BOOLEAN.toString()),
                                 optionalRequestFieldWithPath("[].maintenanceWindow")
                                         .description(MgmtApiModelProperties.MAINTENANCE_WINDOW),
                                 optionalRequestFieldWithPath("[].maintenanceWindow.schedule")
@@ -595,15 +663,15 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
     private static FieldDescriptor[] getDsAssignmentResponseFieldDescriptors() {
         final FieldDescriptor[] descriptors = {
                 fieldWithPath("assigned").description(MgmtApiModelProperties.DS_NEW_ASSIGNED_TARGETS),
-            fieldWithPath("alreadyAssigned").type(JsonFieldType.NUMBER)
-            .description(MgmtApiModelProperties.DS_ALREADY_ASSIGNED_TARGETS),
-    fieldWithPath("assignedActions").type(JsonFieldType.ARRAY)
-            .description(MgmtApiModelProperties.DS_NEW_ASSIGNED_ACTIONS),
-    fieldWithPath("assignedActions.[].id").type(JsonFieldType.NUMBER)
-            .description(MgmtApiModelProperties.ACTION_ID),
-    fieldWithPath("assignedActions.[]._links.self").type(JsonFieldType.OBJECT)
-            .description(MgmtApiModelProperties.LINK_TO_ACTION),
-    fieldWithPath("total").type(JsonFieldType.NUMBER)
+                fieldWithPath("alreadyAssigned").type(JsonFieldType.NUMBER)
+                        .description(MgmtApiModelProperties.DS_ALREADY_ASSIGNED_TARGETS),
+                fieldWithPath("assignedActions").type(JsonFieldType.ARRAY)
+                        .description(MgmtApiModelProperties.DS_NEW_ASSIGNED_ACTIONS),
+                fieldWithPath("assignedActions.[].id").type(JsonFieldType.NUMBER)
+                        .description(MgmtApiModelProperties.ACTION_ID),
+                fieldWithPath("assignedActions.[]._links.self").type(JsonFieldType.OBJECT)
+                        .description(MgmtApiModelProperties.LINK_TO_ACTION),
+                fieldWithPath("total").type(JsonFieldType.NUMBER)
                         .description(MgmtApiModelProperties.DS_TOTAL_ASSIGNED_TARGETS) };
         return descriptors;
     }
@@ -798,14 +866,122 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
                                         .description(MgmtApiModelProperties.META_DATA_VALUE))));
     }
 
+    @Test
+    @Description("Update the target type of a target." + " Required Permission: " + SpPermission.UPDATE_TARGET)
+    public void postAssignTargetType() throws Exception {
+        final Target testTarget = testdataFactory.createTarget(targetId);
+        final DistributionSetType distributionSetTypeA = testdataFactory.findOrCreateDistributionSetType("jar", "jar");
+        final DistributionSetType distributionSetTypeB = testdataFactory.findOrCreateDistributionSetType("zip", "zip");
+        final TargetType targetType = testdataFactory.createTargetType("deviceType-A",
+                Arrays.asList(distributionSetTypeA, distributionSetTypeB));
+
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("id", targetType.getId());
+
+        mockMvc.perform(post(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/targettype",
+                testTarget.getControllerId(), targetType.getId()).content(String.valueOf(jsonObject))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+                .andDo(this.document.document(
+                        pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID)),
+                        requestFields(requestFieldWithPath("id").description(MgmtApiModelProperties.TARGETTYPE_ID))));
+    }
+
+    @Test
+    @Description("Reset the target type of a target." + " Required Permission: " + SpPermission.UPDATE_TARGET)
+    public void deleteUnassignTargetType() throws Exception {
+        final Target testTarget = testdataFactory.createTarget(targetId);
+        final DistributionSetType distributionSetTypeA = testdataFactory.findOrCreateDistributionSetType("jar", "jar");
+        final DistributionSetType distributionSetTypeB = testdataFactory.findOrCreateDistributionSetType("zip", "zip");
+        final TargetType targetType = testdataFactory.createTargetType("deviceType-A",
+                Arrays.asList(distributionSetTypeA, distributionSetTypeB));
+        targetManagement.assignType(testTarget.getControllerId(), targetType.getId());
+
+        mockMvc.perform(delete(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/targettype",
+                testTarget.getControllerId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk()).andDo(this.document.document(
+                        pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID))));
+    }
+
+    @Test
+    @Description("Handles the GET request of retrieving the auto-confirm state of a target. In this case auto-confirm is active for the requested target. Required Permission: READ_TARGET.")
+    public void getTargetAutoConfirmStateActive() throws Exception {
+        final Target testTarget = testdataFactory.createTarget(targetId);
+        confirmationManagement.activateAutoConfirmation(testTarget.getControllerId(), "custom_initiator_value",
+                "custom_remark");
+
+        mockMvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + TARGET_V1_AUTO_CONFIRM,
+                testTarget.getControllerId())).andExpect(status().isOk()).andDo(MockMvcResultPrinter.print())
+                .andDo(this.document.document(
+                        pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID)),
+                        responseFields(
+                                fieldWithPath("active").description(MgmtApiModelProperties.AUTO_CONFIRM_STATE_ACTIVE),
+                                fieldWithPath("initiator")
+                                        .description(MgmtApiModelProperties.AUTO_CONFIRM_STATE_INITIATOR),
+                                fieldWithPath("remark").description(MgmtApiModelProperties.AUTO_CONFIRM_STATE_REMARK),
+                                fieldWithPath("activatedAt")
+                                        .description(MgmtApiModelProperties.AUTO_CONFIRM_STATE_ACTIVATED_AT),
+                                fieldWithPath("_links.deactivate").optional().description(
+                                        MgmtApiModelProperties.AUTO_CONFIRM_STATE_REFERENCE_DEACTIVATE_AUTO_CONFIRM))));
+    }
+
+    @Test
+    @Description("Handles the GET request of retrieving the auto-confirm state of a target. In this case auto-confirm is not active for the requested target. Required Permission: READ_TARGET.")
+    public void getTargetAutoConfirmStateNotActive() throws Exception {
+        final Target testTarget = testdataFactory.createTarget(targetId);
+
+        mockMvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + TARGET_V1_AUTO_CONFIRM,
+                testTarget.getControllerId())).andExpect(status().isOk()).andDo(MockMvcResultPrinter.print())
+                .andDo(this.document.document(
+                        pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID)),
+                        responseFields(
+                                fieldWithPath("active").description(MgmtApiModelProperties.AUTO_CONFIRM_STATE_ACTIVE),
+                                fieldWithPath("_links.activate").optional().description(
+                                        MgmtApiModelProperties.AUTO_CONFIRM_STATE_REFERENCE_ACTIVATE_AUTO_CONFIRM))));
+    }
+
+    @Test
+    @Description("Handles the POST request to activate auto-confirm on a target. Payload can be provided to specify more details about the operation. Required Permission: UPDATE_TARGET.")
+    public void postActivateAutoConfirm() throws Exception {
+        final Target testTarget = testdataFactory.createTarget(targetId);
+
+        final MgmtTargetAutoConfirmUpdate body = new MgmtTargetAutoConfirmUpdate("custom_initiator_value",
+                "custom_remark_value");
+
+        mockMvc.perform(post(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + TARGET_V1_AUTO_CONFIRM + "/"
+                + TARGET_V1_ACTIVATE_AUTO_CONFIRM, testTarget.getControllerId())
+                        .content(this.objectMapper.writeValueAsString(body)).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andDo(MockMvcResultPrinter.print())
+                .andDo(this.document.document(
+                        pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID)),
+                        requestFields(
+                                optionalRequestFieldWithPath("initiator")
+                                        .description(MgmtApiModelProperties.AUTO_CONFIRM_ACTIVATE_INITIATOR),
+                                optionalRequestFieldWithPath("remark")
+                                        .description(MgmtApiModelProperties.AUTO_CONFIRM_ACTIVATE_REMARK))));
+    }
+
+    @Test
+    @Description("Handles the POST request to deactivate auto-confirm on a target. Required Permission: UPDATE_TARGET.")
+    public void postDeactivateAutoConfirm() throws Exception {
+        final Target testTarget = testdataFactory.createTarget(targetId);
+        confirmationManagement.activateAutoConfirmation(testTarget.getControllerId(), null, null);
+
+        mockMvc.perform(post(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + TARGET_V1_AUTO_CONFIRM + "/"
+                + TARGET_V1_DEACTIVATE_AUTO_CONFIRM, testTarget.getControllerId())).andExpect(status().isOk())
+                .andDo(MockMvcResultPrinter.print()).andDo(this.document.document(
+                        pathParameters(parameterWithName("targetId").description(ApiModelPropertiesGeneric.ITEM_ID))));
+    }
+
     private String createTargetJsonForPostRequest(final String controllerId, final String name,
-            final String description) throws JsonProcessingException {
+            final String description, final TargetType targetType) throws JsonProcessingException {
         final Map<String, Object> target = new HashMap<>();
         target.put("controllerId", controllerId);
         target.put("description", description);
         target.put("name", name);
         target.put("address", "https://192.168.0.1");
         target.put("securityToken", "2345678DGGDGFTDzztgf");
+        target.put("targetType", targetType.getId());
         return "[" + this.objectMapper.writeValueAsString(target) + "]";
     }
 
@@ -825,26 +1001,38 @@ public class TargetResourceDocumentationTest extends AbstractApiRestDocumentatio
         return generateActionForTarget(knownControllerId, true, false, null, null, null);
     }
 
+    private Action generateRolloutActionForTarget(final String knownControllerId) throws Exception {
+        return generateActionForTarget(knownControllerId, true, false, null, null, null, true);
+    }
+
     private Action generateActionForTarget(final String knownControllerId, final boolean inSync) throws Exception {
         return generateActionForTarget(knownControllerId, inSync, false, null, null, null);
     }
 
-    private Action generateActionForTarget(final String knownControllerId, final boolean inSync,
+    private Action generateRolloutActionForTarget(final String knownControllerId, final boolean inSync,
             final boolean timeforced) throws Exception {
-        return generateActionForTarget(knownControllerId, inSync, timeforced, null, null, null);
+        return generateActionForTarget(knownControllerId, inSync, timeforced, null, null, null, true);
     }
 
     private Action generateActionForTarget(final String knownControllerId, final boolean inSync,
             final boolean timeforced, final String maintenanceWindowSchedule, final String maintenanceWindowDuration,
             final String maintenanceWindowTimeZone) throws Exception {
+        return generateActionForTarget(knownControllerId, inSync, timeforced, maintenanceWindowSchedule,
+                maintenanceWindowDuration, maintenanceWindowTimeZone, false);
+    }
+
+    private Action generateActionForTarget(final String knownControllerId, final boolean inSync,
+            final boolean timeforced, final String maintenanceWindowSchedule, final String maintenanceWindowDuration,
+            final String maintenanceWindowTimeZone, final boolean createRollout) throws Exception {
         final PageRequest pageRequest = PageRequest.of(0, 1, Direction.ASC, ActionStatusFields.ID.getFieldName());
 
         createTargetByGivenNameWithAttributes(knownControllerId, inSync, timeforced, createDistributionSet(),
-                maintenanceWindowSchedule, maintenanceWindowDuration, maintenanceWindowTimeZone);
+                maintenanceWindowSchedule, maintenanceWindowDuration, maintenanceWindowTimeZone, createRollout);
 
         final List<Action> actions = deploymentManagement.findActionsAll(pageRequest).getContent();
 
         assertThat(actions).hasSize(1);
         return actions.get(0);
     }
+
 }

@@ -116,6 +116,9 @@ public class JpaDistributionSet extends AbstractJpaNamedVersionedEntity implemen
     @Column(name = "complete")
     private boolean complete;
 
+    @Column(name = "valid")
+    private boolean valid;
+
     /**
      * Default constructor.
      */
@@ -145,6 +148,7 @@ public class JpaDistributionSet extends AbstractJpaNamedVersionedEntity implemen
         super(name, version, description);
 
         this.requiredMigrationStep = requiredMigrationStep;
+        this.valid = true;
         this.type = type;
         if (moduleList != null) {
             moduleList.forEach(this::addModule);
@@ -295,22 +299,10 @@ public class JpaDistributionSet extends AbstractJpaNamedVersionedEntity implemen
         }
     }
 
-    public boolean removeModule(final SoftwareModule softwareModule) {
-        if (modules == null) {
-            return false;
-        }
-
-        final Optional<SoftwareModule> found = modules.stream()
-                .filter(module -> module.getId().equals(softwareModule.getId())).findAny();
-
-        if (found.isPresent()) {
-            modules.remove(found.get());
+    public void removeModule(final SoftwareModule softwareModule) {
+        if (modules != null && modules.removeIf(m -> m.getId().equals(softwareModule.getId()))) {
             complete = type.checkComplete(this);
-            return true;
         }
-
-        return false;
-
     }
 
     @Override
@@ -328,6 +320,15 @@ public class JpaDistributionSet extends AbstractJpaNamedVersionedEntity implemen
     }
 
     @Override
+    public boolean isValid() {
+        return valid;
+    }
+
+    public void invalidate() {
+        this.valid = false;
+    }
+
+    @Override
     public void fireCreateEvent(final DescriptorEvent descriptorEvent) {
         publishEventWithEventPublisher(
                 new DistributionSetCreatedEvent(this, EventPublisherHolder.getInstance().getApplicationId()));
@@ -340,14 +341,14 @@ public class JpaDistributionSet extends AbstractJpaNamedVersionedEntity implemen
                 new DistributionSetUpdatedEvent(this, EventPublisherHolder.getInstance().getApplicationId(), complete));
 
         if (isSoftDeleted(descriptorEvent)) {
-            publishEventWithEventPublisher(new DistributionSetDeletedEvent(getTenant(), getId(), getClass().getName(),
+            publishEventWithEventPublisher(new DistributionSetDeletedEvent(getTenant(), getId(), getClass(),
                     EventPublisherHolder.getInstance().getApplicationId()));
         }
     }
 
     @Override
     public void fireDeleteEvent(final DescriptorEvent descriptorEvent) {
-        publishEventWithEventPublisher(new DistributionSetDeletedEvent(getTenant(), getId(), getClass().getName(),
+        publishEventWithEventPublisher(new DistributionSetDeletedEvent(getTenant(), getId(), getClass(),
                 EventPublisherHolder.getInstance().getApplicationId()));
     }
 
@@ -358,11 +359,11 @@ public class JpaDistributionSet extends AbstractJpaNamedVersionedEntity implemen
     private static boolean isSoftDeleted(final DescriptorEvent event) {
         final ObjectChangeSet changeSet = ((UpdateObjectQuery) event.getQuery()).getObjectChangeSet();
         final List<DirectToFieldChangeRecord> changes = changeSet.getChanges().stream()
-                .filter(record -> record instanceof DirectToFieldChangeRecord)
-                .map(record -> (DirectToFieldChangeRecord) record).collect(Collectors.toList());
+                .filter(DirectToFieldChangeRecord.class::isInstance).map(DirectToFieldChangeRecord.class::cast)
+                .collect(Collectors.toList());
 
-        return changes.stream().filter(record -> DELETED_PROPERTY.equals(record.getAttribute())
-                && Boolean.parseBoolean(record.getNewValue().toString())).count() > 0;
+        return changes.stream().anyMatch(changeRecord -> DELETED_PROPERTY.equals(changeRecord.getAttribute())
+                && Boolean.parseBoolean(changeRecord.getNewValue().toString()));
     }
 
 }

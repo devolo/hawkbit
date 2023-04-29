@@ -13,6 +13,7 @@ import org.eclipse.hawkbit.ui.common.builder.FormComponentBuilder;
 import org.eclipse.hawkbit.ui.common.builder.TextAreaBuilder;
 import org.eclipse.hawkbit.ui.common.builder.TextFieldBuilder;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyMetaData;
+import org.eclipse.hawkbit.ui.utils.TrimmingStringConverter;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 
@@ -56,7 +57,8 @@ public class MetaDataAddUpdateWindowLayoutComponentBuilder {
                 .prompt(i18n.getMessage(TEXTFIELD_KEY)).buildTextComponent();
         keyField.setSizeFull();
 
-        binder.forField(keyField).asRequired(i18n.getMessage("message.metadata.key.required"))
+        binder.forField(keyField).withConverter(new TrimmingStringConverter())
+                .asRequired(i18n.getMessage("message.metadata.key.required"))
                 .bind(ProxyMetaData::getKey, ProxyMetaData::setKey);
 
         return keyField;
@@ -91,7 +93,7 @@ public class MetaDataAddUpdateWindowLayoutComponentBuilder {
      * @return Target field CheckBox
      */
     public CheckBox createVisibleForTargetsField(final Binder<ProxyMetaData> binder) {
-        return FormComponentBuilder.getCheckBox(i18n.getMessage(TARGET_VISIBLE),
+        return FormComponentBuilder.createCheckBox(i18n.getMessage(TARGET_VISIBLE),
                 UIComponentIdProvider.METADATA_TARGET_VISIBLE_ID, binder, ProxyMetaData::isVisibleForTargets,
                 ProxyMetaData::setVisibleForTargets);
     }

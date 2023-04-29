@@ -8,50 +8,14 @@
  */
 package org.eclipse.hawkbit.integration;
 
-import io.qameta.allure.Description;
-import io.qameta.allure.Feature;
-import io.qameta.allure.Story;
-import org.eclipse.hawkbit.dmf.amqp.api.EventTopic;
-import org.eclipse.hawkbit.dmf.amqp.api.MessageHeaderKey;
-import org.eclipse.hawkbit.dmf.json.model.DmfActionRequest;
-import org.eclipse.hawkbit.dmf.json.model.DmfActionStatus;
-import org.eclipse.hawkbit.dmf.json.model.DmfDownloadAndUpdateRequest;
-import org.eclipse.hawkbit.dmf.json.model.DmfMultiActionRequest;
-import org.eclipse.hawkbit.dmf.json.model.DmfMultiActionRequest.DmfMultiActionElement;
-import org.eclipse.hawkbit.dmf.json.model.DmfSoftwareModule;
-import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.repository.event.remote.MultiActionAssignEvent;
-import org.eclipse.hawkbit.repository.event.remote.MultiActionCancelEvent;
-import org.eclipse.hawkbit.repository.event.remote.TargetAssignDistributionSetEvent;
-import org.eclipse.hawkbit.repository.event.remote.TargetAttributesRequestedEvent;
-import org.eclipse.hawkbit.repository.event.remote.TargetDeletedEvent;
-import org.eclipse.hawkbit.repository.event.remote.TargetPollEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.ActionCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.ActionUpdatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.CancelTargetAssignmentEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.DistributionSetCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.RolloutCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.RolloutGroupCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.RolloutGroupUpdatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.RolloutUpdatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.SoftwareModuleCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.SoftwareModuleUpdatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.TargetCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.TargetUpdatedEvent;
-import org.eclipse.hawkbit.repository.jpa.model.JpaTarget;
-import org.eclipse.hawkbit.repository.model.Action.ActionType;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.DistributionSetAssignmentResult;
-import org.eclipse.hawkbit.repository.model.RepositoryModelConstants;
-import org.eclipse.hawkbit.repository.model.Rollout;
-import org.eclipse.hawkbit.repository.model.SoftwareModule;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
-import org.eclipse.hawkbit.repository.test.matcher.Expect;
-import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.springframework.amqp.core.Message;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.eclipse.hawkbit.dmf.amqp.api.EventTopic.BATCH_DOWNLOAD;
+import static org.eclipse.hawkbit.dmf.amqp.api.EventTopic.BATCH_DOWNLOAD_AND_INSTALL;
+import static org.eclipse.hawkbit.dmf.amqp.api.EventTopic.DOWNLOAD;
+import static org.eclipse.hawkbit.dmf.amqp.api.MessageType.EVENT;
+import static org.eclipse.hawkbit.repository.model.Action.ActionType.DOWNLOAD_ONLY;
+import static org.eclipse.hawkbit.repository.model.Action.ActionType.FORCED;
 
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Arrays;
@@ -65,10 +29,58 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.eclipse.hawkbit.dmf.amqp.api.EventTopic.DOWNLOAD;
-import static org.eclipse.hawkbit.dmf.amqp.api.MessageType.EVENT;
-import static org.eclipse.hawkbit.repository.model.Action.ActionType.DOWNLOAD_ONLY;
+import org.eclipse.hawkbit.dmf.amqp.api.EventTopic;
+import org.eclipse.hawkbit.dmf.amqp.api.MessageHeaderKey;
+import org.eclipse.hawkbit.dmf.json.model.DmfActionRequest;
+import org.eclipse.hawkbit.dmf.json.model.DmfActionStatus;
+import org.eclipse.hawkbit.dmf.json.model.DmfBatchDownloadAndUpdateRequest;
+import org.eclipse.hawkbit.dmf.json.model.DmfDownloadAndUpdateRequest;
+import org.eclipse.hawkbit.dmf.json.model.DmfMultiActionRequest;
+import org.eclipse.hawkbit.dmf.json.model.DmfMultiActionRequest.DmfMultiActionElement;
+import org.eclipse.hawkbit.dmf.json.model.DmfSoftwareModule;
+import org.eclipse.hawkbit.dmf.json.model.DmfTarget;
+import org.eclipse.hawkbit.repository.DeploymentManagement;
+import org.eclipse.hawkbit.repository.event.remote.CancelTargetAssignmentEvent;
+import org.eclipse.hawkbit.repository.event.remote.MultiActionAssignEvent;
+import org.eclipse.hawkbit.repository.event.remote.MultiActionCancelEvent;
+import org.eclipse.hawkbit.repository.event.remote.TargetAssignDistributionSetEvent;
+import org.eclipse.hawkbit.repository.event.remote.TargetAttributesRequestedEvent;
+import org.eclipse.hawkbit.repository.event.remote.TargetDeletedEvent;
+import org.eclipse.hawkbit.repository.event.remote.TargetPollEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.ActionCreatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.ActionUpdatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.DistributionSetCreatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.RolloutCreatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.RolloutGroupCreatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.RolloutGroupUpdatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.RolloutUpdatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.SoftwareModuleCreatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.SoftwareModuleUpdatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.TargetCreatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.TargetUpdatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.TenantConfigurationCreatedEvent;
+import org.eclipse.hawkbit.repository.exception.TenantConfigurationValueChangeNotAllowedException;
+import org.eclipse.hawkbit.repository.jpa.model.JpaTarget;
+import org.eclipse.hawkbit.repository.model.Action.ActionType;
+import org.eclipse.hawkbit.repository.model.DistributionSet;
+import org.eclipse.hawkbit.repository.model.DistributionSetAssignmentResult;
+import org.eclipse.hawkbit.repository.model.RepositoryModelConstants;
+import org.eclipse.hawkbit.repository.model.Rollout;
+import org.eclipse.hawkbit.repository.model.SoftwareModule;
+import org.eclipse.hawkbit.repository.model.Target;
+import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
+import org.eclipse.hawkbit.repository.test.matcher.Expect;
+import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
+import org.eclipse.hawkbit.repository.test.util.WithSpringAuthorityRule;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.Mockito;
+import org.springframework.amqp.core.Message;
+
+import io.qameta.allure.Description;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 
 @Feature("Component Tests - Device Management Federation API")
 @Story("Amqp Message Dispatcher Service")
@@ -141,24 +153,41 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 2),
             @Expect(type = CancelTargetAssignmentEvent.class, count = 1),
-            @Expect(type = ActionCreatedEvent.class, count = 2), @Expect(type = ActionUpdatedEvent.class, count = 1),
+            @Expect(type = ActionCreatedEvent.class, count = 2), @Expect(type = ActionUpdatedEvent.class, count = 2),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 6),
             @Expect(type = SoftwareModuleUpdatedEvent.class, count = 12),
             @Expect(type = DistributionSetCreatedEvent.class, count = 2),
-            @Expect(type = TargetUpdatedEvent.class, count = 2), @Expect(type = TargetPollEvent.class, count = 2) })
+            @Expect(type = TargetUpdatedEvent.class, count = 2), @Expect(type = TargetPollEvent.class, count = 3) })
     public void assignDistributionSetMultipleTimes() {
         final String controllerId = TARGET_PREFIX + "assignDistributionSetMultipleTimes";
 
         final DistributionSetAssignmentResult assignmentResult = registerTargetAndAssignDistributionSet(controllerId);
+        waitUntilEventMessagesAreDispatchedToTarget(EventTopic.DOWNLOAD_AND_INSTALL);
+
         final DistributionSet distributionSet2 = testdataFactory.createDistributionSet();
         testdataFactory.addSoftwareModuleMetadata(distributionSet2);
+        // first assignment will be canceled -> Open cancellations
         assignDistributionSet(distributionSet2.getId(), controllerId);
-        assertDownloadAndInstallMessage(distributionSet2.getModules(), controllerId);
+        waitUntilEventMessagesAreDispatchedToTarget(EventTopic.CANCEL_DOWNLOAD);
         assertCancelActionMessage(getFirstAssignedActionId(assignmentResult), controllerId);
 
-        createAndSendThingCreated(controllerId, TENANT_EXIST);
-        waitUntilTargetHasStatus(controllerId, TargetUpdateStatus.PENDING);
+        // cancelation message is returned upon polling
+        createAndSendThingCreated(controllerId);
+        waitUntilEventMessagesAreDispatchedToTarget(EventTopic.CANCEL_DOWNLOAD);
         assertCancelActionMessage(getFirstAssignedActionId(assignmentResult), controllerId);
+
+        // confirm the cancel of the first action should lead to expose the
+        // latest action
+        createAndSendActionStatusUpdateMessage(controllerId, getFirstAssignedActionId(assignmentResult),
+                DmfActionStatus.CANCELED);
+        waitUntilEventMessagesAreDispatchedToTarget(EventTopic.DOWNLOAD_AND_INSTALL);
+        // verify latest action is exposed
+        assertDownloadAndInstallMessage(distributionSet2.getModules(), controllerId);
+
+        // latest action is returned upon polling
+        createAndSendThingCreated(controllerId);
+        waitUntilEventMessagesAreDispatchedToTarget(EventTopic.DOWNLOAD_AND_INSTALL);
+        assertDownloadAndInstallMessage(distributionSet2.getModules(), controllerId);
     }
 
     @Test
@@ -170,7 +199,8 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
             @Expect(type = ActionCreatedEvent.class, count = 2), @Expect(type = ActionUpdatedEvent.class, count = 0),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 6),
             @Expect(type = DistributionSetCreatedEvent.class, count = 2),
-            @Expect(type = TargetUpdatedEvent.class, count = 2), @Expect(type = TargetPollEvent.class, count = 1) })
+            @Expect(type = TargetUpdatedEvent.class, count = 2), @Expect(type = TargetPollEvent.class, count = 1),
+            @Expect(type = TenantConfigurationCreatedEvent.class, count = 1) })
     public void assignMultipleDsInMultiAssignMode() {
         enableMultiAssignments();
         final String controllerId = TARGET_PREFIX + "assignMultipleDsInMultiAssignMode";
@@ -254,7 +284,8 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
             @Expect(type = ActionCreatedEvent.class, count = 2), @Expect(type = ActionUpdatedEvent.class, count = 2),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 6),
             @Expect(type = DistributionSetCreatedEvent.class, count = 2),
-            @Expect(type = TargetUpdatedEvent.class, count = 2), @Expect(type = TargetPollEvent.class, count = 1) })
+            @Expect(type = TargetUpdatedEvent.class, count = 2), @Expect(type = TargetPollEvent.class, count = 1),
+            @Expect(type = TenantConfigurationCreatedEvent.class, count = 1) })
     public void cancelActionInMultiAssignMode() {
         enableMultiAssignments();
         final String controllerId = TARGET_PREFIX + "cancelActionInMultiAssignMode";
@@ -286,7 +317,8 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
             @Expect(type = ActionCreatedEvent.class, count = 2), @Expect(type = ActionUpdatedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 6),
             @Expect(type = DistributionSetCreatedEvent.class, count = 2),
-            @Expect(type = TargetUpdatedEvent.class, count = 3), @Expect(type = TargetPollEvent.class, count = 1) })
+            @Expect(type = TargetUpdatedEvent.class, count = 3), @Expect(type = TargetPollEvent.class, count = 1),
+            @Expect(type = TenantConfigurationCreatedEvent.class, count = 1) })
     public void finishActionInMultiAssignMode() {
         enableMultiAssignments();
         final String controllerId = TARGET_PREFIX + "finishActionInMultiAssignMode";
@@ -312,7 +344,8 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
             @Expect(type = ActionCreatedEvent.class, count = 2), @Expect(type = ActionUpdatedEvent.class, count = 0),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3),
             @Expect(type = DistributionSetCreatedEvent.class, count = 1),
-            @Expect(type = TargetUpdatedEvent.class, count = 2), @Expect(type = TargetPollEvent.class, count = 1) })
+            @Expect(type = TargetUpdatedEvent.class, count = 2), @Expect(type = TargetPollEvent.class, count = 1),
+            @Expect(type = TenantConfigurationCreatedEvent.class, count = 1) })
     public void assignDsMultipleTimesInMultiAssignMode() {
         enableMultiAssignments();
         final String controllerId = TARGET_PREFIX + "assignDsMultipleTimesInMultiAssignMode";
@@ -331,7 +364,7 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
 
     private void updateActionViaDmfClient(final String controllerId, final long actionId,
             final DmfActionStatus status) {
-        createAndSendActionStatusUpdateMessage(controllerId, TENANT_EXIST, actionId, status);
+        createAndSendActionStatusUpdateMessage(controllerId, actionId, status);
     }
 
     private Long assignNewDsToTarget(final String controllerId) {
@@ -359,7 +392,8 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
             @Expect(type = TargetUpdatedEvent.class, count = 1), @Expect(type = TargetPollEvent.class, count = 1),
             @Expect(type = RolloutCreatedEvent.class, count = 2), @Expect(type = RolloutUpdatedEvent.class, count = 6),
             @Expect(type = RolloutGroupCreatedEvent.class, count = 2),
-            @Expect(type = RolloutGroupUpdatedEvent.class, count = 4) })
+            @Expect(type = RolloutGroupUpdatedEvent.class, count = 4),
+            @Expect(type = TenantConfigurationCreatedEvent.class, count = 1) })
     public void startRolloutsWithSameDsInMultiAssignMode() {
         enableMultiAssignments();
         final String controllerId = TARGET_PREFIX + "startRolloutsWithSameDsInMultiAssignMode";
@@ -381,15 +415,16 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
     @Test
     @Description("If multi assignment is enabled finishing one rollout does not affect other rollouts of the target.")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
-            @Expect(type = MultiActionAssignEvent.class, count = 3), @Expect(type = ActionCreatedEvent.class, count = 3),
-            @Expect(type = ActionUpdatedEvent.class, count = 5),
+            @Expect(type = MultiActionAssignEvent.class, count = 3),
+            @Expect(type = ActionCreatedEvent.class, count = 3), @Expect(type = ActionUpdatedEvent.class, count = 5),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 6),
             @Expect(type = DistributionSetCreatedEvent.class, count = 2),
             @Expect(type = TargetUpdatedEvent.class, count = 5), @Expect(type = TargetPollEvent.class, count = 1),
             @Expect(type = TargetAttributesRequestedEvent.class, count = 2),
             @Expect(type = RolloutCreatedEvent.class, count = 3), @Expect(type = RolloutUpdatedEvent.class, count = 9),
             @Expect(type = RolloutGroupCreatedEvent.class, count = 3),
-            @Expect(type = RolloutGroupUpdatedEvent.class, count = 6) })
+            @Expect(type = RolloutGroupUpdatedEvent.class, count = 6),
+            @Expect(type = TenantConfigurationCreatedEvent.class, count = 1) })
     public void startMultipleRolloutsAndFinishInMultiAssignMode() {
         enableMultiAssignments();
         final String controllerId = TARGET_PREFIX + "startMultipleRolloutsAndFinishInMultiAssignMode";
@@ -425,15 +460,11 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
         return ds.getModules().stream().map(SoftwareModule::getId).collect(Collectors.toSet());
     }
 
-    private Rollout createAndStartRollout(final DistributionSet ds, final String filterQuery) {
-        return createAndStartRollout(ds, filterQuery, null);
-    }
-
     private Rollout createAndStartRollout(final DistributionSet ds, final String filterQuery, final Integer weight) {
         final Rollout rollout = testdataFactory.createRolloutByVariables(UUID.randomUUID().toString(), "", 1,
-                filterQuery, ds, "50", "5", ActionType.FORCED, weight);
+                filterQuery, ds, "50", "5", ActionType.FORCED, weight, false);
         rolloutManagement.start(rollout.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         return rollout;
     }
 
@@ -452,7 +483,7 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
 
         final Long actionId = registerTargetAndCancelActionId(controllerId);
 
-        createAndSendThingCreated(controllerId, TENANT_EXIST);
+        createAndSendThingCreated(controllerId);
         waitUntilTargetHasStatus(controllerId, TargetUpdateStatus.PENDING);
         assertCancelActionMessage(actionId, controllerId);
     }
@@ -508,7 +539,7 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
         final DistributionSet distributionSet = createTargetAndDistributionSetAndAssign(controllerId, DOWNLOAD_ONLY);
 
         final Message message = assertReplyMessageHeader(EventTopic.DOWNLOAD, controllerId);
-        Mockito.verifyZeroInteractions(getDeadletterListener());
+        Mockito.verifyNoInteractions(getDeadletterListener());
 
         assertThat(message).isNotNull();
         final Map<String, Object> headers = message.getMessageProperties().getHeaders();
@@ -533,7 +564,7 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
     }
 
     private void waitUntil(final Callable<Boolean> callable) {
-        createConditionFactory().until(() -> securityRule.runAsPrivileged(callable));
+        createConditionFactory().until(() -> WithSpringAuthorityRule.runAsPrivileged(callable));
     }
 
     private void assertLatestMultiActionMessageContainsInstallMessages(final String controllerId,
@@ -577,4 +608,111 @@ public class AmqpMessageDispatcherServiceIntegrationTest extends AbstractAmqpSer
                 || multiActionElement.getTopic().equals(EventTopic.DOWNLOAD_AND_INSTALL);
     }
 
+    @Test
+    @Description("Verify payload of batch assignment download and install message.")
+    public void assertBatchAssignmentsDownloadAndInstall() {
+        assertBatchAssignmentsMessagePayload(BATCH_DOWNLOAD_AND_INSTALL);
+    }
+
+    @Test
+    @Description("Verify payload of batch assignments download only message.")
+    public void assertBatchAssignmentsDownloadOnly() {
+        assertBatchAssignmentsMessagePayload(BATCH_DOWNLOAD);
+    }
+
+    @Test
+    @Description("Verify that batch and multi-assignments can't be activated at the same time.")
+    void assertBatchAndMultiAssignmentsNotCompatible() {
+        enableBatchAssignments();
+        assertThatExceptionOfType(TenantConfigurationValueChangeNotAllowedException.class)
+                .isThrownBy(() -> enableMultiAssignments());
+        disableBatchAssignments();
+
+        enableMultiAssignments();
+        assertThatExceptionOfType(TenantConfigurationValueChangeNotAllowedException.class)
+                .isThrownBy(() -> enableBatchAssignments());
+    }
+
+    @ParameterizedTest
+    @EnumSource(names = { "BATCH_DOWNLOAD_AND_INSTALL", "BATCH_DOWNLOAD" })
+    @Description("Verify payload of batch assignments.")
+    @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 3),
+            @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
+            @Expect(type = ActionCreatedEvent.class, count = 3), @Expect(type = ActionUpdatedEvent.class, count = 0),
+            @Expect(type = SoftwareModuleCreatedEvent.class, count = 3),
+            @Expect(type = SoftwareModuleUpdatedEvent.class, count = 6),
+            @Expect(type = DistributionSetCreatedEvent.class, count = 1),
+            @Expect(type = TargetUpdatedEvent.class, count = 3), @Expect(type = TargetPollEvent.class, count = 3),
+            @Expect(type = TenantConfigurationCreatedEvent.class, count = 1) })
+    void assertBatchAssignmentsMessagePayload(final EventTopic topic) {
+        enableBatchAssignments();
+
+        final List<String> targets = Arrays.asList("batchCtrlID1", "batchCtrlID2", "batchCtrlID3");
+        for (int i = 0; i < targets.size(); i++) {
+            registerAndAssertTargetWithExistingTenant(targets.get(i), i+1);
+        }
+
+        final DistributionSet ds = testdataFactory.createDistributionSet();
+        testdataFactory.addSoftwareModuleMetadata(ds);
+
+        assignDistributionSet(ds.getId(), targets, topic == BATCH_DOWNLOAD?DOWNLOAD_ONLY:FORCED);
+
+        waitUntilEventMessagesAreDispatchedToTarget(topic);
+
+        final Message message = replyToListener.getLatestEventMessage(topic);
+        final Map<String, Object> headers = message.getMessageProperties().getHeaders();
+        assertThat(headers).containsEntry("type", EVENT.toString());
+        assertThat(headers).containsEntry("topic",topic.toString());
+
+        final DmfBatchDownloadAndUpdateRequest batchRequest = (DmfBatchDownloadAndUpdateRequest) getDmfClient()
+                .getMessageConverter().fromMessage(message);
+
+        assertThat(batchRequest).isExactlyInstanceOf(DmfBatchDownloadAndUpdateRequest.class);
+        assertDmfBatchDownloadAndUpdateRequest(batchRequest, ds.getModules(), targets);
+    }
+
+    protected void assertDmfBatchDownloadAndUpdateRequest(final DmfBatchDownloadAndUpdateRequest request,
+                                                     final Set<SoftwareModule> softwareModules,
+                                                     final List<String> controllerIds) {
+        assertSoftwareModules(softwareModules, request.getSoftwareModules());
+
+        final List<Object> tokens = controllerIds.stream().map(controllerId -> {
+            final Optional<Target> target = controllerManagement.getByControllerId(controllerId);
+            assertThat(target).isPresent();
+            return target.get().getSecurityToken();
+        }).collect(Collectors.toList());
+
+
+        final List<DmfTarget> requestTargets = request.getTargets();
+
+        assertThat(requestTargets).hasSameSizeAs(controllerIds);
+        requestTargets.forEach(requestTarget -> {
+                    assertThat(requestTarget).isNotNull();
+                    assertThat(tokens.contains(requestTarget.getTargetSecurityToken()));
+                });
+    }
+
+    @Test
+    @Description("Verify that a distribution assignment send a confirm message.")
+    @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
+            @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
+            @Expect(type = ActionCreatedEvent.class, count = 1),
+            @Expect(type = SoftwareModuleCreatedEvent.class, count = 3),
+            @Expect(type = SoftwareModuleUpdatedEvent.class, count = 6),
+            @Expect(type = DistributionSetCreatedEvent.class, count = 1),
+            @Expect(type = TargetUpdatedEvent.class, count = 1),
+            @Expect(type = TargetPollEvent.class, count = 1),
+            @Expect(type = TenantConfigurationCreatedEvent.class, count = 1) })
+    void sendConfirmStatus() {
+        final String controllerId = TARGET_PREFIX + "sendConfirmStatus";
+        enableConfirmationFlow();
+        registerTargetAndAssignDistributionSet(controllerId);
+
+        waitUntilTargetHasStatus(controllerId, TargetUpdateStatus.PENDING);
+        assertConfirmMessage(getDistributionSet().getModules(), controllerId);
+        assertEventMessageNotPresent(EventTopic.DOWNLOAD_AND_INSTALL);
+    }
+    protected void assertEventMessageNotPresent(final EventTopic eventTopic) {
+        assertThat(replyToListener.getLatestEventMessage(eventTopic)).isNull();
+    }
 }

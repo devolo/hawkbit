@@ -146,11 +146,10 @@ public class DeleteSupport<T extends ProxyIdentifiableEntity> {
     private ConfirmationDialog createConfirmationWindowForDeletion(final Set<T> itemsToBeDeleted,
             final String confirmationCaption, final String confirmationQuestion, final String successNotificationText,
             final String failureNotificationText) {
-        return new ConfirmationDialog(i18n, confirmationCaption, confirmationQuestion, ok -> {
-            if (ok) {
-                handleOkDelete(itemsToBeDeleted, successNotificationText, failureNotificationText);
-            }
-        }, deletionWindowId);
+        return ConfirmationDialog.newBuilder(i18n, deletionWindowId).caption(confirmationCaption)
+                .question(confirmationQuestion).onSaveOrUpdate(() -> {
+                    handleOkDelete(itemsToBeDeleted, successNotificationText, failureNotificationText);
+                }).build();
     }
 
     private void handleOkDelete(final Set<T> itemsToBeDeleted, final String successNotificationText,
@@ -158,6 +157,7 @@ public class DeleteSupport<T extends ProxyIdentifiableEntity> {
         grid.deselectAll();
 
         boolean isDeletionSuccessfull = false;
+        RuntimeException deletionException = null;
         try {
             isDeletionSuccessfull = itemsDeletionCallback.test(itemsToBeDeleted);
         } catch (final RuntimeException ex) {
@@ -165,12 +165,16 @@ public class DeleteSupport<T extends ProxyIdentifiableEntity> {
                     .map(String::valueOf).collect(Collectors.joining(","));
             LOG.warn("Deletion of {} with ids '{}' failed: {}", localizedEntityTypeSing, itemsToBeDeletedIds,
                     ex.getMessage());
+            deletionException = ex;
         }
 
         if (isDeletionSuccessfull) {
             notification.displaySuccess(successNotificationText);
         } else {
             notification.displayWarning(failureNotificationText);
+            if (deletionException != null) {
+                throw deletionException;
+            }
         }
     }
 

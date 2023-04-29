@@ -73,7 +73,7 @@ public class TargetSearchConfigurationView extends BaseConfigurationView<ProxySy
         gridLayout.setColumnExpandRatio(1, 1.0F);
         gridLayout.setSizeFull();
 
-        CheckBox attributeSearchCheckbox = FormComponentBuilder.getCheckBox(
+        CheckBox attributeSearchCheckbox = FormComponentBuilder.createCheckBox(
                 UIComponentIdProvider.TARGET_SEARCH_ATTRIBUTES, getBinder(),
                 ProxySystemConfigWindow::isAttributeSearchEnabled, ProxySystemConfigWindow::setAttributeSearch);
 

@@ -8,9 +8,11 @@
  */
 package org.eclipse.hawkbit.ui.management.targettag.filter;
 
+import org.eclipse.hawkbit.repository.DistributionSetTypeManagement;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.TargetTagManagement;
+import org.eclipse.hawkbit.repository.TargetTypeManagement;
 import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.event.EventTopics;
 import org.eclipse.hawkbit.ui.common.event.TargetFilterTabChangedEventPayload;
@@ -18,8 +20,10 @@ import org.eclipse.hawkbit.ui.common.filterlayout.AbstractFilterLayout;
 import org.eclipse.hawkbit.ui.common.layout.listener.GenericEventListener;
 import org.eclipse.hawkbit.ui.management.ManagementUIState;
 import org.eclipse.hawkbit.ui.management.targettag.TargetTagWindowBuilder;
+import org.eclipse.hawkbit.ui.management.targettag.targettype.TargetTypeWindowBuilder;
 
 import com.vaadin.ui.ComponentContainer;
+import org.eclipse.hawkbit.ui.utils.SPUIDefinitions;
 
 /**
  * Target Tag filter layout.
@@ -50,14 +54,20 @@ public class TargetTagFilterLayout extends AbstractFilterLayout {
      */
     public TargetTagFilterLayout(final CommonUiDependencies uiDependencies, final ManagementUIState managementUIState,
             final TargetFilterQueryManagement targetFilterQueryManagement,
-            final TargetTagManagement targetTagManagement, final TargetManagement targetManagement,
-            final TargetTagFilterLayoutUiState targetTagFilterLayoutUiState) {
-        final TargetTagWindowBuilder targetTagWindowBuilder = new TargetTagWindowBuilder(uiDependencies, targetTagManagement);
+            final TargetTypeManagement targetTypeManagement, final TargetTagManagement targetTagManagement,
+            final TargetManagement targetManagement, final TargetTagFilterLayoutUiState targetTagFilterLayoutUiState,
+            final DistributionSetTypeManagement distributionSetTypeManagement) {
+        final TargetTagWindowBuilder targetTagWindowBuilder = new TargetTagWindowBuilder(uiDependencies,
+                targetTagManagement);
+
+        final TargetTypeWindowBuilder targetTypeWindowBuilder = new TargetTypeWindowBuilder(uiDependencies,
+                targetTypeManagement, distributionSetTypeManagement);
 
         this.targetTagFilterHeader = new TargetTagFilterHeader(uiDependencies, targetTagFilterLayoutUiState,
-                targetTagWindowBuilder);
-        this.multipleTargetFilter = new MultipleTargetFilter(uiDependencies, targetFilterQueryManagement, targetTagManagement,
-                targetManagement, targetTagFilterLayoutUiState, targetTagWindowBuilder);
+                targetTagWindowBuilder, targetTypeWindowBuilder);
+        this.multipleTargetFilter = new MultipleTargetFilter(uiDependencies, targetFilterQueryManagement,
+                targetTagManagement, targetManagement, targetTagFilterLayoutUiState, targetTagWindowBuilder,
+                targetTypeWindowBuilder, targetTypeManagement);
 
         this.filterTabChangedListener = new GenericEventListener<>(uiDependencies.getEventBus(),
                 EventTopics.TARGET_FILTER_TAB_CHANGED, this::onTargetFilterTabChanged);
@@ -83,19 +93,34 @@ public class TargetTagFilterLayout extends AbstractFilterLayout {
         return multipleTargetFilter;
     }
 
-    /**
-     * Restore the target filter state
-     */
+    @Override
     public void restoreState() {
         targetTagFilterHeader.restoreState();
         multipleTargetFilter.restoreState();
     }
 
-    /**
-     * Unsubscribe the event listener
-     */
-    public void unsubscribeListener() {
+    @Override
+    public void onViewEnter() {
+        multipleTargetFilter.onViewEnter();
+    }
+
+    @Override
+    public void subscribeListeners() {
+        filterTabChangedListener.subscribe();
+        multipleTargetFilter.subscribeListeners();
+    }
+
+    @Override
+    public void unsubscribeListeners() {
         filterTabChangedListener.unsubscribe();
-        multipleTargetFilter.unsubscribeListener();
+        multipleTargetFilter.unsubscribeListeners();
+    }
+
+    public void maximize() {
+        setWidthFull();
+    }
+
+    public void minimize() {
+        setWidth(SPUIDefinitions.FILTER_BY_TYPE_WIDTH, Unit.PIXELS);
     }
 }

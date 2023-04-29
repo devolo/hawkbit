@@ -11,7 +11,7 @@ package org.eclipse.hawkbit.repository.event.remote.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.eclipse.hawkbit.repository.model.Target;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
@@ -34,17 +34,6 @@ public class TargetEventTest extends AbstractRemoteEntityEventTest<Target> {
     @Description("Verifies that the target entity reloading by remote updated event works")
     public void testTargetUpdatedEvent() {
         assertAndCreateRemoteEvent(TargetUpdatedEvent.class);
-    }
-
-    @Test
-    @Description("Verifies that cancel target assignment event works")
-    public void testCancelTargetAssignmentEvent() {
-        final Target target = createEntity();
-        final CancelTargetAssignmentEvent assignmentEvent = new CancelTargetAssignmentEvent(target, 1L, "node");
-        final CancelTargetAssignmentEvent underTest = (CancelTargetAssignmentEvent) assertEntity(target,
-                assignmentEvent);
-
-        assertThat(underTest.getActionId()).isNotNull();
     }
 
     @Override

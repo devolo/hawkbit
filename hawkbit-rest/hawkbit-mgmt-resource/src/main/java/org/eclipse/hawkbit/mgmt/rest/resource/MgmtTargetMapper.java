@@ -25,10 +25,13 @@ import org.eclipse.hawkbit.mgmt.json.model.MgmtPollStatus;
 import org.eclipse.hawkbit.mgmt.json.model.action.MgmtAction;
 import org.eclipse.hawkbit.mgmt.json.model.action.MgmtActionStatus;
 import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTarget;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAutoConfirm;
 import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetRequestBody;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtDistributionSetRestApi;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
+import org.eclipse.hawkbit.mgmt.rest.api.MgmtRolloutRestApi;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtTargetRestApi;
+import org.eclipse.hawkbit.mgmt.rest.api.MgmtTargetTypeRestApi;
 import org.eclipse.hawkbit.repository.ActionFields;
 import org.eclipse.hawkbit.repository.ActionStatusFields;
 import org.eclipse.hawkbit.repository.DeploymentManagement;
@@ -37,13 +40,17 @@ import org.eclipse.hawkbit.repository.builder.TargetCreate;
 import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.ActionStatus;
+import org.eclipse.hawkbit.repository.model.AutoConfirmationStatus;
+import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.MetaData;
 import org.eclipse.hawkbit.repository.model.PollStatus;
+import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetMetadata;
 import org.eclipse.hawkbit.rest.data.ResponseList;
 import org.eclipse.hawkbit.rest.data.SortDirection;
 import org.eclipse.hawkbit.util.IpUtil;
+import org.eclipse.hawkbit.utils.TenantConfigHelper;
 import org.springframework.data.domain.PageRequest;
 
 /**
@@ -65,18 +72,44 @@ public final class MgmtTargetMapper {
      */
     public static void addTargetLinks(final MgmtTarget response) {
         response.add(linkTo(methodOn(MgmtTargetRestApi.class).getAssignedDistributionSet(response.getControllerId()))
-                .withRel(MgmtRestConstants.TARGET_V1_ASSIGNED_DISTRIBUTION_SET));
+                .withRel(MgmtRestConstants.TARGET_V1_ASSIGNED_DISTRIBUTION_SET).expand());
         response.add(linkTo(methodOn(MgmtTargetRestApi.class).getInstalledDistributionSet(response.getControllerId()))
-                .withRel(MgmtRestConstants.TARGET_V1_INSTALLED_DISTRIBUTION_SET));
+                .withRel(MgmtRestConstants.TARGET_V1_INSTALLED_DISTRIBUTION_SET).expand());
         response.add(linkTo(methodOn(MgmtTargetRestApi.class).getAttributes(response.getControllerId()))
-                .withRel(MgmtRestConstants.TARGET_V1_ATTRIBUTES));
+                .withRel(MgmtRestConstants.TARGET_V1_ATTRIBUTES).expand());
         response.add(linkTo(methodOn(MgmtTargetRestApi.class).getActionHistory(response.getControllerId(), 0,
                 MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_LIMIT_VALUE,
                 ActionFields.ID.getFieldName() + ":" + SortDirection.DESC, null))
                         .withRel(MgmtRestConstants.TARGET_V1_ACTIONS).expand());
         response.add(linkTo(methodOn(MgmtTargetRestApi.class).getMetadata(response.getControllerId(),
                 MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_OFFSET_VALUE,
-                MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_LIMIT_VALUE, null, null)).withRel("metadata"));
+                MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_LIMIT_VALUE, null, null)).withRel("metadata")
+                        .expand());
+        if (response.getTargetType() != null) {
+            response.add(linkTo(methodOn(MgmtTargetTypeRestApi.class).getTargetType(response.getTargetType()))
+                    .withRel(MgmtRestConstants.TARGET_V1_ASSIGNED_TARGET_TYPE).expand());
+        }
+        if (response.getAutoConfirmActive() != null) {
+            response.add(linkTo(methodOn(MgmtTargetRestApi.class).getAutoConfirmStatus(response.getControllerId()))
+                    .withRel(MgmtRestConstants.TARGET_V1_AUTO_CONFIRM).expand());
+        }
+    }
+
+    public static MgmtTargetAutoConfirm getTargetAutoConfirmResponse(final Target target) {
+        final AutoConfirmationStatus status = target.getAutoConfirmationStatus();
+        final MgmtTargetAutoConfirm response;
+        if (status != null) {
+            response = MgmtTargetAutoConfirm.active(status.getActivatedAt());
+            response.setInitiator(status.getInitiator());
+            response.setRemark(status.getRemark());
+            response.add(linkTo(methodOn(MgmtTargetRestApi.class).deactivateAutoConfirm(target.getControllerId()))
+                    .withRel(MgmtRestConstants.TARGET_V1_DEACTIVATE_AUTO_CONFIRM).expand());
+        } else {
+            response = MgmtTargetAutoConfirm.disabled();
+            response.add(linkTo(methodOn(MgmtTargetRestApi.class).activateAutoConfirm(target.getControllerId(), null))
+                    .withRel(MgmtRestConstants.TARGET_V1_ACTIVATE_AUTO_CONFIRM).expand());
+        }
+        return response;
     }
 
     static void addPollStatus(final Target target, final MgmtTarget targetRest) {
@@ -99,12 +132,13 @@ public final class MgmtTargetMapper {
      *            list of targets
      * @return the response
      */
-    public static List<MgmtTarget> toResponse(final Collection<Target> targets) {
+    public static List<MgmtTarget> toResponse(final Collection<Target> targets, final TenantConfigHelper configHelper) {
         if (targets == null) {
             return Collections.emptyList();
         }
 
-        return new ResponseList<>(targets.stream().map(MgmtTargetMapper::toResponse).collect(Collectors.toList()));
+        return new ResponseList<>(
+                targets.stream().map(target -> toResponse(target, configHelper)).collect(Collectors.toList()));
     }
 
     /**
@@ -114,7 +148,7 @@ public final class MgmtTargetMapper {
      *            the target
      * @return the response
      */
-    public static MgmtTarget toResponse(final Target target) {
+    public static MgmtTarget toResponse(final Target target, final TenantConfigHelper configHelper) {
         if (target == null) {
             return null;
         }
@@ -151,8 +185,16 @@ public final class MgmtTargetMapper {
         if (installationDate != null) {
             targetRest.setInstalledAt(installationDate);
         }
+        if (target.getTargetType() != null) {
+            targetRest.setTargetType(target.getTargetType().getId());
+            targetRest.setTargetTypeName(target.getTargetType().getName());
+        }
+        if (configHelper.isConfirmationFlowEnabled()) {
+            targetRest.setAutoConfirmActive(target.getAutoConfirmationStatus() != null);
+        }
 
-        targetRest.add(linkTo(methodOn(MgmtTargetRestApi.class).getTarget(target.getControllerId())).withSelfRel());
+        targetRest.add(
+                linkTo(methodOn(MgmtTargetRestApi.class).getTarget(target.getControllerId())).withSelfRel().expand());
 
         return targetRest;
     }
@@ -170,7 +212,7 @@ public final class MgmtTargetMapper {
     private static TargetCreate fromRequest(final EntityFactory entityFactory, final MgmtTargetRequestBody targetRest) {
         return entityFactory.target().create().controllerId(targetRest.getControllerId()).name(targetRest.getName())
                 .description(targetRest.getDescription()).securityToken(targetRest.getSecurityToken())
-                .address(targetRest.getAddress());
+                .address(targetRest.getAddress()).targetType(targetRest.getTargetType());
     }
 
     static List<MetaData> fromRequestTargetMetadata(final List<MgmtMetadata> metadata,
@@ -215,6 +257,18 @@ public final class MgmtTargetMapper {
             result.setStatus(MgmtAction.ACTION_FINISHED);
         }
 
+        result.setDetailStatus(action.getStatus().toString().toLowerCase());
+
+        action.getLastActionStatusCode().ifPresent(statusCode -> {
+            result.setLastStatusCode(statusCode);
+        });
+
+        final Rollout rollout = action.getRollout();
+        if (rollout != null) {
+            result.setRollout(rollout.getId());
+            result.setRolloutName(rollout.getName());
+        }
+
         if (action.hasMaintenanceSchedule()) {
             final MgmtMaintenanceWindow maintenanceWindow = new MgmtMaintenanceWindow();
             maintenanceWindow.setSchedule(action.getMaintenanceWindowSchedule());
@@ -227,7 +281,8 @@ public final class MgmtTargetMapper {
 
         MgmtRestModelMapper.mapBaseToBase(result, action);
 
-        result.add(linkTo(methodOn(MgmtTargetRestApi.class).getAction(targetId, action.getId())).withSelfRel());
+        result.add(
+                linkTo(methodOn(MgmtTargetRestApi.class).getAction(targetId, action.getId())).withSelfRel().expand());
 
         return result;
     }
@@ -237,16 +292,27 @@ public final class MgmtTargetMapper {
 
         if (action.isCancelingOrCanceled()) {
             result.add(linkTo(methodOn(MgmtTargetRestApi.class).getAction(controllerId, action.getId()))
-                    .withRel(MgmtRestConstants.TARGET_V1_CANCELED_ACTION));
+                    .withRel(MgmtRestConstants.TARGET_V1_CANCELED_ACTION).expand());
         }
-        result.add(linkTo(
-                methodOn(MgmtDistributionSetRestApi.class).getDistributionSet(action.getDistributionSet().getId()))
-                        .withRel("distributionset"));
+
+        result.add(linkTo(methodOn(MgmtTargetRestApi.class).getTarget(controllerId)).withRel("target")
+                .withName(action.getTarget().getName()).expand());
+
+        final DistributionSet distributionSet = action.getDistributionSet();
+        result.add(linkTo(methodOn(MgmtDistributionSetRestApi.class).getDistributionSet(distributionSet.getId()))
+                .withRel("distributionset").withName(distributionSet.getName() + ":" + distributionSet.getVersion())
+                .expand());
 
         result.add(linkTo(methodOn(MgmtTargetRestApi.class).getActionStatusList(controllerId, action.getId(), 0,
                 MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_LIMIT_VALUE,
                 ActionStatusFields.ID.getFieldName() + ":" + SortDirection.DESC))
-                        .withRel(MgmtRestConstants.TARGET_V1_ACTION_STATUS));
+                        .withRel(MgmtRestConstants.TARGET_V1_ACTION_STATUS).expand());
+
+        final Rollout rollout = action.getRollout();
+        if (rollout != null) {
+            result.add(linkTo(methodOn(MgmtRolloutRestApi.class).getRollout(rollout.getId()))
+                    .withRel(MgmtRestConstants.TARGET_V1_ROLLOUT).withName(rollout.getName()).expand());
+        }
 
         return result;
     }
@@ -276,6 +342,7 @@ public final class MgmtTargetMapper {
         result.setReportedAt(actionStatus.getCreatedAt());
         result.setStatusId(actionStatus.getId());
         result.setType(actionStatus.getStatus().name().toLowerCase());
+        actionStatus.getCode().ifPresent(result::setCode);
 
         return result;
     }

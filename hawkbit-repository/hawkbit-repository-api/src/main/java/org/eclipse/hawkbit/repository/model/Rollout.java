@@ -17,7 +17,7 @@ import org.eclipse.hawkbit.repository.model.TotalTargetCountStatus.Status;
 /**
  * Software update operations in large scale IoT scenarios with hundred of
  * thousands of devices require special handling.
- * 
+ *
  * That includes secure handling of large volumes of devices at rollout creation
  * time. Monitoring of the rollout progress. Emergency rollout shutdown in case
  * of problems on to many devices and reporting capabilities for a complete
@@ -152,6 +152,11 @@ public interface Rollout extends NamedEntity {
         STOPPED,
 
         /**
+         * Rollout is going to be stopped.
+         */
+        STOPPING,
+
+        /**
          * Rollout is running.
          */
         RUNNING,
@@ -176,7 +181,7 @@ public interface Rollout extends NamedEntity {
         /**
          * Rollout could not be created due to errors, might be a database
          * problem during asynchronous creating.
-         * 
+         *
          * @deprecated legacy status is not used anymore
          */
         @Deprecated
@@ -185,7 +190,7 @@ public interface Rollout extends NamedEntity {
         /**
          * Rollout could not be started due to errors, might be database problem
          * during asynchronous starting.
-         * 
+         *
          * @deprecated legacy status is not used anymore
          */
         @Deprecated

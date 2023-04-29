@@ -36,6 +36,8 @@ import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapKeyColumn;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
+import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 import javax.validation.constraints.NotNull;
@@ -48,15 +50,17 @@ import org.eclipse.hawkbit.repository.event.remote.entity.TargetCreatedEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.TargetUpdatedEvent;
 import org.eclipse.hawkbit.repository.jpa.model.helper.SecurityChecker;
 import org.eclipse.hawkbit.repository.jpa.model.helper.SecurityTokenGeneratorHolder;
-import org.eclipse.hawkbit.repository.jpa.model.helper.SystemSecurityContextHolder;
 import org.eclipse.hawkbit.repository.model.Action;
+import org.eclipse.hawkbit.repository.model.AutoConfirmationStatus;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.PollStatus;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetMetadata;
 import org.eclipse.hawkbit.repository.model.TargetTag;
+import org.eclipse.hawkbit.repository.model.TargetType;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
+import org.eclipse.hawkbit.repository.model.helper.SystemSecurityContextHolder;
 import org.eclipse.hawkbit.repository.model.helper.TenantConfigurationManagementHolder;
 import org.eclipse.hawkbit.tenancy.configuration.DurationHelper;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
@@ -95,7 +99,7 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     @Column(name = "controller_id", length = Target.CONTROLLER_ID_MAX_SIZE, updatable = false, nullable = false)
     @Size(min = 1, max = Target.CONTROLLER_ID_MAX_SIZE)
     @NotNull
-    @Pattern(regexp = "[.\\S]*", message = "has whitespaces which are not allowed")
+    @Pattern(regexp = "[\\S]*", message = "has whitespaces which are not allowed")
     private String controllerId;
 
     @CascadeOnDelete
@@ -162,6 +166,10 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
             @JoinColumn(name = "target_id", nullable = false, updatable = false) }, foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT, name = "fk_targ_attrib_target"))
     private Map<String, String> controllerAttributes;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true, targetEntity = JpaTargetType.class)
+    @JoinColumn(name = "target_type", nullable = true, updatable = true, foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT, name = "fk_target_relation_target_type"))
+    private TargetType targetType;
+
     // set default request controller attributes to true, because we want to
     // request them the first
     // time
@@ -174,6 +182,10 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     @CascadeOnDelete
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, targetEntity = JpaTargetMetadata.class)
     private List<TargetMetadata> metadata;
+
+    @OneToOne(fetch = FetchType.LAZY, mappedBy = "target", orphanRemoval = true)
+    @PrimaryKeyJoinColumn
+    private JpaAutoConfirmationStatus autoConfirmationStatus;
 
     /**
      * Constructor.
@@ -204,11 +216,17 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
                 : controllerId;
     }
 
-    JpaTarget() {
+    /**
+     * Constructor
+     */
+    public JpaTarget() {
         // empty constructor for JPA.
     }
 
-    @Override
+
+    /**
+     * @return assigned distribution set
+     */
     public DistributionSet getAssignedDistributionSet() {
         return assignedDistributionSet;
     }
@@ -218,7 +236,10 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         return controllerId;
     }
 
-    @Override
+
+    /**
+     * @return tags
+     */
     public Set<TargetTag> getTags() {
         if (tags == null) {
             return Collections.emptySet();
@@ -227,38 +248,56 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         return Collections.unmodifiableSet(tags);
     }
 
+    /**
+     * @return rollouts target group
+     */
     public List<RolloutTargetGroup> getRolloutTargetGroup() {
         if (rolloutTargetGroup == null) {
             return Collections.emptyList();
         }
-
         return Collections.unmodifiableList(rolloutTargetGroup);
     }
 
-    public boolean addTag(final TargetTag tag) {
+    /**
+     * @param tag
+     *            to be added
+     */
+    public void addTag(final TargetTag tag) {
         if (tags == null) {
             tags = new HashSet<>();
         }
-
-        return tags.add(tag);
+        tags.add(tag);
     }
 
-    public boolean removeTag(final TargetTag tag) {
-        if (tags == null) {
-            return false;
+    /**
+     * @param tag
+     *            the tag to be removed from the target
+     */
+    public void removeTag(final TargetTag tag) {
+        if (tags != null) {
+            tags.remove(tag);
         }
-
-        return tags.remove(tag);
     }
 
+    /**
+     * @param assignedDistributionSet
+     *          Distribution set
+     */
     public void setAssignedDistributionSet(final DistributionSet assignedDistributionSet) {
         this.assignedDistributionSet = (JpaDistributionSet) assignedDistributionSet;
     }
 
+    /**
+     * @param controllerId
+     *          Controller ID
+     */
     public void setControllerId(final String controllerId) {
         this.controllerId = controllerId;
     }
 
+    /**
+     * @return list of action
+     */
     public List<Action> getActions() {
         if (actions == null) {
             return Collections.emptyList();
@@ -267,12 +306,15 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         return Collections.unmodifiableList(actions);
     }
 
-    public boolean addAction(final Action action) {
+    /**
+     * @param action
+     *          Action
+     */
+    public void addAction(final Action action) {
         if (actions == null) {
             actions = new ArrayList<>();
         }
-
-        return actions.add((JpaAction) action);
+        actions.add((JpaAction) action);
     }
 
     /**
@@ -290,6 +332,10 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         return null;
     }
 
+    /**
+     * @param securityToken
+     *          token value
+     */
     public void setSecurityToken(final String securityToken) {
         this.securityToken = securityToken;
     }
@@ -339,6 +385,15 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     }
 
     @Override
+    public AutoConfirmationStatus getAutoConfirmationStatus() {
+        return autoConfirmationStatus;
+    }
+
+    public void setAutoConfirmationStatus(final JpaAutoConfirmationStatus autoConfirmationStatus) {
+        this.autoConfirmationStatus =  autoConfirmationStatus;
+    }
+
+    @Override
     public Long getLastTargetQuery() {
         return lastTargetQuery;
     }
@@ -356,12 +411,28 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     @Override
     public Boolean getIsCleanedUp() { return isCleanedUp; }
 
-    @Override
-    public DistributionSet getInstalledDistributionSet() {
+    public TargetType getTargetType() {
+        return targetType;
+    }
+
+    /**
+     * @param type
+     *          Target type
+     */
+    public void setTargetType(final TargetType type) {
+        this.targetType = type;
+    }
+
+    /**
+     * @return Distribution set
+     */
+    public JpaDistributionSet getInstalledDistributionSet() {
         return installedDistributionSet;
     }
 
-    @Override
+    /**
+     * @return controller attributes
+     */
     public Map<String, String> getControllerAttributes() {
         return controllerAttributes;
     }
@@ -371,7 +442,9 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         return requestControllerAttributes;
     }
 
-    @Override
+    /**
+     * @return target metadata
+     */
     public List<TargetMetadata> getMetadata() {
         if (metadata == null) {
             return Collections.emptyList();
@@ -390,26 +463,50 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
                 + "]";
     }
 
+    /**
+     * @param address
+     *          Address
+     */
     public void setAddress(final String address) {
         this.address = address;
     }
 
+    /**
+     * @param lastTargetQuery
+     *          last query ID
+     */
     public void setLastTargetQuery(final Long lastTargetQuery) {
         this.lastTargetQuery = lastTargetQuery;
     }
 
+    /**
+     * @param installationDate
+     *          installation date
+     */
     public void setInstallationDate(final Long installationDate) {
         this.installationDate = installationDate;
     }
 
+    /**
+     * @param installedDistributionSet
+     *          Distribution set
+     */
     public void setInstalledDistributionSet(final JpaDistributionSet installedDistributionSet) {
         this.installedDistributionSet = installedDistributionSet;
     }
 
+    /**
+     * @param updateStatus
+     *          Status
+     */
     public void setUpdateStatus(final TargetUpdateStatus updateStatus) {
         this.updateStatus = updateStatus;
     }
 
+    /**
+     * @param requestControllerAttributes
+     *          Attributes
+     */
     public void setRequestControllerAttributes(final boolean requestControllerAttributes) {
         this.requestControllerAttributes = requestControllerAttributes;
     }
@@ -435,6 +532,6 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     public void fireDeleteEvent(final DescriptorEvent descriptorEvent) {
         EventPublisherHolder.getInstance().getEventPublisher()
                 .publishEvent(new TargetDeletedEvent(getTenant(), getId(), getControllerId(), address,
-                        getClass().getName(), EventPublisherHolder.getInstance().getApplicationId()));
+                        getClass(), EventPublisherHolder.getInstance().getApplicationId()));
     }
 }

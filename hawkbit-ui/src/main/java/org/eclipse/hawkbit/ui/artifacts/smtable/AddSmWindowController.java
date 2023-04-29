@@ -8,6 +8,7 @@
  */
 package org.eclipse.hawkbit.ui.artifacts.smtable;
 
+import org.eclipse.hawkbit.repository.ArtifactEncryptionService;
 import org.eclipse.hawkbit.repository.SoftwareModuleManagement;
 import org.eclipse.hawkbit.repository.builder.SoftwareModuleCreate;
 import org.eclipse.hawkbit.repository.model.SoftwareModule;
@@ -22,7 +23,6 @@ import org.eclipse.hawkbit.ui.common.event.EventView;
 import org.eclipse.hawkbit.ui.common.event.SelectionChangedEventPayload;
 import org.eclipse.hawkbit.ui.common.event.SelectionChangedEventPayload.SelectionChangedEventType;
 import org.eclipse.hawkbit.ui.utils.HawkbitCommonUtil;
-import org.springframework.util.StringUtils;
 
 /**
  * Controller for populating and saving data in Add Software Module Window.
@@ -63,6 +63,13 @@ public class AddSmWindowController
     }
 
     @Override
+    protected void adaptLayout(final ProxySoftwareModule proxyEntity) {
+        if (!ArtifactEncryptionService.getInstance().isEncryptionSupported()) {
+            layout.disableEncryptionField();
+        }
+    }
+
+    @Override
     protected ProxySoftwareModule buildEntityFromProxy(final ProxySoftwareModule proxyEntity) {
         // We ignore the method parameter, because we are interested in the
         // empty object, that we can populate with defaults
@@ -73,7 +80,7 @@ public class AddSmWindowController
     protected SoftwareModule persistEntityInRepository(final ProxySoftwareModule entity) {
         final SoftwareModuleCreate smCreate = getEntityFactory().softwareModule().create()
                 .type(entity.getTypeInfo().getKey()).name(entity.getName()).version(entity.getVersion())
-                .vendor(entity.getVendor()).description(entity.getDescription());
+                .vendor(entity.getVendor()).description(entity.getDescription()).encrypted(entity.isEncrypted());
 
         return smManagement.create(smCreate);
     }
@@ -102,10 +109,10 @@ public class AddSmWindowController
 
     @Override
     protected boolean isEntityValid(final ProxySoftwareModule entity) {
-        final String trimmedName = StringUtils.trimWhitespace(entity.getName());
-        final String trimmedVersion = StringUtils.trimWhitespace(entity.getVersion());
+        final String name = entity.getName();
+        final String version = entity.getVersion();
         final Long typeId = entity.getTypeInfo().getId();
         return validator.isEntityValid(entity,
-                () -> smManagement.getByNameAndVersionAndType(trimmedName, trimmedVersion, typeId).isPresent());
+                () -> smManagement.getByNameAndVersionAndType(name, version, typeId).isPresent());
     }
 }

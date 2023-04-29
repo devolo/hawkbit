@@ -8,7 +8,6 @@
  */
 package org.eclipse.hawkbit.ui.common.data.mappers;
 
-import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.RolloutGroup;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyRolloutGroup;
 import org.eclipse.hawkbit.ui.utils.HawkbitCommonUtil;
@@ -19,18 +18,6 @@ import org.eclipse.hawkbit.ui.utils.HawkbitCommonUtil;
  */
 public class RolloutGroupToProxyRolloutGroupMapper
         extends AbstractNamedEntityToProxyNamedEntityMapper<ProxyRolloutGroup, RolloutGroup> {
-
-    /**
-     * Maps the rollout group to proxy rollout group
-     *
-     * @param group
-     *          RolloutGroup
-     *
-     * @return the corresponding Rollout group
-     */
-    public static ProxyRolloutGroup mapGroup(final RolloutGroup group) {
-        return new RolloutGroupToProxyRolloutGroupMapper().map(group);
-    }
 
     @Override
     public ProxyRolloutGroup map(final RolloutGroup rolloutGroup) {
@@ -48,6 +35,7 @@ public class RolloutGroupToProxyRolloutGroupMapper
         proxyRolloutGroup.setFinishedPercentage(formatFinishedPercentage(rolloutGroup));
         proxyRolloutGroup.setTotalTargetsCount(String.valueOf(rolloutGroup.getTotalTargets()));
         proxyRolloutGroup.setTotalTargetCountStatus(rolloutGroup.getTotalTargetCountStatus());
+        proxyRolloutGroup.setConfirmationRequired(rolloutGroup.isConfirmationRequired());
 
         return proxyRolloutGroup;
     }

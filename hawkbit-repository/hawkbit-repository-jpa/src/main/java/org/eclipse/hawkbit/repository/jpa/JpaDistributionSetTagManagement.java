@@ -31,7 +31,6 @@ import org.eclipse.hawkbit.repository.model.DistributionSetTag;
 import org.eclipse.hawkbit.repository.rsql.VirtualPropertyReplacer;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.domain.Specification;
@@ -55,18 +54,14 @@ public class JpaDistributionSetTagManagement implements DistributionSetTagManage
 
     private final VirtualPropertyReplacer virtualPropertyReplacer;
 
-    private final NoCountPagingRepository criteriaNoCountDao;
-
     private final Database database;
 
     JpaDistributionSetTagManagement(final DistributionSetTagRepository distributionSetTagRepository,
             final DistributionSetRepository distributionSetRepository,
-            final VirtualPropertyReplacer virtualPropertyReplacer, final NoCountPagingRepository criteriaNoCountDao,
-            final Database database) {
+            final VirtualPropertyReplacer virtualPropertyReplacer, final Database database) {
         this.distributionSetTagRepository = distributionSetTagRepository;
         this.distributionSetRepository = distributionSetRepository;
         this.virtualPropertyReplacer = virtualPropertyReplacer;
-        this.criteriaNoCountDao = criteriaNoCountDao;
         this.database = database;
     }
 
@@ -129,15 +124,16 @@ public class JpaDistributionSetTagManagement implements DistributionSetTagManage
 
     @Override
     public Slice<DistributionSetTag> findAll(final Pageable pageable) {
-        return convertDsPage(criteriaNoCountDao.findAll(pageable, JpaDistributionSetTag.class), pageable);
+        return JpaManagementHelper.findAllWithoutCountBySpec(distributionSetTagRepository, pageable, null);
     }
 
     @Override
     public Page<DistributionSetTag> findByRsql(final Pageable pageable, final String rsqlParam) {
-        final Specification<JpaDistributionSetTag> spec = RSQLUtility.parse(rsqlParam, TagFields.class,
+        final Specification<JpaDistributionSetTag> spec = RSQLUtility.buildRsqlSpecification(rsqlParam, TagFields.class,
                 virtualPropertyReplacer, database);
 
-        return convertDsPage(distributionSetTagRepository.findAll(spec, pageable), pageable);
+        return JpaManagementHelper.findAllWithCountBySpec(distributionSetTagRepository, pageable,
+                Collections.singletonList(spec));
     }
 
     @Override
@@ -146,18 +142,8 @@ public class JpaDistributionSetTagManagement implements DistributionSetTagManage
             throw new EntityNotFoundException(DistributionSet.class, setId);
         }
 
-        return convertDsPage(distributionSetTagRepository.findAll(TagSpecification.ofDistributionSet(setId), pageable),
-                pageable);
-    }
-
-    private static Page<DistributionSetTag> convertDsPage(final Page<JpaDistributionSetTag> findAll,
-            final Pageable pageable) {
-        return new PageImpl<>(Collections.unmodifiableList(findAll.getContent()), pageable, findAll.getTotalElements());
-    }
-
-    private static Slice<DistributionSetTag> convertDsPage(final Slice<JpaDistributionSetTag> findAll,
-            final Pageable pageable) {
-        return new PageImpl<>(Collections.unmodifiableList(findAll.getContent()), pageable, 0);
+        return JpaManagementHelper.findAllWithCountBySpec(distributionSetTagRepository, pageable,
+                Collections.singletonList(TagSpecification.ofDistributionSet(setId)));
     }
 
     @Override
@@ -182,7 +168,7 @@ public class JpaDistributionSetTagManagement implements DistributionSetTagManage
 
     @Override
     public Optional<DistributionSetTag> get(final long id) {
-        return distributionSetTagRepository.findById(id).map(dst -> (DistributionSetTag) dst);
+        return distributionSetTagRepository.findById(id).map(DistributionSetTag.class::cast);
     }
 
     @Override

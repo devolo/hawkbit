@@ -20,7 +20,7 @@ import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.Action.Status;
 import org.eclipse.hawkbit.repository.model.ActionProperties;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
@@ -109,7 +109,7 @@ public class RemoteTenantAwareEventTest extends AbstractRemoteEventTest {
         final Action action = actionRepository.save(generateAction);
 
         final TargetAssignDistributionSetEvent assignmentEvent = new TargetAssignDistributionSetEvent(
-                action.getTenant(), dsA.getId(), Arrays.asList(action), serviceMatcher.getServiceId(),
+                action.getTenant(), dsA.getId(), Arrays.asList(action), serviceMatcher.getBusId(),
                 action.isMaintenanceWindowAvailable());
 
         final TargetAssignDistributionSetEvent remoteEventProtoStuff = createProtoStuffEvent(assignmentEvent);
@@ -117,6 +117,31 @@ public class RemoteTenantAwareEventTest extends AbstractRemoteEventTest {
 
         final TargetAssignDistributionSetEvent remoteEventJackson = createJacksonEvent(assignmentEvent);
         assertTargetAssignDistributionSetEvent(action, remoteEventJackson);
+    }
+
+    @Test
+    @Description("Verifies that a TargetAssignDistributionSetEvent can be properly serialized and deserialized")
+    public void testCancelTargetAssignmentEvent() {
+
+        final DistributionSet dsA = testdataFactory.createDistributionSet("");
+
+        final JpaAction generateAction = new JpaAction();
+        generateAction.setActionType(ActionType.FORCED);
+        generateAction.setTarget(testdataFactory.createTarget("Test"));
+        generateAction.setDistributionSet(dsA);
+        generateAction.setStatus(Status.RUNNING);
+        generateAction.setInitiatedBy(tenantAware.getCurrentUsername());
+
+        final Action action = actionRepository.save(generateAction);
+
+        final CancelTargetAssignmentEvent cancelEvent = new CancelTargetAssignmentEvent(action,
+                serviceMatcher.getBusId());
+
+        final CancelTargetAssignmentEvent remoteEventProtoStuff = createProtoStuffEvent(cancelEvent);
+        assertCancelTargetAssignmentEvent(action, remoteEventProtoStuff);
+
+        final CancelTargetAssignmentEvent remoteEventJackson = createJacksonEvent(cancelEvent);
+        assertCancelTargetAssignmentEvent(action, remoteEventJackson);
     }
 
     private void assertTargetAssignDistributionSetEvent(final Action action,
@@ -127,5 +152,13 @@ public class RemoteTenantAwareEventTest extends AbstractRemoteEventTest {
         assertThat(actionProperties).isNotNull();
         assertThat(actionProperties).isEqualToComparingFieldByField(new ActionProperties(action));
         assertThat(underTest.getDistributionSetId()).isEqualTo(action.getDistributionSet().getId());
+    }
+
+    private void assertCancelTargetAssignmentEvent(final Action action, final CancelTargetAssignmentEvent underTest) {
+        assertThat(underTest.getActions().size()).isEqualTo(1);
+        final ActionProperties actionProperties = underTest.getActions().get(action.getTarget().getControllerId());
+        assertThat(actionProperties).isNotNull();
+        assertThat(actionProperties).isEqualToComparingFieldByField(new ActionProperties(action));
+        assertThat(underTest.getActionPropertiesForController(action.getTarget().getControllerId())).isPresent();
     }
 }

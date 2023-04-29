@@ -52,6 +52,45 @@ public class MgmtTarget extends MgmtNamedEntity {
     @JsonProperty
     private boolean isCleanedUp;
 
+    @JsonProperty
+    private Long targetType;
+
+    @JsonProperty
+    private String targetTypeName;
+
+    @JsonProperty
+    private Boolean autoConfirmActive;
+
+    /**
+     * @return Target type ID
+     */
+    public Long getTargetType() {
+        return targetType;
+    }
+
+    /**
+     * @param targetType
+     *            Target type ID
+     */
+    public void setTargetType(final Long targetType) {
+        this.targetType = targetType;
+    }
+
+    /**
+     * @return Target type name
+     */
+    public String getTargetTypeName() {
+        return targetTypeName;
+    }
+
+    /**
+     * @param targetTypeName
+     *            Target type name
+     */
+    public void setTargetTypeName(final String targetTypeName) {
+        this.targetTypeName = targetTypeName;
+    }
+
     /**
      * @return the controllerId
      */
@@ -157,6 +196,9 @@ public class MgmtTarget extends MgmtNamedEntity {
         return securityToken;
     }
 
+    /**
+     * @return Address
+     */
     public String getAddress() {
         return address;
     }
@@ -178,6 +220,9 @@ public class MgmtTarget extends MgmtNamedEntity {
         this.securityToken = securityToken;
     }
 
+    /**
+     * @return boolean true or false
+     */
     public boolean isRequestAttributes() {
         return requestAttributes;
     }
@@ -185,5 +230,14 @@ public class MgmtTarget extends MgmtNamedEntity {
     @JsonIgnore
     public void setRequestAttributes(final boolean requestAttributes) {
         this.requestAttributes = requestAttributes;
+    }
+
+    public Boolean getAutoConfirmActive() {
+        return autoConfirmActive;
+    }
+
+    @JsonIgnore
+    public void setAutoConfirmActive(final boolean autoConfirmActive) {
+        this.autoConfirmActive = autoConfirmActive;
     }
 }

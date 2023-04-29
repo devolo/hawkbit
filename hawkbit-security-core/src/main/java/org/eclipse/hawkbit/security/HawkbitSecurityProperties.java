@@ -130,6 +130,11 @@ public class HawkbitSecurityProperties {
          */
         private List<String> allowedMethods = Arrays.asList("DELETE", "GET", "POST", "PATCH", "PUT");
 
+        /**
+         * Exposed headers for CORS.
+         */
+        private List<String> exposedHeaders = Collections.emptyList();
+
         public boolean isEnabled() {
             return enabled;
         }
@@ -160,6 +165,14 @@ public class HawkbitSecurityProperties {
 
         public void setAllowedMethods(final List<String> allowedMethods) {
             this.allowedMethods = allowedMethods;
+        }
+
+        public List<String> getExposedHeaders() {
+            return exposedHeaders;
+        }
+
+        public void setExposedHeaders(final List<String> exposedHeaders) {
+            this.exposedHeaders = exposedHeaders;
         }
     }
 
@@ -297,6 +310,11 @@ public class HawkbitSecurityProperties {
          * Maximum size of all artifacts in bytes. Defaults to 20 GB.
          */
         private long maxArtifactStorage = 21_474_836_480L;
+
+        /**
+         * Maximum number of distribution set types per target types
+         */
+        private int maxDistributionSetTypesPerTargetType = 50;
 
         private final Filter filter = new Filter();
         private final Filter uiFilter = new Filter();
@@ -439,6 +457,14 @@ public class HawkbitSecurityProperties {
             this.maxArtifactStorage = maxArtifactStorage;
         }
 
+        public int getMaxDistributionSetTypesPerTargetType() {
+            return maxDistributionSetTypesPerTargetType;
+        }
+
+        public void setMaxDistributionSetTypesPerTargetType(final int maxDistributionSetTypesPerTargetType) {
+            this.maxDistributionSetTypesPerTargetType = maxDistributionSetTypesPerTargetType;
+        }
+        
         /**
          * Configuration for hawkBits DOS prevention filter. This is usually an
          * infrastructure topic (e.g. Web Application Firewall (WAF)) but might

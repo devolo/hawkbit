@@ -12,12 +12,14 @@ import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
+import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.eclipse.hawkbit.ui.common.AbstractEntityWindowBuilder;
 import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 
 import com.vaadin.ui.Window;
+import org.eclipse.hawkbit.utils.TenantConfigHelper;
 
 /**
  * Builder for auto assignment window
@@ -28,6 +30,8 @@ public class AutoAssignmentWindowBuilder extends AbstractEntityWindowBuilder<Pro
     private final TargetFilterQueryManagement targetFilterQueryManagement;
     private final DistributionSetManagement dsManagement;
     private final DeploymentManagement deploymentManagement;
+    private final TenantConfigHelper tenantConfigHelper;
+    private final TenantAware tenantAware;
 
     /**
      * Constructor for AutoAssignmentWindowBuilder
@@ -41,15 +45,18 @@ public class AutoAssignmentWindowBuilder extends AbstractEntityWindowBuilder<Pro
      * @param dsManagement
      *            DistributionSetManagement
      */
-    public AutoAssignmentWindowBuilder(final CommonUiDependencies uiDependencies, final TargetManagement targetManagement,
-            final TargetFilterQueryManagement targetFilterQueryManagement,
-            final DistributionSetManagement dsManagement, DeploymentManagement deploymentManagement) {
+    public AutoAssignmentWindowBuilder(final CommonUiDependencies uiDependencies,
+            final TargetManagement targetManagement, final TargetFilterQueryManagement targetFilterQueryManagement,
+            final DistributionSetManagement dsManagement, DeploymentManagement deploymentManagement,
+            final TenantConfigHelper tenantConfigHelper, final TenantAware tenantAware) {
         super(uiDependencies);
 
         this.targetManagement = targetManagement;
         this.targetFilterQueryManagement = targetFilterQueryManagement;
         this.dsManagement = dsManagement;
         this.deploymentManagement = deploymentManagement;
+        this.tenantConfigHelper = tenantConfigHelper;
+        this.tenantAware = tenantAware;
     }
 
     @Override
@@ -66,8 +73,10 @@ public class AutoAssignmentWindowBuilder extends AbstractEntityWindowBuilder<Pro
      * @return Common dialog window
      */
     public Window getWindowForAutoAssignment(final ProxyTargetFilterQuery proxyTargetFilter) {
-        return getWindowForEntity(proxyTargetFilter, new AutoAssignmentWindowController(uiDependencies, targetManagement,
-                targetFilterQueryManagement, deploymentManagement, new AutoAssignmentWindowLayout(getI18n(), dsManagement)));
+        return getWindowForEntity(proxyTargetFilter,
+                new AutoAssignmentWindowController(uiDependencies, targetManagement, targetFilterQueryManagement,
+                        tenantConfigHelper, tenantAware, deploymentManagement,
+                        new AutoAssignmentWindowLayout(getI18n(), dsManagement, tenantConfigHelper)));
     }
 
     @Override

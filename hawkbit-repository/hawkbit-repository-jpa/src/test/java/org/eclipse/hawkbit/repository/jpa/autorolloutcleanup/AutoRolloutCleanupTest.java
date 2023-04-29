@@ -39,10 +39,10 @@ public class AutoRolloutCleanupTest extends AbstractJpaIntegrationTest {
 
         final DistributionSet ds = distributionSetManagement.create(entityFactory.distributionSet().create().name("test-ds").version("1").type("os"));
 
-        final Rollout rollout1 = rolloutManagement.create(entityFactory.rollout().create().name("exampleRollout").targetFilterQuery("name==test*").set(ds), 10, new RolloutGroupConditionBuilder().withDefaults()
+        final Rollout rollout1 = rolloutManagement.create(entityFactory.rollout().create().name("exampleRollout").targetFilterQuery("name==test*").set(ds), 10, false, new RolloutGroupConditionBuilder().withDefaults()
                 .successCondition(RolloutGroup.RolloutGroupSuccessCondition.THRESHOLD, "10").build());
 
-        final Rollout rollout2 = rolloutManagement.create(entityFactory.rollout().create().name("exampleRollout2").targetFilterQuery("name==controller*").set(ds), 15, new RolloutGroupConditionBuilder().withDefaults()
+        final Rollout rollout2 = rolloutManagement.create(entityFactory.rollout().create().name("exampleRollout2").targetFilterQuery("name==controller*").set(ds), 15, false, new RolloutGroupConditionBuilder().withDefaults()
                 .successCondition(RolloutGroup.RolloutGroupSuccessCondition.THRESHOLD, "10").build());
 
         assertThat(rolloutRepository.count()).isEqualTo(2);

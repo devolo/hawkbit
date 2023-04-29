@@ -9,7 +9,7 @@
 package org.eclipse.hawkbit.repository.jpa;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,7 +23,7 @@ import org.eclipse.hawkbit.repository.jpa.model.JpaSoftwareModuleType;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleType;
 import org.eclipse.hawkbit.repository.test.matcher.Expect;
 import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
@@ -128,6 +128,9 @@ public class SoftwareModuleTypeManagementTest extends AbstractJpaIntegrationTest
         // delete assigned
         softwareModuleTypeManagement.delete(type.getId());
         assertThat(softwareModuleTypeManagement.findAll(PAGE)).hasSize(3).contains(osType, runtimeType, appType);
+        assertThat(softwareModuleTypeManagement.findByRsql(PAGE, "name==*")).hasSize(3).contains(osType, runtimeType,
+                appType);
+        assertThat(softwareModuleTypeManagement.count()).isEqualTo(3);
 
         assertThat(softwareModuleTypeRepository.findAll()).hasSize(4).contains((JpaSoftwareModuleType) osType,
                 (JpaSoftwareModuleType) runtimeType, (JpaSoftwareModuleType) appType,

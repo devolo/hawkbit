@@ -44,10 +44,24 @@ public class MgmtDistributionSet extends MgmtNamedEntity {
     private String type;
 
     @JsonProperty
+    private String typeName;
+
+    @JsonProperty
     private Boolean complete;
 
     @JsonProperty
     private boolean deleted;
+
+    @JsonProperty
+    private boolean valid;
+
+    public boolean isValid() {
+        return valid;
+    }
+
+    public void setValid(final boolean valid) {
+        this.valid = valid;
+    }
 
     public boolean isDeleted() {
         return deleted;
@@ -96,6 +110,14 @@ public class MgmtDistributionSet extends MgmtNamedEntity {
 
     public void setType(final String type) {
         this.type = type;
+    }
+
+    public String getTypeName() {
+        return typeName;
+    }
+
+    public void setTypeName(final String typeName) {
+        this.typeName = typeName;
     }
 
     public Boolean getComplete() {

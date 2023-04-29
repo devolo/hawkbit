@@ -20,9 +20,9 @@ public final class DistributionSetFilter {
     public static class DistributionSetFilterBuilder {
         private Boolean isDeleted;
         private Boolean isComplete;
-        private DistributionSetType type;
+        private Boolean isValid;
+        private Long typeId;
         private String searchText;
-        private String filterString;
         private Boolean selectDSWithNoTag;
         private Collection<String> tagNames;
         private String assignedTargetId;
@@ -57,13 +57,13 @@ public final class DistributionSetFilter {
             return this;
         }
 
-        public DistributionSetFilterBuilder setSearchText(final String searchText) {
-            this.searchText = searchText;
+        public DistributionSetFilterBuilder setIsValid(final Boolean isValid) {
+            this.isValid = isValid;
             return this;
         }
 
-        public DistributionSetFilterBuilder setFilterString(final String filterString) {
-            this.filterString = filterString;
+        public DistributionSetFilterBuilder setSearchText(final String searchText) {
+            this.searchText = searchText;
             return this;
         }
 
@@ -77,8 +77,8 @@ public final class DistributionSetFilter {
             return this;
         }
 
-        public DistributionSetFilterBuilder setType(final DistributionSetType type) {
-            this.type = type;
+        public DistributionSetFilterBuilder setTypeId(final Long typeId) {
+            this.typeId = typeId;
             return this;
         }
 
@@ -86,9 +86,9 @@ public final class DistributionSetFilter {
 
     private final Boolean isDeleted;
     private final Boolean isComplete;
-    private final DistributionSetType type;
+    private final Boolean isValid;
+    private final Long typeId;
     private final String searchText;
-    private final String filterString;
     private final Boolean selectDSWithNoTag;
     private final Collection<String> tagNames;
     private final String assignedTargetId;
@@ -104,9 +104,9 @@ public final class DistributionSetFilter {
     public DistributionSetFilter(final DistributionSetFilterBuilder builder) {
         this.isDeleted = builder.isDeleted;
         this.isComplete = builder.isComplete;
-        this.type = builder.type;
+        this.isValid = builder.isValid;
+        this.typeId = builder.typeId;
         this.searchText = builder.searchText;
-        this.filterString = builder.filterString;
         this.selectDSWithNoTag = builder.selectDSWithNoTag;
         this.tagNames = builder.tagNames;
         this.assignedTargetId = builder.assignedTargetId;
@@ -129,12 +129,12 @@ public final class DistributionSetFilter {
         return isDeleted;
     }
 
-    public String getSearchText() {
-        return searchText;
+    public Boolean getIsValid() {
+        return isValid;
     }
 
-    public String getFilterString() {
-        return filterString;
+    public String getSearchText() {
+        return searchText;
     }
 
     public Boolean getSelectDSWithNoTag() {
@@ -145,8 +145,8 @@ public final class DistributionSetFilter {
         return tagNames;
     }
 
-    public DistributionSetType getType() {
-        return type;
+    public Long getTypeId() {
+        return typeId;
     }
 
 }

@@ -162,6 +162,16 @@ public class TenantConfigurationProperties {
          */
         public static final String TRIGGER_AUTO_ASSIGN_CHECK_BY_TARGET = "autoassign.trigger.by.target.enabled";
 
+        /**
+         * Switch to enable/disable the batch-assignment feature.
+         */
+        public static final String BATCH_ASSIGNMENTS_ENABLED = "batch.assignments.enabled";
+
+        /**
+         * Switch to enable/disable the user-confirmation flow
+         */
+        public static final String USER_CONFIRMATION_ENABLED = "user.confirmation.flow.enabled";
+
         private String keyName;
         private String defaultValue = "";
         private Class<?> dataType = String.class;

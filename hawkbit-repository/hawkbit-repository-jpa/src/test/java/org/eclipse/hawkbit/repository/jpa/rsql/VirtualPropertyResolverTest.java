@@ -8,31 +8,36 @@
  */
 package org.eclipse.hawkbit.repository.jpa.rsql;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+
+import java.util.concurrent.Callable;
 
 import org.apache.commons.lang3.text.StrSubstitutor;
 import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
 import org.eclipse.hawkbit.repository.model.TenantConfigurationValue;
+import org.eclipse.hawkbit.repository.model.helper.SystemSecurityContextHolder;
 import org.eclipse.hawkbit.repository.model.helper.TenantConfigurationManagementHolder;
 import org.eclipse.hawkbit.repository.rsql.VirtualPropertyResolver;
+import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @Feature("Unit Tests - Repository")
 @Story("Placeholder resolution for virtual properties")
 public class VirtualPropertyResolverTest {
@@ -42,6 +47,9 @@ public class VirtualPropertyResolverTest {
 
     @MockBean
     private TenantConfigurationManagement confMgmt;
+
+    @MockBean
+    private SystemSecurityContext securityContext;
 
     private StrSubstitutor substitutor;
 
@@ -56,9 +64,14 @@ public class VirtualPropertyResolverTest {
         TenantConfigurationManagementHolder tenantConfigurationManagementHolder() {
             return TenantConfigurationManagementHolder.getInstance();
         }
+
+        @Bean
+        SystemSecurityContextHolder systemSecurityContextHolder() {
+            return SystemSecurityContextHolder.getInstance();
+        }
     }
 
-    @Before
+    @BeforeEach
     public void before() {
         when(confMgmt.getConfigurationValue(TenantConfigurationKey.POLLING_TIME_INTERVAL, String.class))
                 .thenReturn(TEST_POLLING_TIME_INTERVAL);
@@ -69,34 +82,16 @@ public class VirtualPropertyResolverTest {
                 StrSubstitutor.DEFAULT_SUFFIX, StrSubstitutor.DEFAULT_ESCAPE);
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = { "${NOW_TS}", "${OVERDUE_TS}", "${overdue_ts}" })
     @Description("Tests resolution of NOW_TS by using a StrSubstitutor configured with the VirtualPropertyResolver.")
-    public void resolveNowTimestampPlaceholder() {
-        final String placeholder = "${NOW_TS}";
+    void resolveNowTimestampPlaceholder(final String placeholder) {
+        when(securityContext.runAsSystem(Mockito.any())).thenAnswer(a -> ((Callable<?>) a.getArgument(0)).call());
         final String testString = "lhs=lt=" + placeholder;
 
         final String resolvedPlaceholders = substitutor.replace(testString);
-        assertThat("NOW_TS has to be resolved!", resolvedPlaceholders, not(containsString(placeholder)));
-    }
-
-    @Test
-    @Description("Tests resolution of OVERDUE_TS by using a StrSubstitutor configured with the VirtualPropertyResolver.")
-    public void resolveOverdueTimestampPlaceholder() {
-        final String placeholder = "${OVERDUE_TS}";
-        final String testString = "lhs=lt=" + placeholder;
-
-        final String resolvedPlaceholders = substitutor.replace(testString);
-        assertThat("OVERDUE_TS has to be resolved!", resolvedPlaceholders, not(containsString(placeholder)));
-    }
-
-    @Test
-    @Description("Tests case insensititity of VirtualPropertyResolver.")
-    public void resolveOverdueTimestampPlaceholderLowerCase() {
-        final String placeholder = "${overdue_ts}";
-        final String testString = "lhs=lt=" + placeholder;
-
-        final String resolvedPlaceholders = substitutor.replace(testString);
-        assertThat("overdue_ts has to be resolved!", resolvedPlaceholders, not(containsString(placeholder)));
+        assertThat(resolvedPlaceholders).as("'%s' placeholder was not replaced", placeholder)
+                .doesNotContain(placeholder);
     }
 
     @Test
@@ -106,7 +101,7 @@ public class VirtualPropertyResolverTest {
         final String testString = "lhs=lt=" + placeholder;
 
         final String resolvedPlaceholders = substitutor.replace(testString);
-        assertThat("unknown should not be resolved!", resolvedPlaceholders, containsString(placeholder));
+        assertThat(resolvedPlaceholders).as("unknown should not be resolved!").contains(placeholder);
     }
 
     @Test
@@ -117,6 +112,6 @@ public class VirtualPropertyResolverTest {
         final String testString = "lhs=lt=" + escaptedPlaceholder;
 
         final String resolvedPlaceholders = substitutor.replace(testString);
-        assertThat("Escaped OVERDUE_TS should not be resolved!", resolvedPlaceholders, containsString(placeholder));
+        assertThat(resolvedPlaceholders).as("Escaped OVERDUE_TS should not be resolved!").contains(placeholder);
     }
 }

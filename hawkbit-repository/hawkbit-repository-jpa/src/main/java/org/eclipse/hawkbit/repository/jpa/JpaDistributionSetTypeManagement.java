@@ -32,19 +32,17 @@ import org.eclipse.hawkbit.repository.jpa.builder.JpaDistributionSetTypeCreate;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.model.JpaDistributionSetType;
 import org.eclipse.hawkbit.repository.jpa.model.JpaSoftwareModuleType;
+import org.eclipse.hawkbit.repository.jpa.model.JpaTargetType;
 import org.eclipse.hawkbit.repository.jpa.rsql.RSQLUtility;
 import org.eclipse.hawkbit.repository.jpa.specifications.DistributionSetTypeSpecification;
-import org.eclipse.hawkbit.repository.jpa.specifications.SpecificationsBuilder;
 import org.eclipse.hawkbit.repository.jpa.utils.QuotaHelper;
 import org.eclipse.hawkbit.repository.model.DistributionSetType;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleType;
 import org.eclipse.hawkbit.repository.rsql.VirtualPropertyReplacer;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.orm.jpa.vendor.Database;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -66,23 +64,24 @@ public class JpaDistributionSetTypeManagement implements DistributionSetTypeMana
 
     private final DistributionSetRepository distributionSetRepository;
 
+    private final TargetTypeRepository targetTypeRepository;
+
     private final VirtualPropertyReplacer virtualPropertyReplacer;
 
-    private final NoCountPagingRepository criteriaNoCountDao;
     private final Database database;
 
     private final QuotaManagement quotaManagement;
 
     JpaDistributionSetTypeManagement(final DistributionSetTypeRepository distributionSetTypeRepository,
             final SoftwareModuleTypeRepository softwareModuleTypeRepository,
-            final DistributionSetRepository distributionSetRepository,
-            final VirtualPropertyReplacer virtualPropertyReplacer, final NoCountPagingRepository criteriaNoCountDao,
-            final Database database, final QuotaManagement quotaManagement) {
+            final DistributionSetRepository distributionSetRepository, final TargetTypeRepository targetTypeRepository,
+            final VirtualPropertyReplacer virtualPropertyReplacer, final Database database,
+            final QuotaManagement quotaManagement) {
         this.distributionSetTypeRepository = distributionSetTypeRepository;
         this.softwareModuleTypeRepository = softwareModuleTypeRepository;
         this.distributionSetRepository = distributionSetRepository;
+        this.targetTypeRepository = targetTypeRepository;
         this.virtualPropertyReplacer = virtualPropertyReplacer;
-        this.criteriaNoCountDao = criteriaNoCountDao;
         this.database = database;
         this.quotaManagement = quotaManagement;
     }
@@ -192,7 +191,7 @@ public class JpaDistributionSetTypeManagement implements DistributionSetTypeMana
     }
 
     /**
-     * Enforces the quota specifiying the maximum number of
+     * Enforces the quota specifying the maximum number of
      * {@link SoftwareModuleType}s per {@link DistributionSetType}.
      * 
      * @param id
@@ -225,17 +224,18 @@ public class JpaDistributionSetTypeManagement implements DistributionSetTypeMana
 
     @Override
     public Page<DistributionSetType> findByRsql(final Pageable pageable, final String rsqlParam) {
-        return convertPage(
-                findByCriteriaAPI(pageable,
-                        Arrays.asList(RSQLUtility.parse(rsqlParam, DistributionSetTypeFields.class,
-                                virtualPropertyReplacer, database), DistributionSetTypeSpecification.isDeleted(false))),
-                pageable);
+        return JpaManagementHelper
+                .findAllWithCountBySpec(distributionSetTypeRepository, pageable,
+                        Arrays.asList(
+                                RSQLUtility.buildRsqlSpecification(rsqlParam, DistributionSetTypeFields.class,
+                                        virtualPropertyReplacer, database),
+                                DistributionSetTypeSpecification.isDeleted(false)));
     }
 
     @Override
     public Slice<DistributionSetType> findAll(final Pageable pageable) {
-        return convertPage(criteriaNoCountDao.findAll(DistributionSetTypeSpecification.isDeleted(false), pageable,
-                JpaDistributionSetType.class), pageable);
+        return JpaManagementHelper.findAllWithoutCountBySpec(distributionSetTypeRepository, pageable,
+                Collections.singletonList(DistributionSetTypeSpecification.isDeleted(false)));
     }
 
     @Override
@@ -270,9 +270,10 @@ public class JpaDistributionSetTypeManagement implements DistributionSetTypeMana
     @Retryable(include = {
             ConcurrencyFailureException.class }, maxAttempts = Constants.TX_RT_MAX, backoff = @Backoff(delay = Constants.TX_RT_DELAY))
     public void delete(final long typeId) {
-
         final JpaDistributionSetType toDelete = distributionSetTypeRepository.findById(typeId)
                 .orElseThrow(() -> new EntityNotFoundException(DistributionSetType.class, typeId));
+
+        unassignDsTypeFromTargetTypes(typeId);
 
         if (distributionSetRepository.countByTypeId(typeId) > 0) {
             toDelete.setDeleted(true);
@@ -280,6 +281,14 @@ public class JpaDistributionSetTypeManagement implements DistributionSetTypeMana
         } else {
             distributionSetTypeRepository.deleteById(typeId);
         }
+    }
+
+    private void unassignDsTypeFromTargetTypes(final long typeId) {
+        final List<JpaTargetType> targetTypesByDsType = targetTypeRepository.findByDsType(typeId);
+        targetTypesByDsType.forEach(targetType -> {
+            targetType.removeDistributionSetType(typeId);
+            targetTypeRepository.save(targetType);
+        });
     }
 
     @Override
@@ -304,26 +313,6 @@ public class JpaDistributionSetTypeManagement implements DistributionSetTypeMana
             throw new EntityReadOnlyException(String.format(
                     "distribution set type %s is already assigned to distribution sets and cannot be changed", type));
         }
-    }
-
-    private static Page<DistributionSetType> convertPage(final Page<JpaDistributionSetType> findAll,
-            final Pageable pageable) {
-        return new PageImpl<>(Collections.unmodifiableList(findAll.getContent()), pageable, findAll.getTotalElements());
-    }
-
-    private static Slice<DistributionSetType> convertPage(final Slice<JpaDistributionSetType> findAll,
-            final Pageable pageable) {
-        return new PageImpl<>(Collections.unmodifiableList(findAll.getContent()), pageable, 0);
-    }
-
-    private Page<JpaDistributionSetType> findByCriteriaAPI(final Pageable pageable,
-            final List<Specification<JpaDistributionSetType>> specList) {
-
-        if (CollectionUtils.isEmpty(specList)) {
-            return distributionSetTypeRepository.findAll(pageable);
-        }
-
-        return distributionSetTypeRepository.findAll(SpecificationsBuilder.combineWithAnd(specList), pageable);
     }
 
     @Override

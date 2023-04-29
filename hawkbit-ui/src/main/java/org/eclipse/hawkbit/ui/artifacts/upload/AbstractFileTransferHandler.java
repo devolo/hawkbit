@@ -18,6 +18,8 @@ import java.util.concurrent.locks.Lock;
 import org.eclipse.hawkbit.repository.ArtifactManagement;
 import org.eclipse.hawkbit.repository.RegexCharacterCollection;
 import org.eclipse.hawkbit.repository.RegexCharacterCollection.RegexChar;
+import org.eclipse.hawkbit.repository.exception.ArtifactEncryptionFailedException;
+import org.eclipse.hawkbit.repository.exception.ArtifactEncryptionUnsupportedException;
 import org.eclipse.hawkbit.repository.exception.ArtifactUploadFailedException;
 import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.exception.FileSizeQuotaExceededException;
@@ -34,7 +36,6 @@ import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload;
 import org.eclipse.hawkbit.ui.common.event.EntityModifiedEventPayload.EntityModifiedEventType;
 import org.eclipse.hawkbit.ui.common.event.EventTopics;
 import org.eclipse.hawkbit.ui.utils.SpringContextHolder;
-import org.eclipse.hawkbit.ui.utils.UINotification;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,8 +68,6 @@ public abstract class AbstractFileTransferHandler implements Serializable {
 
     private final VaadinMessageSource i18n;
 
-    protected final UINotification uiNotification;
-
     private final transient Lock uploadLock;
 
     protected static final RegexCharacterCollection ILLEGAL_FILENAME_CHARACTERS = new RegexCharacterCollection(
@@ -80,7 +79,6 @@ public abstract class AbstractFileTransferHandler implements Serializable {
         this.i18n = i18n;
         this.eventBus = SpringContextHolder.getInstance().getBean(EventBus.UIEventBus.class);
         this.artifactUploadState = SpringContextHolder.getInstance().getBean(ArtifactUploadState.class);
-        this.uiNotification = SpringContextHolder.getInstance().getBean(UINotification.class);
         this.uploadLock = uploadLock;
     }
 
@@ -135,6 +133,10 @@ public abstract class AbstractFileTransferHandler implements Serializable {
 
     protected void interruptUploadDueToIllegalFilename() {
         interruptUploadAndSetReason(i18n.getMessage("message.uploadedfile.illegalFilename"));
+    }
+
+    protected void interruptUploadDueToEncryptionError() {
+        interruptUploadAndSetReason(i18n.getMessage("message.encryption.failed"));
     }
 
     protected boolean isFileAlreadyContainedInSoftwareModule(final FileUploadId newFileUploadId,
@@ -215,7 +217,7 @@ public abstract class AbstractFileTransferHandler implements Serializable {
             try {
                 outputStream.close();
             } catch (final IOException e1) {
-                LOG.warn("Closing output stream caused an exception {}", e1);
+                LOG.warn("Closing output stream caused by", e1);
             }
         }
 
@@ -226,7 +228,7 @@ public abstract class AbstractFileTransferHandler implements Serializable {
             try {
                 inputStream.close();
             } catch (final IOException e1) {
-                LOG.warn("Closing input stream caused an exception {}", e1);
+                LOG.warn("Closing input stream caused by", e1);
             }
         }
     }
@@ -276,13 +278,20 @@ public abstract class AbstractFileTransferHandler implements Serializable {
                 streamToRepository();
             } catch (final FileSizeQuotaExceededException e) {
                 interruptUploadDueToFileSizeQuotaExceeded(e.getExceededQuotaValueString());
+                publishUploadFailedAndFinishedEvent(fileUploadId);
                 LOG.debug("Upload failed due to file size quota exceeded:", e);
             } catch (final StorageQuotaExceededException e) {
                 interruptUploadDueToStorageQuotaExceeded(e.getExceededQuotaValueString());
+                publishUploadFailedAndFinishedEvent(fileUploadId);
                 LOG.debug("Upload failed due to storage quota exceeded:", e);
             } catch (final AssignmentQuotaExceededException e) {
                 interruptUploadDueToAssignmentQuotaExceeded();
+                publishUploadFailedAndFinishedEvent(fileUploadId);
                 LOG.debug("Upload failed due to assignment quota exceeded:", e);
+            } catch (final ArtifactEncryptionUnsupportedException | ArtifactEncryptionFailedException e) {
+                interruptUploadDueToEncryptionError();
+                publishUploadFailedAndFinishedEvent(fileUploadId);
+                LOG.warn("Upload failed due to encryption error", e);
             } catch (final RuntimeException e) {
                 interruptUploadDueToUploadFailed();
                 publishUploadFailedAndFinishedEvent(fileUploadId);
@@ -297,25 +306,28 @@ public abstract class AbstractFileTransferHandler implements Serializable {
             if (fileUploadId == null) {
                 throw new ArtifactUploadFailedException();
             }
+
             final String filename = fileUploadId.getFilename();
-            LOG.debug("Transfering file {} directly to repository", filename);
             final Artifact artifact = uploadArtifact(filename);
+
             if (isUploadInterrupted()) {
                 LOG.warn("Upload of {} was interrupted", filename);
                 handleUploadFailure(artifact);
                 publishUploadFinishedEvent(fileUploadId);
                 return;
             }
+
             publishUploadSucceeded(fileUploadId, artifact.getSize());
             publishUploadFinishedEvent(fileUploadId);
             publishArtifactsChanged(fileUploadId);
         }
 
         private Artifact uploadArtifact(final String filename) {
+            LOG.debug("Transfering file {} directly to repository", filename);
             try {
                 return artifactManagement.create(new ArtifactUpload(inputStream, fileUploadId.getSoftwareModuleId(),
                         filename, null, null, null, true, mimeType, -1));
-            } catch (final ArtifactUploadFailedException | InvalidSHA1HashException | InvalidMD5HashException e) {
+            } catch (final InvalidSHA1HashException | InvalidMD5HashException e) {
                 throw new ArtifactUploadFailedException(e);
             }
         }

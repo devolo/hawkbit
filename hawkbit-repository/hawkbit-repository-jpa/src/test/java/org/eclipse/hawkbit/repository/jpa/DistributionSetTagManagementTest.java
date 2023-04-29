@@ -9,16 +9,17 @@
 package org.eclipse.hawkbit.repository.jpa;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.hawkbit.repository.DistributionSetTagManagement;
+import org.eclipse.hawkbit.repository.builder.TagCreate;
 import org.eclipse.hawkbit.repository.event.remote.entity.DistributionSetTagUpdatedEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.TargetCreatedEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.TargetTagUpdatedEvent;
@@ -30,10 +31,11 @@ import org.eclipse.hawkbit.repository.model.DistributionSetTagAssignmentResult;
 import org.eclipse.hawkbit.repository.model.Tag;
 import org.eclipse.hawkbit.repository.test.matcher.Expect;
 import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
+import io.qameta.allure.Step;
 import io.qameta.allure.Story;
 
 /**
@@ -102,68 +104,43 @@ public class DistributionSetTagManagementTest extends AbstractJpaIntegrationTest
         toggleTagAssignment(dsABCs, distributionSetTagManagement.getByName(tagB.getName()).get());
         toggleTagAssignment(dsABCs, distributionSetTagManagement.getByName(tagC.getName()).get());
 
-        DistributionSetFilterBuilder distributionSetFilterBuilder;
-
         // search for not deleted
-        distributionSetFilterBuilder = getDistributionSetFilterBuilder().setIsComplete(true)
-                .setTagNames(Arrays.asList(tagA.getName()));
-        assertEquals("filter works not correct",
-                dsAs.spliterator().getExactSizeIfKnown() + dsABs.spliterator().getExactSizeIfKnown()
-                        + dsACs.spliterator().getExactSizeIfKnown() + dsABCs.spliterator().getExactSizeIfKnown(),
-                distributionSetManagement.findByDistributionSetFilter(PAGE, distributionSetFilterBuilder.build())
-                        .getTotalElements());
+        final DistributionSetFilterBuilder distributionSetFilterBuilder = getDistributionSetFilterBuilder()
+                .setIsComplete(true);
+        verifyExpectedFilteredDistributionSets(distributionSetFilterBuilder.setTagNames(Arrays.asList(tagA.getName())),
+                Stream.of(dsAs, dsABs, dsACs, dsABCs));
+        verifyExpectedFilteredDistributionSets(distributionSetFilterBuilder.setTagNames(Arrays.asList(tagB.getName())),
+                Stream.of(dsBs, dsABs, dsBCs, dsABCs));
+        verifyExpectedFilteredDistributionSets(distributionSetFilterBuilder.setTagNames(Arrays.asList(tagC.getName())),
+                Stream.of(dsCs, dsACs, dsBCs, dsABCs));
+        verifyExpectedFilteredDistributionSets(distributionSetFilterBuilder.setTagNames(Arrays.asList(tagX.getName())),
+                Stream.empty());
 
-        distributionSetFilterBuilder = getDistributionSetFilterBuilder().setIsComplete(true)
-                .setTagNames(Arrays.asList(tagB.getName()));
-        assertEquals("filter works not correct",
-                dsBs.spliterator().getExactSizeIfKnown() + dsABs.spliterator().getExactSizeIfKnown()
-                        + dsBCs.spliterator().getExactSizeIfKnown() + dsABCs.spliterator().getExactSizeIfKnown(),
-                distributionSetManagement.findByDistributionSetFilter(PAGE, distributionSetFilterBuilder.build())
-                        .getTotalElements());
-
-        distributionSetFilterBuilder = getDistributionSetFilterBuilder().setIsComplete(true)
-                .setTagNames(Arrays.asList(tagC.getName()));
-        assertEquals("filter works not correct",
-                dsCs.spliterator().getExactSizeIfKnown() + dsACs.spliterator().getExactSizeIfKnown()
-                        + dsBCs.spliterator().getExactSizeIfKnown() + dsABCs.spliterator().getExactSizeIfKnown(),
-                distributionSetManagement.findByDistributionSetFilter(PAGE, distributionSetFilterBuilder.build())
-                        .getTotalElements());
-
-        distributionSetFilterBuilder = getDistributionSetFilterBuilder().setIsComplete(true)
-                .setTagNames(Arrays.asList(tagX.getName()));
-        assertEquals("filter works not correct", 0, distributionSetManagement
-                .findByDistributionSetFilter(PAGE, distributionSetFilterBuilder.build()).getTotalElements());
-
-        assertEquals("wrong tag size", 5, distributionSetTagRepository.findAll().spliterator().getExactSizeIfKnown());
-
+        assertThat(distributionSetTagRepository.findAll()).hasSize(5);
         distributionSetTagManagement.delete(tagY.getName());
-        assertEquals("wrong tag size", 4, distributionSetTagRepository.findAll().spliterator().getExactSizeIfKnown());
+        assertThat(distributionSetTagRepository.findAll()).hasSize(4);
         distributionSetTagManagement.delete(tagX.getName());
-        assertEquals("wrong tag size", 3, distributionSetTagRepository.findAll().spliterator().getExactSizeIfKnown());
-
+        assertThat(distributionSetTagRepository.findAll()).hasSize(3);
         distributionSetTagManagement.delete(tagB.getName());
-        assertEquals("wrong tag size", 2, distributionSetTagRepository.findAll().spliterator().getExactSizeIfKnown());
+        assertThat(distributionSetTagRepository.findAll()).hasSize(2);
 
-        distributionSetFilterBuilder = getDistributionSetFilterBuilder().setIsComplete(Boolean.TRUE)
-                .setTagNames(Arrays.asList(tagA.getName()));
-        assertEquals("filter works not correct",
-                dsAs.spliterator().getExactSizeIfKnown() + dsABs.spliterator().getExactSizeIfKnown()
-                        + dsACs.spliterator().getExactSizeIfKnown() + dsABCs.spliterator().getExactSizeIfKnown(),
-                distributionSetManagement.findByDistributionSetFilter(PAGE, distributionSetFilterBuilder.build())
-                        .getTotalElements());
+        verifyExpectedFilteredDistributionSets(distributionSetFilterBuilder.setTagNames(Arrays.asList(tagA.getName())),
+                Stream.of(dsAs, dsABs, dsACs, dsABCs));
+        verifyExpectedFilteredDistributionSets(distributionSetFilterBuilder.setTagNames(Arrays.asList(tagB.getName())),
+                Stream.empty());
+        verifyExpectedFilteredDistributionSets(distributionSetFilterBuilder.setTagNames(Arrays.asList(tagC.getName())),
+                Stream.of(dsCs, dsACs, dsBCs, dsABCs));
+    }
 
-        distributionSetFilterBuilder = getDistributionSetFilterBuilder().setIsComplete(Boolean.TRUE)
-                .setTagNames(Arrays.asList(tagB.getName()));
-        assertEquals("filter works not correct", 0, distributionSetManagement
-                .findByDistributionSetFilter(PAGE, distributionSetFilterBuilder.build()).getTotalElements());
-
-        distributionSetFilterBuilder = getDistributionSetFilterBuilder().setIsComplete(Boolean.TRUE)
-                .setTagNames(Arrays.asList(tagC.getName()));
-        assertEquals("filter works not correct",
-                dsCs.spliterator().getExactSizeIfKnown() + dsACs.spliterator().getExactSizeIfKnown()
-                        + dsBCs.spliterator().getExactSizeIfKnown() + dsABCs.spliterator().getExactSizeIfKnown(),
-                distributionSetManagement.findByDistributionSetFilter(PAGE, distributionSetFilterBuilder.build())
-                        .getTotalElements());
+    @Step
+    private void verifyExpectedFilteredDistributionSets(final DistributionSetFilterBuilder distributionSetFilterBuilder,
+            final Stream<Collection<DistributionSet>> expectedFilteredDistributionSets) {
+        final Collection<Long> retrievedFilteredDsIds = distributionSetManagement
+                .findByDistributionSetFilter(PAGE, distributionSetFilterBuilder.build()).stream()
+                .map(DistributionSet::getId).collect(Collectors.toList());
+        final Collection<Long> expectedFilteredDsIds = expectedFilteredDistributionSets.flatMap(Collection::stream)
+                .map(DistributionSet::getId).collect(Collectors.toList());
+        assertThat(retrievedFilteredDsIds).hasSameElementsAs(expectedFilteredDsIds);
     }
 
     @Test
@@ -178,11 +155,11 @@ public class DistributionSetTagManagementTest extends AbstractJpaIntegrationTest
 
         // toggle A only -> A is now assigned
         DistributionSetTagAssignmentResult result = toggleTagAssignment(groupA, tag);
-        assertThat(result.getAlreadyAssigned()).isEqualTo(0);
+        assertThat(result.getAlreadyAssigned()).isZero();
         assertThat(result.getAssigned()).isEqualTo(20);
         assertThat(result.getAssignedEntity()).containsAll(distributionSetManagement
                 .get(groupA.stream().map(DistributionSet::getId).collect(Collectors.toList())));
-        assertThat(result.getUnassigned()).isEqualTo(0);
+        assertThat(result.getUnassigned()).isZero();
         assertThat(result.getUnassignedEntity()).isEmpty();
         assertThat(result.getDistributionSetTag()).isEqualTo(tag);
 
@@ -192,14 +169,14 @@ public class DistributionSetTagManagementTest extends AbstractJpaIntegrationTest
         assertThat(result.getAssigned()).isEqualTo(20);
         assertThat(result.getAssignedEntity()).containsAll(distributionSetManagement
                 .get(groupB.stream().map(DistributionSet::getId).collect(Collectors.toList())));
-        assertThat(result.getUnassigned()).isEqualTo(0);
+        assertThat(result.getUnassigned()).isZero();
         assertThat(result.getUnassignedEntity()).isEmpty();
         assertThat(result.getDistributionSetTag()).isEqualTo(tag);
 
         // toggle A+B -> both unassigned
         result = toggleTagAssignment(concat(groupA, groupB), tag);
-        assertThat(result.getAlreadyAssigned()).isEqualTo(0);
-        assertThat(result.getAssigned()).isEqualTo(0);
+        assertThat(result.getAlreadyAssigned()).isZero();
+        assertThat(result.getAssigned()).isZero();
         assertThat(result.getAssignedEntity()).isEmpty();
         assertThat(result.getUnassigned()).isEqualTo(40);
         assertThat(result.getUnassignedEntity()).containsAll(distributionSetManagement
@@ -252,13 +229,11 @@ public class DistributionSetTagManagementTest extends AbstractJpaIntegrationTest
     @Test
     @Description("Ensures that a tag cannot be created if one exists already with that name (ecpects EntityAlreadyExistsException).")
     public void failedDuplicateDsTagNameException() {
-        distributionSetTagManagement.create(entityFactory.tag().create().name("A"));
-        try {
-            distributionSetTagManagement.create(entityFactory.tag().create().name("A"));
-            fail("should not have worked as tag already exists");
-        } catch (final EntityAlreadyExistsException e) {
+        final TagCreate tag = entityFactory.tag().create().name("A");
+        distributionSetTagManagement.create(tag);
 
-        }
+        assertThatExceptionOfType(EntityAlreadyExistsException.class).as("should not have worked as tag already exists")
+                .isThrownBy(() -> distributionSetTagManagement.create(tag));
     }
 
     @Test
@@ -267,12 +242,9 @@ public class DistributionSetTagManagementTest extends AbstractJpaIntegrationTest
         distributionSetTagManagement.create(entityFactory.tag().create().name("A"));
         final DistributionSetTag tag = distributionSetTagManagement.create(entityFactory.tag().create().name("B"));
 
-        try {
-            distributionSetTagManagement.update(entityFactory.tag().update(tag.getId()).name("A"));
-            fail("should not have worked as tag already exists");
-        } catch (final EntityAlreadyExistsException e) {
-
-        }
+        assertThatExceptionOfType(EntityAlreadyExistsException.class).as("should not have worked as tag already exists")
+                .isThrownBy(
+                        () -> distributionSetTagManagement.update(entityFactory.tag().update(tag.getId()).name("A")));
     }
 
     @Test

@@ -18,10 +18,11 @@ import org.eclipse.hawkbit.im.authentication.SpPermission.SpringEvalExpressions;
 import org.eclipse.hawkbit.repository.builder.AutoAssignDistributionSetUpdate;
 import org.eclipse.hawkbit.repository.builder.TargetFilterQueryCreate;
 import org.eclipse.hawkbit.repository.builder.TargetFilterQueryUpdate;
-import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
-import org.eclipse.hawkbit.repository.exception.InvalidAutoAssignActionTypeException;
-import org.eclipse.hawkbit.repository.exception.InvalidAutoAssignDistributionSetException;
 import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
+import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
+import org.eclipse.hawkbit.repository.exception.IncompleteDistributionSetException;
+import org.eclipse.hawkbit.repository.exception.InvalidAutoAssignActionTypeException;
+import org.eclipse.hawkbit.repository.exception.InvalidDistributionSetException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
@@ -29,6 +30,7 @@ import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
@@ -42,13 +44,13 @@ public interface TargetFilterQueryManagement {
      *
      * @param create
      *            to create
-     * 
+     *
      * @return the new {@link TargetFilterQuery}
-     * 
+     *
      * @throws ConstraintViolationException
      *             if fields are not filled as specified. Check
      *             {@link TargetFilterQueryCreate} for field constraints.
-     * 
+     *
      * @throws AssignmentQuotaExceededException
      *             if the maximum number of targets that is addressed by the
      *             given query is exceeded (auto-assignments only)
@@ -61,7 +63,7 @@ public interface TargetFilterQueryManagement {
      *
      * @param targetFilterQueryId
      *            IDs of target filter query to be deleted
-     * 
+     *
      * @throws EntityNotFoundException
      *             if filter with given ID does not exist
      */
@@ -70,16 +72,16 @@ public interface TargetFilterQueryManagement {
 
     /**
      * Verifies the provided filter syntax.
-     * 
+     *
      * @param query
      *            to verify
-     * 
+     *
      * @return <code>true</code> if syntax is valid
-     * 
+     *
      * @throws RSQLParameterUnsupportedFieldException
      *             if a field in the RSQL string is used but not provided by the
      *             given {@code fieldNameProvider}
-     * 
+     *
      * @throws RSQLParameterSyntaxException
      *             if the RSQL syntax is wrong
      */
@@ -95,15 +97,26 @@ public interface TargetFilterQueryManagement {
      * @return the found {@link TargetFilterQuery}s
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
-    Page<TargetFilterQuery> findAll(@NotNull Pageable pageable);
+    Slice<TargetFilterQuery> findAll(@NotNull Pageable pageable);
 
     /**
      * Counts all {@link TargetFilterQuery}s.
-     * 
+     *
      * @return the number of all target filter queries
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
     long count();
+
+    /**
+     * Counts all target filters that have a given auto assign distribution set
+     * assigned.
+     *
+     * @param autoAssignDistributionSetId
+     *            the id of the distribution set
+     * @return the count
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
+    long countByAutoAssignDistributionSetId(long autoAssignDistributionSetId);
 
     /**
      * Retrieves all {@link TargetFilterQuery}s which match the given name
@@ -116,7 +129,17 @@ public interface TargetFilterQueryManagement {
      * @return the page with the found {@link TargetFilterQuery}s
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
-    Page<TargetFilterQuery> findByName(@NotNull Pageable pageable, @NotNull String name);
+    Slice<TargetFilterQuery> findByName(@NotNull Pageable pageable, @NotNull String name);
+
+    /**
+     * Counts all {@link TargetFilterQuery}s which match the given name filter.
+     *
+     * @param name
+     *            name filter
+     * @return count of found {@link TargetFilterQuery}s
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
+    long countByName(@NotNull String name);
 
     /**
      * Retrieves all {@link TargetFilterQuery} which match the given RSQL
@@ -141,7 +164,23 @@ public interface TargetFilterQueryManagement {
      * @return the page with the found {@link TargetFilterQuery}s
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
-    Page<TargetFilterQuery> findByQuery(@NotNull Pageable pageable, @NotNull String query);
+    Slice<TargetFilterQuery> findByQuery(@NotNull Pageable pageable, @NotNull String query);
+
+    /**
+     * Retrieves all {@link TargetFilterQuery}s which match the given
+     * auto-assign distribution set ID.
+     *
+     * @param pageable
+     *            pagination parameter
+     * @param setId
+     *            the auto assign distribution set
+     * @return the page with the found {@link TargetFilterQuery}s
+     *
+     * @throws EntityNotFoundException
+     *             if DS with given ID does not exist
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
+    Slice<TargetFilterQuery> findByAutoAssignDistributionSetId(@NotNull Pageable pageable, long setId);
 
     /**
      * Retrieves all {@link TargetFilterQuery}s which match the given
@@ -154,7 +193,7 @@ public interface TargetFilterQueryManagement {
      * @param rsqlParam
      *            RSQL filter
      * @return the page with the found {@link TargetFilterQuery}s
-     * 
+     *
      * @throws EntityNotFoundException
      *             if DS with given ID does not exist
      */
@@ -167,9 +206,10 @@ public interface TargetFilterQueryManagement {
      *
      * @return the page with the found {@link TargetFilterQuery}s
      * @param pageable
+     *            pagination information
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
-    Page<TargetFilterQuery> findWithAutoAssignDS(@NotNull Pageable pageable);
+    Slice<TargetFilterQuery> findWithAutoAssignDS(@NotNull Pageable pageable);
 
     /**
      * Finds the {@link TargetFilterQuery} by id.
@@ -198,17 +238,17 @@ public interface TargetFilterQueryManagement {
      *
      * @param update
      *            to be updated
-     * 
+     *
      * @return the updated {@link TargetFilterQuery}
-     * 
+     *
      * @throws EntityNotFoundException
      *             if either {@link TargetFilterQuery} and/or autoAssignDs are
      *             provided but not found
-     * 
+     *
      * @throws ConstraintViolationException
      *             if fields are not filled as specified. Check
      *             {@link TargetFilterQueryUpdate} for field constraints.
-     * 
+     *
      * @throws QuotaExceededException
      *             if the update contains a new query which addresses too many
      *             targets (auto-assignments only)
@@ -218,29 +258,43 @@ public interface TargetFilterQueryManagement {
 
     /**
      * Updates the auto assign settings of an {@link TargetFilterQuery}.
-     * 
+     *
      * @param autoAssignDistributionSetUpdate
      *            the new auto assignment
-     * 
+     *
      * @return the updated {@link TargetFilterQuery}
-     * 
+     *
      * @throws EntityNotFoundException
      *             if either {@link TargetFilterQuery} and/or autoAssignDs are
      *             provided but not found
-     * 
+     *
      * @throws AssignmentQuotaExceededException
      *             if the query that is already associated with this filter
      *             query addresses too many targets (auto-assignments only)
-     * 
+     *
      * @throws InvalidAutoAssignActionTypeException
      *             if the provided auto-assign {@link ActionType} is not valid
      *             (neither FORCED, nor SOFT)
-     * 
-     * @throws InvalidAutoAssignDistributionSetException
-     *             if the provided auto-assign {@link DistributionSet} is not
-     *             valid (incomplete or soft deleted)
+     *
+     * @throws IncompleteDistributionSetException
+     *             if the provided auto-assign {@link DistributionSet} is
+     *             incomplete
+     *
+     * @throws InvalidDistributionSetException
+     *             if the provided auto-assign {@link DistributionSet} is
+     *             invalidated
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_TARGET)
     TargetFilterQuery updateAutoAssignDS(
             @NotNull @Valid AutoAssignDistributionSetUpdate autoAssignDistributionSetUpdate);
+
+    /**
+     * Removes the given {@link DistributionSet} from all auto assignments.
+     *
+     * @param setId
+     *            the {@link DistributionSet} to be removed from auto
+     *            assignments.
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_UPDATE_TARGET)
+    void cancelAutoAssignmentForDistributionSet(long setId);
 }

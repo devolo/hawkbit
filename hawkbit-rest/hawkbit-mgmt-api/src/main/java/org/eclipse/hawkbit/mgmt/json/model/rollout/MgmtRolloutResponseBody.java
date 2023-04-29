@@ -42,6 +42,15 @@ public class MgmtRolloutResponseBody extends MgmtNamedEntity {
     private Map<String, Long> totalTargetsPerStatus;
 
     @JsonProperty
+    private Integer totalGroups;
+
+    @JsonProperty
+    private Long startAt;
+
+    @JsonProperty
+    private Long forcetime;
+
+    @JsonProperty
     private boolean deleted;
 
     @JsonProperty
@@ -98,6 +107,22 @@ public class MgmtRolloutResponseBody extends MgmtNamedEntity {
         return totalTargets;
     }
 
+    public void setStartAt(final Long startAt) {
+        this.startAt = startAt;
+    }
+
+    public Long getStartAt() {
+        return startAt;
+    }
+
+    public void setForcetime(final Long forcetime) {
+        this.forcetime = forcetime;
+    }
+
+    public Long getForcetime() {
+        return forcetime;
+    }
+
     public Map<String, Long> getTotalTargetsPerStatus() {
         return totalTargetsPerStatus;
     }
@@ -124,5 +149,13 @@ public class MgmtRolloutResponseBody extends MgmtNamedEntity {
 
     public Integer getWeight() {
         return weight;
+    }
+
+    public void setTotalGroups(final Integer totalGroups) {
+        this.totalGroups = totalGroups;
+    }
+
+    public Integer getTotalGroups() {
+        return totalGroups;
     }
 }

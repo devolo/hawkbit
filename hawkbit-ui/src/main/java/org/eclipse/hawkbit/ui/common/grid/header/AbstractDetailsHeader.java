@@ -45,7 +45,7 @@ public abstract class AbstractDetailsHeader<T> extends AbstractMasterAwareGridHe
      * @param uiNotification
      *            UINotification
      */
-    public AbstractDetailsHeader(final VaadinMessageSource i18n, final SpPermissionChecker permChecker,
+    protected AbstractDetailsHeader(final VaadinMessageSource i18n, final SpPermissionChecker permChecker,
             final UIEventBus eventBus, final UINotification uiNotification) {
         super(i18n, permChecker, eventBus);
 
@@ -67,12 +67,16 @@ public abstract class AbstractDetailsHeader<T> extends AbstractMasterAwareGridHe
         addHeaderSupports(Arrays.asList(editDetailsHeaderSupport, metaDataDetailsHeaderSupport));
     }
 
-    // can be overriden in child classes for entity-specific permission
+    // can be overridden in child classes for entity-specific permission
     protected boolean hasEditPermission() {
         return permChecker.hasUpdateRepositoryPermission();
     }
 
-    // can be overriden in child classes for entity-specific permission
+    protected boolean editSelectedEntityAllowed() {
+        return true;
+    }
+
+    // can be overridden in child classes for entity-specific permission
     protected boolean hasMetadataReadPermission() {
         return permChecker.hasReadRepositoryPermission();
     }
@@ -107,6 +111,8 @@ public abstract class AbstractDetailsHeader<T> extends AbstractMasterAwareGridHe
     public void masterEntityChanged(final T entity) {
         super.masterEntityChanged(entity);
 
+        selectedEntity = entity;
+
         if (entity == null) {
             disableEdit();
             disableMetaData();
@@ -115,7 +121,6 @@ public abstract class AbstractDetailsHeader<T> extends AbstractMasterAwareGridHe
             enableMetaData();
         }
 
-        selectedEntity = entity;
     }
 
     private void disableEdit() {
@@ -131,13 +136,13 @@ public abstract class AbstractDetailsHeader<T> extends AbstractMasterAwareGridHe
     }
 
     private void enableEdit() {
-        if (editDetailsHeaderSupport != null) {
+        if (editDetailsHeaderSupport != null && editSelectedEntityAllowed()) {
             editDetailsHeaderSupport.enableEditIcon();
         }
     }
 
     private void enableMetaData() {
-        if (metaDataDetailsHeaderSupport != null) {
+        if (metaDataDetailsHeaderSupport != null && editSelectedEntityAllowed()) {
             metaDataDetailsHeaderSupport.enableMetaDataIcon();
         }
     }

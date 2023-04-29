@@ -29,6 +29,7 @@ Supported HTTP-methods are:
 Available Management APIs resources are:
 
 - [Targets](/hawkbit/apis/mgmt/targets/)
+- [Target types](/hawkbit/apis/mgmt/targettypes/)
 - [Distribution sets](/hawkbit/apis/mgmt/distributionsets/)
 - [Distribution set types](/hawkbit/apis/mgmt/distributionsettypes/)
 - [Software modules](/hawkbit/apis/mgmt/softwaremodules/)
@@ -44,7 +45,7 @@ Available Management APIs resources are:
 
 For all requests an `Authorization` header has to be set.
 
-* Username: `Tenant\username`
+* Username: `username`
 * Password: `password`
 
 Also have a look to the [Security](../../concepts/authentication/) chapter.

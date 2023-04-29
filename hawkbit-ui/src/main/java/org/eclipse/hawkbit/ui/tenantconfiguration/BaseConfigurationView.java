@@ -12,12 +12,13 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.vaadin.data.Binder;
-import com.vaadin.ui.CustomComponent;
 import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
 import org.eclipse.hawkbit.repository.model.TenantConfigurationValue;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxySystemConfigWindow;
 import org.springframework.beans.factory.InitializingBean;
+
+import com.vaadin.data.Binder;
+import com.vaadin.ui.CustomComponent;
 
 /**
  * Base class for all configuration views. This class implements the logic for
@@ -33,7 +34,7 @@ public abstract class BaseConfigurationView<B extends ProxySystemConfigWindow> e
     private final transient TenantConfigurationManagement tenantConfigurationManagement;
     private final Binder<B> binder;
 
-    public BaseConfigurationView(final TenantConfigurationManagement tenantConfigurationManagement) {
+    protected BaseConfigurationView(final TenantConfigurationManagement tenantConfigurationManagement) {
         this.tenantConfigurationManagement = tenantConfigurationManagement;
         binder = new Binder<>();
     }
@@ -69,8 +70,8 @@ public abstract class BaseConfigurationView<B extends ProxySystemConfigWindow> e
         return enabled.getValue() && !enabled.isGlobal();
     }
 
-    protected <T extends Serializable> void writeConfigOption(final String key, final T value) {
-        tenantConfigurationManagement.addOrUpdateConfiguration(key, value);
+    protected <T extends Serializable> TenantConfigurationValue<T> writeConfigOption(final String key, final T value) {
+        return tenantConfigurationManagement.addOrUpdateConfiguration(key, value);
     }
 
     protected TenantConfigurationManagement getTenantConfigurationManagement() {

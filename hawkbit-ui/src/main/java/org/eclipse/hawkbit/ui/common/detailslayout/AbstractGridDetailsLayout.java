@@ -56,7 +56,7 @@ public abstract class AbstractGridDetailsLayout<T extends ProxyNamedEntity> exte
      * @param i18n
      *            VaadinMessageSource
      */
-    public AbstractGridDetailsLayout(final VaadinMessageSource i18n) {
+    protected AbstractGridDetailsLayout(final VaadinMessageSource i18n) {
         this.i18n = i18n;
 
         this.binder = new Binder<>();
@@ -158,7 +158,7 @@ public abstract class AbstractGridDetailsLayout<T extends ProxyNamedEntity> exte
         });
     }
 
-    private static VerticalLayout buildTabWrapperDetailsLayout(final Component detailsComponent) {
+    protected static VerticalLayout buildTabWrapperDetailsLayout(final Component detailsComponent) {
         final VerticalLayout tabWrapperDetailsLayout = new VerticalLayout();
         tabWrapperDetailsLayout.setSpacing(false);
         tabWrapperDetailsLayout.setMargin(false);

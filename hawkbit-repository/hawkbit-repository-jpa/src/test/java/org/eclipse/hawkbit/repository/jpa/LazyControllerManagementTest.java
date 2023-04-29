@@ -18,7 +18,7 @@ import org.eclipse.hawkbit.repository.event.remote.entity.TargetCreatedEvent;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.test.matcher.Expect;
 import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.TestPropertySource;
 
@@ -46,7 +46,7 @@ public class LazyControllerManagementTest extends AbstractJpaIntegrationTest {
 
         TimeUnit.MILLISECONDS.sleep(10);
         controllerManagement.findOrRegisterTargetIfItDoesNotExist("AA", LOCALHOST);
-        TimeUnit.MILLISECONDS.sleep(repositoryProperties.getPollPersistenceFlushTime() + 1);
+        TimeUnit.MILLISECONDS.sleep(repositoryProperties.getPollPersistenceFlushTime() + 10);
 
         final Target updated = targetManagement.get(target.getId()).get();
 

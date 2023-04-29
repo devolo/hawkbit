@@ -9,52 +9,58 @@
 package org.eclipse.hawkbit.repository.jpa.rsql;
 
 import cz.jirutka.rsql.parser.ast.ComparisonNode;
-import org.eclipse.hawkbit.repository.FieldNameProvider;
-import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.validation.constraints.NotNull;
+
+import org.eclipse.hawkbit.repository.FieldNameProvider;
+import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class AbstractFieldNameRSQLVisitor<A extends Enum<A> & FieldNameProvider> {
 
-    protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractFieldNameRSQLVisitor.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractFieldNameRSQLVisitor.class);
 
-    protected Class<A>  fieldNameProvider;
+    private final Class<A> fieldNameProvider;
+
+    protected AbstractFieldNameRSQLVisitor(final Class<A> fieldNameProvider) {
+        this.fieldNameProvider = fieldNameProvider;
+    }
 
     protected A getFieldEnumByName(final ComparisonNode node) {
         String enumName = node.getSelector();
-        final String[] graph = getSubAttributesFrom(enumName);
+        final String[] graph = enumName.split("\\" + FieldNameProvider.SUB_ATTRIBUTE_SEPARATOR);
         if (graph.length != 0) {
             enumName = graph[0];
         }
         LOGGER.debug("get field identifier by name {} of enum type {}", enumName, fieldNameProvider);
-        return Enum.valueOf(fieldNameProvider, enumName.toUpperCase());
-    }
-
-    protected static String[] getSubAttributesFrom(final String property) {
-        return property.split("\\" + FieldNameProvider.SUB_ATTRIBUTE_SEPERATOR);
+        try {
+            return Enum.valueOf(fieldNameProvider, enumName.toUpperCase());
+        } catch (final IllegalArgumentException e) {
+            throw createRSQLParameterUnsupportedException(node, e);
+        }
     }
 
     protected String getAndValidatePropertyFieldName(final A propertyEnum, final ComparisonNode node) {
-
-        final String[] graph = getSubAttributesFrom(node.getSelector());
+        final String[] graph = propertyEnum.getSubAttributes(node.getSelector());
 
         validateMapParameter(propertyEnum, node, graph);
 
         // sub entity need minimum 1 dot
         if (!propertyEnum.getSubEntityAttributes().isEmpty() && graph.length < 2) {
-            throw  createRSQLParameterUnsupportedException(node);
+            throw createRSQLParameterUnsupportedException(node, null);
         }
 
         final StringBuilder fieldNameBuilder = new StringBuilder(propertyEnum.getFieldName());
 
         for (int i = 1; i < graph.length; i++) {
 
-            final String propertyField = graph[i];
-            fieldNameBuilder.append(FieldNameProvider.SUB_ATTRIBUTE_SEPERATOR).append(propertyField);
+            final String propertyField = getFormattedSubEntityAttribute(propertyEnum ,graph[i]);
+            fieldNameBuilder.append(FieldNameProvider.SUB_ATTRIBUTE_SEPARATOR).append(propertyField);
 
             // the key of map is not in the graph
             if (propertyEnum.isMap() && graph.length == (i + 1)) {
@@ -62,7 +68,7 @@ public abstract class AbstractFieldNameRSQLVisitor<A extends Enum<A> & FieldName
             }
 
             if (!propertyEnum.containsSubEntityAttribute(propertyField)) {
-                throw  createRSQLParameterUnsupportedException(node);
+                throw createRSQLParameterUnsupportedException(node, null);
             }
         }
 
@@ -88,32 +94,33 @@ public abstract class AbstractFieldNameRSQLVisitor<A extends Enum<A> & FieldName
         }
     }
 
+    /**
+     * @param node
+     *            current processing node
+     * @param rootException
+     *            in case there is a cause otherwise {@code null}
+     * @return Exception with prepared message extracted from the comparison node.
+     */
     protected RSQLParameterUnsupportedFieldException createRSQLParameterUnsupportedException(
-            final ComparisonNode node) {
-        return new RSQLParameterUnsupportedFieldException(
-                "The given search parameter field {" + node.getSelector()
-                        + "} does not exist, must be one of the following fields {" + getExpectedFieldList() + "}",
-                new Exception());
+            @NotNull final ComparisonNode node,
+            final Exception rootException) {
+        return new RSQLParameterUnsupportedFieldException(String.format(
+                "The given search parameter field {%s} does not exist, must be one of the following fields %s",
+                node.getSelector(), getExpectedFieldList()), rootException);
     }
 
-    protected RSQLParameterUnsupportedFieldException createRSQLParameterUnsupportedException(
-            final ComparisonNode node, Exception rootException) {
-        return new RSQLParameterUnsupportedFieldException(
-                "The given search parameter field {" + node.getSelector()
-                        + "} does not exist, must be one of the following fields {" + getExpectedFieldList() + "}",
-                rootException);
+    private String getFormattedSubEntityAttribute(final A propertyEnum, final String propertyField) {
+        return propertyEnum.getSubEntityAttributes().stream().filter(attr -> attr.equalsIgnoreCase(propertyField))
+              .findFirst().orElse(propertyField);
     }
 
-    // Exception squid:S2095 - see
-    // https://jira.sonarsource.com/browse/SONARJAVA-1478
-    @SuppressWarnings({ "squid:S2095" })
     private List<String> getExpectedFieldList() {
         final List<String> expectedFieldList = Arrays.stream(fieldNameProvider.getEnumConstants())
                 .filter(enumField -> enumField.getSubEntityAttributes().isEmpty()).map(enumField -> {
                     final String enumFieldName = enumField.name().toLowerCase();
 
                     if (enumField.isMap()) {
-                        return enumFieldName + FieldNameProvider.SUB_ATTRIBUTE_SEPERATOR + "keyName";
+                        return enumFieldName + FieldNameProvider.SUB_ATTRIBUTE_SEPARATOR + "keyName";
                     }
 
                     return enumFieldName;
@@ -121,9 +128,10 @@ public abstract class AbstractFieldNameRSQLVisitor<A extends Enum<A> & FieldName
 
         final List<String> expectedSubFieldList = Arrays.stream(fieldNameProvider.getEnumConstants())
                 .filter(enumField -> !enumField.getSubEntityAttributes().isEmpty()).flatMap(enumField -> {
-                    final List<String> subEntity = enumField.getSubEntityAttributes().stream()
-                            .map(fieldName -> enumField.name().toLowerCase()
-                                    + FieldNameProvider.SUB_ATTRIBUTE_SEPERATOR + fieldName)
+
+                    final List<String> subEntity = enumField
+                            .getSubEntityAttributes().stream().map(fieldName -> enumField.name().toLowerCase()
+                                    + FieldNameProvider.SUB_ATTRIBUTE_SEPARATOR + fieldName)
                             .collect(Collectors.toList());
 
                     return subEntity.stream();

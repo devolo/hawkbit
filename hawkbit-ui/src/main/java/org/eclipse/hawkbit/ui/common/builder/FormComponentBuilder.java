@@ -32,6 +32,7 @@ import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
 import org.eclipse.hawkbit.ui.management.miscs.ActionTypeOptionGroupAssignmentLayout;
 import org.eclipse.hawkbit.ui.rollout.window.components.AutoStartOptionGroupLayout;
 import org.eclipse.hawkbit.ui.utils.SPDateTimeUtil;
+import org.eclipse.hawkbit.ui.utils.TrimmingStringConverter;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.UIMessageIdProvider;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
@@ -83,7 +84,7 @@ public final class FormComponentBuilder {
                 .caption(i18n.getMessage(TEXTFIELD_NAME)).prompt(i18n.getMessage(TEXTFIELD_NAME)).buildTextComponent();
         nameInput.setSizeUndefined();
 
-        final Binding<T, String> binding = binder.forField(nameInput)
+        final Binding<T, String> binding = binder.forField(nameInput).withConverter(new TrimmingStringConverter())
                 .asRequired(i18n.getMessage(UIMessageIdProvider.MESSAGE_ERROR_NAMEREQUIRED))
                 .bind(NameAware::getName, NameAware::setName);
 
@@ -110,7 +111,7 @@ public final class FormComponentBuilder {
                 .buildTextComponent();
         versionInput.setSizeUndefined();
 
-        final Binding<T, String> binding = binder.forField(versionInput)
+        final Binding<T, String> binding = binder.forField(versionInput).withConverter(new TrimmingStringConverter())
                 .asRequired(i18n.getMessage(UIMessageIdProvider.MESSAGE_ERROR_VERSIONREQUIRED))
                 .bind(VersionAware::getVersion, VersionAware::setVersion);
 
@@ -132,13 +133,19 @@ public final class FormComponentBuilder {
      */
     public static <T extends DescriptionAware> BoundComponent<TextArea> createDescriptionInput(final Binder<T> binder,
             final VaadinMessageSource i18n, final String fieldId) {
+        return createBigTextInput(binder, i18n, fieldId, TEXTFIELD_DESCRIPTION, TEXTFIELD_DESCRIPTION,
+                DescriptionAware::getDescription, DescriptionAware::setDescription);
+    }
+
+    public static <T> BoundComponent<TextArea> createBigTextInput(final Binder<T> binder,
+                                                                  final VaadinMessageSource i18n, final String fieldId, final String caption, final String prompt,
+                                                                  final ValueProvider<T, String> getter, final Setter<T, String> setter) {
         final TextArea descriptionInput = new TextAreaBuilder(NamedEntity.DESCRIPTION_MAX_SIZE).id(fieldId)
-                .caption(i18n.getMessage(TEXTFIELD_DESCRIPTION)).prompt(i18n.getMessage(TEXTFIELD_DESCRIPTION))
-                .style("text-area-style").buildTextComponent();
+                .caption(i18n.getMessage(caption)).prompt(i18n.getMessage(prompt)).style("text-area-style")
+                .buildTextComponent();
         descriptionInput.setSizeUndefined();
 
-        final Binding<T, String> binding = binder.forField(descriptionInput).bind(DescriptionAware::getDescription,
-                DescriptionAware::setDescription);
+        final Binding<T, String> binding = binder.forField(descriptionInput).bind(getter, setter);
 
         return new BoundComponent<>(descriptionInput, binding);
     }
@@ -326,15 +333,18 @@ public final class FormComponentBuilder {
      */
     public static <T extends TypeInfoAware> BoundComponent<ComboBox<ProxyTypeInfo>> createTypeCombo(
             final Binder<T> binder, final AbstractProxyDataProvider<ProxyTypeInfo, ?, String> dataProvider,
-            final VaadinMessageSource i18n, final String componentId) {
+            final VaadinMessageSource i18n, final String componentId, final boolean isRequired) {
         final ComboBox<ProxyTypeInfo> typeCombo = SPUIComponentProvider.getComboBox(componentId,
-                i18n.getMessage(CAPTION_TYPE), i18n.getMessage(CAPTION_TYPE), i18n.getMessage(CAPTION_TYPE), false,
-                ProxyTypeInfo::getName, dataProvider);
+                i18n.getMessage(CAPTION_TYPE), i18n.getMessage(CAPTION_TYPE), i18n.getMessage(CAPTION_TYPE), !isRequired,
+                ProxyTypeInfo::getName, dataProvider.withConvertedFilter(filterString -> filterString.trim() + "%"));
 
-        final Binding<T, ProxyTypeInfo> binding = binder.forField(typeCombo)
-                .asRequired(i18n.getMessage("message.error.typeRequired"))
-                .bind(TypeInfoAware::getTypeInfo, TypeInfoAware::setTypeInfo);
+        final BindingBuilder<T, ProxyTypeInfo> bindingBuilder = binder.forField(typeCombo);
 
+        if (isRequired){
+            bindingBuilder.asRequired(i18n.getMessage("message.error.typeRequired"));
+        }
+
+        final Binding<T, ProxyTypeInfo> binding = bindingBuilder.bind(TypeInfoAware::getTypeInfo, TypeInfoAware::setTypeInfo);
         return new BoundComponent<>(typeCombo, binding);
     }
 
@@ -354,8 +364,8 @@ public final class FormComponentBuilder {
                 .buildTextComponent();
         typeKey.setSizeUndefined();
 
-        binder.forField(typeKey).asRequired(i18n.getMessage("message.type.key.empty")).bind(ProxyType::getKey,
-                ProxyType::setKey);
+        binder.forField(typeKey).withConverter(new TrimmingStringConverter())
+                .asRequired(i18n.getMessage("message.type.key.empty")).bind(ProxyType::getKey, ProxyType::setKey);
 
         return typeKey;
     }
@@ -375,9 +385,9 @@ public final class FormComponentBuilder {
      *            setter for the binder
      * @return the bound box
      */
-    public static <T> CheckBox getCheckBox(final String id, final Binder<T> binder,
+    public static <T> CheckBox createCheckBox(final String id, final Binder<T> binder,
             final ValueProvider<T, Boolean> getter, final Setter<T, Boolean> setter) {
-        return getCheckBox(null, id, binder, getter, setter);
+        return createCheckBox(null, id, binder, getter, setter);
     }
 
     /**
@@ -397,7 +407,7 @@ public final class FormComponentBuilder {
      *            setter for the binder
      * @return the bound box
      */
-    public static <T> CheckBox getCheckBox(final String caption, final String id, final Binder<T> binder,
+    public static <T> CheckBox createCheckBox(final String caption, final String id, final Binder<T> binder,
             final ValueProvider<T, Boolean> getter, final Setter<T, Boolean> setter) {
         final CheckBox checkBox;
         if (StringUtils.isEmpty(caption)) {

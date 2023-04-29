@@ -44,7 +44,7 @@ public final class MgmtRestConstants {
      */
     public static final String SOFTWAREMODULE_V1_REQUEST_MAPPING = BASE_V1_REQUEST_MAPPING + "/softwaremodules";
 
-    public static final String DOWNLOAD_ID_V1_REQUEST_MAPPING_BASE = "/api/" + API_VERSION + "/downloadserver/";
+    public static final String DOWNLOAD_ID_V1_REQUEST_MAPPING_BASE = "/api/" + API_VERSION + "/downloadserver";
 
     public static final String DOWNLOAD_ID_V1_REQUEST_MAPPING = "/downloadId/{tenant}/{downloadId}";
 
@@ -59,6 +59,26 @@ public final class MgmtRestConstants {
     public static final String SYSTEM_ADMIN_MAPPING = BASE_SYSTEM_MAPPING + "/admin";
 
     public static final String SYSTEM_V1_REQUEST_MAPPING = BASE_V1_REQUEST_MAPPING + BASE_SYSTEM_MAPPING;
+
+    /**
+     * The target URL mapping, href link for assigned target type.
+     */
+    public static final String TARGET_V1_ASSIGNED_TARGET_TYPE = "targetType";
+
+    /**
+     * The target URL mapping, href link for autoConfirm state of a target.
+     */
+    public static final String TARGET_V1_AUTO_CONFIRM = "autoConfirm";
+
+    /**
+     * The target URL mapping, href link activate auto-confirm on a target.
+     */
+    public static final String TARGET_V1_ACTIVATE_AUTO_CONFIRM = "activate";
+
+    /**
+     * The target URL mapping, href link deactivate auto-confirm on a target.
+     */
+    public static final String TARGET_V1_DEACTIVATE_AUTO_CONFIRM = "deactivate";
 
     /**
      * The target URL mapping, href link for assigned distribution set.
@@ -84,6 +104,10 @@ public final class MgmtRestConstants {
      * The target URL mapping, href link for canceled actions.
      */
     public static final String TARGET_V1_ACTION_STATUS = "status";
+    /**
+     * The target URL mapping, href link for a rollout.
+     */
+    public static final String TARGET_V1_ROLLOUT = "rollout";
 
     /**
      * The target URL mapping rest resource.
@@ -96,13 +120,19 @@ public final class MgmtRestConstants {
     public static final String TARGET_TAG_V1_REQUEST_MAPPING = BASE_V1_REQUEST_MAPPING + "/targettags";
 
     /**
-     * The tag URL mapping rest resource.
-     * 
-     * @deprecated {@link #TARGET_TAG_TARGETS_REQUEST_MAPPING} is preferred as
-     *             this resource on GET supports paging
+     * The target URL mapping rest resource.
      */
-    @Deprecated
-    public static final String DEPRECATAED_TARGET_TAG_TARGETS_REQUEST_MAPPING = "/{targetTagId}/targets";
+    public static final String TARGET_TARGET_TYPE_V1_REQUEST_MAPPING = "/{targetId}/targettype";
+
+    /**
+     * The target type URL mapping rest resource.
+     */
+    public static final String TARGETTYPE_V1_REQUEST_MAPPING = BASE_V1_REQUEST_MAPPING + "/targettypes";
+
+    /**
+     * The target type URL mapping rest resource.
+     */
+    public static final String TARGETTYPE_V1_DS_TYPES = "compatibledistributionsettypes";
 
     /**
      * The tag URL mapping rest resource.
@@ -121,18 +151,14 @@ public final class MgmtRestConstants {
     public static final String TARGET_FILTER_V1_REQUEST_MAPPING = BASE_V1_REQUEST_MAPPING + "/targetfilters";
 
     /**
-     * The deprecated tag URL mapping rest resource.
-     * 
-     * @deprecated {@link #DISTRIBUTIONSET_TAG_DISTRIBUTIONSETS_REQUEST_MAPPING}
-     *             is preferred as this resource on GET supports paging
-     */
-    @Deprecated
-    public static final String DEPRECATED_DISTRIBUTIONSET_TAG_DISTRIBUTIONSETS_REQUEST_MAPPING = "/{distributionsetTagId}/distributionsets";
-
-    /**
      * The tag URL mapping rest resource.
      */
     public static final String DISTRIBUTIONSET_TAG_DISTRIBUTIONSETS_REQUEST_MAPPING = "/{distributionsetTagId}/assigned";
+
+    /**
+     * The action URL mapping rest resource.
+     */
+    public static final String ACTION_V1_REQUEST_MAPPING = BASE_V1_REQUEST_MAPPING + "/actions";
 
     /**
      * The default offset parameter in case the offset parameter is not present
@@ -179,6 +205,17 @@ public final class MgmtRestConstants {
      * must be in the FIQL syntax.
      */
     public static final String REQUEST_PARAMETER_SEARCH = "q";
+
+    /**
+     * The request parameter for specifying the representation mode. The value
+     * of this parameter can either be "full" or "compact".
+     */
+    public static final String REQUEST_PARAMETER_REPRESENTATION_MODE = "representation";
+
+    /**
+     * The default representation mode.
+     */
+    public static final String REQUEST_PARAMETER_REPRESENTATION_MODE_DEFAULT = "compact";
 
     /**
      * The software module type URL mapping rest resource.
@@ -228,6 +265,11 @@ public final class MgmtRestConstants {
     public static final String DISTRIBUTIONSETTYPE_V1_OPTIONAL_MODULE_TYPES = "optionalmoduletypes";
 
     public static final String DISTRIBUTIONSETTYPE_V1_MANDATORY_MODULE_TYPES = "mandatorymoduletypes";
+
+    /**
+     * The basic authentication validation mapping
+     */
+    public static final String AUTH_V1_REQUEST_MAPPING = BASE_V1_REQUEST_MAPPING + "/userinfo";
 
     // constant class, private constructor.
     private MgmtRestConstants() {

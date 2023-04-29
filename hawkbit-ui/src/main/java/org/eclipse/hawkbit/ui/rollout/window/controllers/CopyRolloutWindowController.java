@@ -25,8 +25,9 @@ import org.eclipse.hawkbit.ui.rollout.window.RolloutWindowDependencies;
 import org.eclipse.hawkbit.ui.rollout.window.components.AutoStartOptionGroupLayout.AutoStartOption;
 import org.eclipse.hawkbit.ui.rollout.window.layouts.AddRolloutWindowLayout;
 import org.eclipse.hawkbit.ui.utils.SPDateTimeUtil;
-import org.springframework.data.domain.Page;
+import org.eclipse.hawkbit.utils.TenantConfigHelper;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -37,7 +38,8 @@ public class CopyRolloutWindowController extends AddRolloutWindowController {
     private final TargetFilterQueryManagement targetFilterQueryManagement;
     private final RolloutGroupManagement rolloutGroupManagement;
     private final QuotaManagement quotaManagement;
-
+    private final TenantConfigHelper tenantConfigHelper;
+    
     /**
      * Constructor for CopyRolloutWindowController
      *
@@ -53,6 +55,7 @@ public class CopyRolloutWindowController extends AddRolloutWindowController {
         this.targetFilterQueryManagement = dependencies.getTargetFilterQueryManagement();
         this.rolloutGroupManagement = dependencies.getRolloutGroupManagement();
         this.quotaManagement = dependencies.getQuotaManagement();
+        this.tenantConfigHelper = dependencies.getTenantConfigHelper();
     }
 
     @Override
@@ -61,6 +64,7 @@ public class CopyRolloutWindowController extends AddRolloutWindowController {
 
         proxyRolloutWindow.setName(getI18n().getMessage("textfield.rollout.copied.name", proxyRolloutWindow.getName()));
 
+        removeDistributionSetIfInvalid(proxyRolloutWindow);
         setTargetFilterId(proxyRolloutWindow);
 
         if (proxyRolloutWindow.getForcedTime() == null
@@ -84,10 +88,18 @@ public class CopyRolloutWindowController extends AddRolloutWindowController {
         return proxyRolloutWindow;
     }
 
+    private void removeDistributionSetIfInvalid(final ProxyRolloutWindow proxyRolloutWindow) {
+        final boolean dsIsValid = proxyRolloutWindow.getRolloutForm().getDistributionSetInfo().isValid();
+        if (!dsIsValid) {
+            proxyRolloutWindow.getRolloutForm().setDistributionSetInfo(null);
+        }
+
+    }
+
     private void setTargetFilterId(final ProxyRolloutWindow proxyRolloutWindow) {
-        final Page<TargetFilterQuery> filterQueries = targetFilterQueryManagement.findByQuery(PageRequest.of(0, 1),
+        final Slice<TargetFilterQuery> filterQueries = targetFilterQueryManagement.findByQuery(PageRequest.of(0, 1),
                 proxyRolloutWindow.getTargetFilterQuery());
-        if (filterQueries.getTotalElements() > 0) {
+        if (filterQueries.getNumberOfElements() > 0) {
             final TargetFilterQuery tfq = filterQueries.getContent().get(0);
             proxyRolloutWindow
                     .setTargetFilterInfo(new ProxyTargetFilterQueryInfo(tfq.getId(), tfq.getName(), tfq.getQuery()));
@@ -98,8 +110,12 @@ public class CopyRolloutWindowController extends AddRolloutWindowController {
         proxyRolloutWindow.setGroupDefinitionMode(GroupDefinitionMode.ADVANCED);
         final RolloutGroupToAdvancedDefinitionMapper groupsMapper = new RolloutGroupToAdvancedDefinitionMapper(
                 targetFilterQueryManagement);
-        final List<ProxyAdvancedRolloutGroup> advancedGroupDefinitions = groupsMapper.loadRolloutGroupssFromBackend(
+        final List<ProxyAdvancedRolloutGroup> advancedGroupDefinitions = groupsMapper.loadRolloutGroupsFromBackend(
                 proxyRolloutWindow.getId(), rolloutGroupManagement, quotaManagement.getMaxRolloutGroupsPerRollout());
+        if (!tenantConfigHelper.isConfirmationFlowEnabled()) {
+            // do not require confirmation, since feature is not active and UI elements are not visible
+            advancedGroupDefinitions.forEach(def -> def.setConfirmationRequired(false));
+        }
         proxyRolloutWindow.setAdvancedRolloutGroupDefinitions(advancedGroupDefinitions);
     }
 
