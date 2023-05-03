@@ -21,6 +21,7 @@ public class ProxyDistributionSetInfo extends ProxyIdentifiableEntity {
     private String name;
     private String version;
     private String nameVersion;
+    private boolean isValid;
 
     /**
      * Constructor
@@ -31,19 +32,22 @@ public class ProxyDistributionSetInfo extends ProxyIdentifiableEntity {
 
     /**
      * Constructor
-     * 
+     *
      * @param id
      *            distribution set ID
      * @param name
      *            distribution set name
      * @param version
      *            distribution set version
+     * @param isValid
+     *            invalidation state
      */
-    public ProxyDistributionSetInfo(final Long id, final String name, final String version) {
+    public ProxyDistributionSetInfo(final Long id, final String name, final String version, final boolean isValid) {
         super(id);
 
         this.name = name;
         this.version = version;
+        this.isValid = isValid;
         this.nameVersion = HawkbitCommonUtil.getFormattedNameVersion(name, version);
     }
 
@@ -71,13 +75,23 @@ public class ProxyDistributionSetInfo extends ProxyIdentifiableEntity {
         this.nameVersion = nameVersion;
     }
 
+    public boolean isValid() {
+        return isValid;
+    }
+
+    public void setValid(final boolean isValid) {
+        this.isValid = isValid;
+    }
+
     @Override
     public int hashCode() {
         // nameVersion is ignored because it is a composition of name and
         // version
-        return Objects.hash(getId(), getName(), getVersion());
+        return Objects.hash(getId(), getName(), getVersion(), isValid());
     }
 
+    // equals method requires all of the used conditions
+    @SuppressWarnings("squid:S1067")
     @Override
     public boolean equals(final Object obj) {
         if (obj == null) {
@@ -91,6 +105,7 @@ public class ProxyDistributionSetInfo extends ProxyIdentifiableEntity {
         // nameVersion is ignored because it is a composition of name and
         // version
         return Objects.equals(this.getId(), other.getId()) && Objects.equals(this.getName(), other.getName())
-                && Objects.equals(this.getVersion(), other.getVersion());
+                && Objects.equals(this.getVersion(), other.getVersion())
+                && Objects.equals(this.isValid(), other.isValid());
     }
 }

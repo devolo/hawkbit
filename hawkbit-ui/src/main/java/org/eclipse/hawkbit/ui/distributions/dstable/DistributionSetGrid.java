@@ -81,12 +81,13 @@ public class DistributionSetGrid extends AbstractDsGrid<DsDistributionsFilterPar
             getDragAndDropSupportSupport().addDropTarget();
         }
 
-        setFilterSupport(new FilterSupport<>(new DistributionSetDistributionsStateDataProvider(dsManagement,
-                dsTypeManagement, dsToProxyDistributionMapper), getSelectionSupport()::deselectAll));
+        setFilterSupport(new FilterSupport<>(
+                new DistributionSetDistributionsStateDataProvider(dsManagement, dsToProxyDistributionMapper),
+                DsDistributionsFilterParams::new, getSelectionSupport()::deselectAll));
         initFilterMappings();
         getFilterSupport().setFilter(new DsDistributionsFilterParams());
 
-        initIsCompleteStyleGenerator();
+        initStyleGenerator();
         init();
     }
 
@@ -97,8 +98,20 @@ public class DistributionSetGrid extends AbstractDsGrid<DsDistributionsFilterPar
                 dSTypeFilterLayoutUiState.getClickedTypeId());
     }
 
-    private void initIsCompleteStyleGenerator() {
-        setStyleGenerator(ds -> ds.getIsComplete() ? null : SPUIDefinitions.DISABLE_DISTRIBUTION);
+    private void initStyleGenerator() {
+        setStyleGenerator(DistributionSetGrid::getRowStyle);
+    }
+
+    private static String getRowStyle(final ProxyDistributionSet ds) {
+        final StringBuilder style = new StringBuilder();
+        if (Boolean.FALSE.equals(ds.getIsComplete())) {
+            style.append(SPUIDefinitions.INCOMPLETE_DISTRIBUTION);
+        }
+        if (Boolean.FALSE.equals(ds.getIsValid())) {
+            style.append(" ");
+            style.append(SPUIDefinitions.INVALID_DISTRIBUTION);
+        }
+        return style.toString();
     }
 
     @Override

@@ -15,12 +15,12 @@ import static org.eclipse.hawkbit.im.authentication.SpPermission.SpringEvalExpre
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Random;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
@@ -28,8 +28,10 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.eclipse.hawkbit.artifact.repository.ArtifactRepository;
 import org.eclipse.hawkbit.cache.TenantAwareCacheManager;
 import org.eclipse.hawkbit.repository.ArtifactManagement;
+import org.eclipse.hawkbit.repository.ConfirmationManagement;
 import org.eclipse.hawkbit.repository.ControllerManagement;
 import org.eclipse.hawkbit.repository.DeploymentManagement;
+import org.eclipse.hawkbit.repository.DistributionSetInvalidationManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.DistributionSetTagManagement;
 import org.eclipse.hawkbit.repository.DistributionSetTypeManagement;
@@ -37,6 +39,7 @@ import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.QuotaManagement;
 import org.eclipse.hawkbit.repository.RepositoryConstants;
 import org.eclipse.hawkbit.repository.RolloutGroupManagement;
+import org.eclipse.hawkbit.repository.RolloutHandler;
 import org.eclipse.hawkbit.repository.RolloutManagement;
 import org.eclipse.hawkbit.repository.SoftwareModuleManagement;
 import org.eclipse.hawkbit.repository.SoftwareModuleTypeManagement;
@@ -44,6 +47,7 @@ import org.eclipse.hawkbit.repository.SystemManagement;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.repository.TargetTagManagement;
+import org.eclipse.hawkbit.repository.TargetTypeManagement;
 import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
 import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
@@ -56,20 +60,16 @@ import org.eclipse.hawkbit.repository.model.MetaData;
 import org.eclipse.hawkbit.repository.model.RepositoryModelConstants;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleType;
 import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetMetadata;
 import org.eclipse.hawkbit.repository.test.TestConfiguration;
 import org.eclipse.hawkbit.repository.test.matcher.EventVerifier;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,12 +89,9 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
-import com.google.common.io.Files;
-
-@RunWith(SpringRunner.class)
 @ActiveProfiles({ "test" })
+@ExtendWith({ JUnitTestLoggerExtension.class, WithSpringAuthorityRule.class , SharedSqlTestDatabaseExtension.class })
 @WithUser(principal = "bumlux", allSpPermissions = true, authorities = { CONTROLLER_ROLE, SYSTEM_ROLE })
 @SpringBootTest
 @ContextConfiguration(classes = { TestConfiguration.class, TestSupportBinderAutoConfiguration.class })
@@ -106,14 +103,13 @@ import com.google.common.io.Files;
 // Cleaning repository will fire "delete" events. We won't count them to the
 // test execution. So, the order execution between EventVerifier and Cleanup is
 // important!
-@TestExecutionListeners(inheritListeners = true, listeners = { EventVerifier.class, CleanupTestExecutionListener.class,
-        MySqlTestDatabase.class, MsSqlTestDatabase.class,
-        PostgreSqlTestDatabase.class }, mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
+@TestExecutionListeners(listeners = { EventVerifier.class, CleanupTestExecutionListener.class }, 
+        mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
 @TestPropertySource(properties = "spring.main.allow-bean-definition-overriding=true")
 public abstract class AbstractIntegrationTest {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractIntegrationTest.class);
 
-    protected static final Pageable PAGE = PageRequest.of(0, 400, Sort.by(Direction.ASC, "id"));
+    protected static final Pageable PAGE = PageRequest.of(0, 500, Sort.by(Direction.ASC, "id"));
 
     protected static final URI LOCALHOST = URI.create("http://127.0.0.1");
 
@@ -149,6 +145,9 @@ public abstract class AbstractIntegrationTest {
     protected TargetManagement targetManagement;
 
     @Autowired
+    protected TargetTypeManagement targetTypeManagement;
+
+    @Autowired
     protected TargetFilterQueryManagement targetFilterQueryManagement;
 
     @Autowired
@@ -159,6 +158,11 @@ public abstract class AbstractIntegrationTest {
 
     @Autowired
     protected DeploymentManagement deploymentManagement;
+
+    @Autowired
+    protected ConfirmationManagement confirmationManagement;
+    @Autowired
+    protected DistributionSetInvalidationManagement distributionSetInvalidationManagement;
 
     @Autowired
     protected ArtifactManagement artifactManagement;
@@ -177,6 +181,9 @@ public abstract class AbstractIntegrationTest {
 
     @Autowired
     protected RolloutManagement rolloutManagement;
+
+    @Autowired
+    protected RolloutHandler rolloutHandler;
 
     @Autowired
     protected RolloutGroupManagement rolloutGroupManagement;
@@ -208,28 +215,6 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected ApplicationEventPublisher eventPublisher;
 
-    @Rule
-    public final WithSpringAuthorityRule securityRule = new WithSpringAuthorityRule();
-
-    @Rule
-    public TestWatcher testLifecycleLoggerRule = new TestWatcher() {
-
-        @Override
-        protected void starting(final Description description) {
-            LOG.info("Starting Test {}...", description.getMethodName());
-        }
-
-        @Override
-        protected void succeeded(final Description description) {
-            LOG.info("Test {} succeeded.", description.getMethodName());
-        }
-
-        @Override
-        protected void failed(final Throwable e, final Description description) {
-            LOG.error("Test {} failed with {}.", description.getMethodName(), e);
-        }
-    };
-
     protected DistributionSetAssignmentResult assignDistributionSet(final long dsID, final String controllerId) {
         return assignDistributionSet(dsID, controllerId, ActionType.FORCED);
     }
@@ -256,14 +241,24 @@ public abstract class AbstractIntegrationTest {
 
     protected DistributionSetAssignmentResult assignDistributionSet(final long dsID, final List<String> controllerIds,
             final ActionType actionType, final long forcedTime, final Integer weight) {
+        final boolean confirmationFlowActive = isConfirmationFlowActive();
+
         final List<DeploymentRequest> deploymentRequests = controllerIds.stream()
                 .map(id -> DeploymentManagement.deploymentRequest(id, dsID).setActionType(actionType)
-                        .setForceTime(forcedTime).setWeight(weight).build())
+                        .setForceTime(forcedTime).setWeight(weight).setConfirmationRequired(confirmationFlowActive)
+                        .build())
                 .collect(Collectors.toList());
         final List<DistributionSetAssignmentResult> results = deploymentManagement
                 .assignDistributionSets(deploymentRequests);
         assertThat(results).hasSize(1);
         return results.get(0);
+    }
+
+    protected List<DistributionSetAssignmentResult> assignDistributionSets(final List<DeploymentRequest> requests) {
+        final List<DistributionSetAssignmentResult> distributionSetAssignmentResults = deploymentManagement
+                .assignDistributionSets(requests);
+        assertThat(distributionSetAssignmentResults).hasSize(requests.size());
+        return distributionSetAssignmentResults;
     }
 
     protected DistributionSetAssignmentResult assignDistributionSet(final DistributionSet ds,
@@ -294,7 +289,7 @@ public abstract class AbstractIntegrationTest {
      * @param controllerId
      *            is the ID for the controller to which the distribution set is
      *            being assigned
-     * @param maintenanceSchedule
+     * @param maintenanceWindowSchedule
      *            is the cron expression to be used for scheduling the
      *            maintenance window. Expression has 6 mandatory fields and 1
      *            last optional field: "second minute hour dayofmonth month
@@ -317,11 +312,11 @@ public abstract class AbstractIntegrationTest {
 
         return makeAssignment(DeploymentManagement.deploymentRequest(controllerId, dsID)
                 .setMaintenance(maintenanceWindowSchedule, maintenanceWindowDuration, maintenanceWindowTimeZone)
-                .build());
+                .setConfirmationRequired(true).build());
     }
 
     protected DistributionSetAssignmentResult assignDistributionSet(final DistributionSet pset, final Target target) {
-        return assignDistributionSet(pset, Arrays.asList(target));
+        return assignDistributionSet(pset, Collections.singletonList(target));
     }
 
     protected DistributionSetAssignmentResult assignDistributionSet(final long dsId, final String targetId,
@@ -333,6 +328,19 @@ public abstract class AbstractIntegrationTest {
         tenantConfigurationManagement.addOrUpdateConfiguration(TenantConfigurationKey.MULTI_ASSIGNMENTS_ENABLED, true);
     }
 
+    protected void enableConfirmationFlow() {
+        tenantConfigurationManagement.addOrUpdateConfiguration(TenantConfigurationKey.USER_CONFIRMATION_ENABLED, true);
+    }
+
+    protected void disableConfirmationFlow() {
+        tenantConfigurationManagement.addOrUpdateConfiguration(TenantConfigurationKey.USER_CONFIRMATION_ENABLED, false);
+    }
+
+    protected boolean isConfirmationFlowActive() {
+        return tenantConfigurationManagement.getConfigurationValue(TenantConfigurationKey.USER_CONFIRMATION_ENABLED,
+                Boolean.class).getValue();
+    }
+
     protected DistributionSetMetadata createDistributionSetMetadata(final long dsId, final MetaData md) {
         return createDistributionSetMetadata(dsId, Collections.singletonList(md)).get(0);
     }
@@ -341,16 +349,16 @@ public abstract class AbstractIntegrationTest {
         return distributionSetManagement.createMetaData(dsId, md);
     }
 
-    protected TargetMetadata createTargetMetadata(final String controllerId, final MetaData md) {
-        return createTargetMetadata(controllerId, Collections.singletonList(md)).get(0);
+    protected void createTargetMetadata(final String controllerId, final MetaData md) {
+        createTargetMetadata(controllerId, Collections.singletonList(md));
     }
 
-    protected List<TargetMetadata> createTargetMetadata(final String controllerId, final List<MetaData> md) {
-        return targetManagement.createMetaData(controllerId, md);
+    private void createTargetMetadata(final String controllerId, final List<MetaData> md) {
+        targetManagement.createMetaData(controllerId, md);
     }
 
     protected Long getOsModule(final DistributionSet ds) {
-        return ds.findFirstModuleByType(osType).get().getId();
+        return ds.findFirstModuleByType(osType).orElseThrow(NoSuchElementException::new).getId();
     }
 
     protected Action prepareFinishedUpdate() {
@@ -366,6 +374,10 @@ public abstract class AbstractIntegrationTest {
         Action savedAction = deploymentManagement.findActiveActionsByTarget(PAGE, savedTarget.getControllerId())
                 .getContent().get(0);
 
+        if (savedAction.getStatus() == Action.Status.WAIT_FOR_CONFIRMATION) {
+            confirmationManagement.confirmAction(savedAction.getId(), null, null);
+        }
+
         savedAction = controllerManagement.addUpdateActionStatus(
                 entityFactory.actionStatus().create(savedAction.getId()).status(Action.Status.RUNNING));
 
@@ -373,27 +385,27 @@ public abstract class AbstractIntegrationTest {
                 entityFactory.actionStatus().create(savedAction.getId()).status(Action.Status.FINISHED));
     }
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    public void beforeAll() throws Exception {
 
         final String description = "Updated description.";
 
-        osType = securityRule
+        osType = WithSpringAuthorityRule
                 .runAsPrivileged(() -> testdataFactory.findOrCreateSoftwareModuleType(TestdataFactory.SM_TYPE_OS));
-        osType = securityRule.runAsPrivileged(() -> softwareModuleTypeManagement
+        osType = WithSpringAuthorityRule.runAsPrivileged(() -> softwareModuleTypeManagement
                 .update(entityFactory.softwareModuleType().update(osType.getId()).description(description)));
 
-        appType = securityRule.runAsPrivileged(
+        appType = WithSpringAuthorityRule.runAsPrivileged(
                 () -> testdataFactory.findOrCreateSoftwareModuleType(TestdataFactory.SM_TYPE_APP, Integer.MAX_VALUE));
-        appType = securityRule.runAsPrivileged(() -> softwareModuleTypeManagement
+        appType = WithSpringAuthorityRule.runAsPrivileged(() -> softwareModuleTypeManagement
                 .update(entityFactory.softwareModuleType().update(appType.getId()).description(description)));
 
-        runtimeType = securityRule
+        runtimeType = WithSpringAuthorityRule
                 .runAsPrivileged(() -> testdataFactory.findOrCreateSoftwareModuleType(TestdataFactory.SM_TYPE_RT));
-        runtimeType = securityRule.runAsPrivileged(() -> softwareModuleTypeManagement
+        runtimeType = WithSpringAuthorityRule.runAsPrivileged(() -> softwareModuleTypeManagement
                 .update(entityFactory.softwareModuleType().update(runtimeType.getId()).description(description)));
 
-        standardDsType = securityRule.runAsPrivileged(() -> testdataFactory.findOrCreateDefaultTestDsType());
+        standardDsType = WithSpringAuthorityRule.runAsPrivileged(() -> testdataFactory.findOrCreateDefaultTestDsType());
 
         // publish the reset counter market event to reset the counters after
         // setup. The setup is transparent by the test and its @ExpectedEvent
@@ -405,30 +417,37 @@ public abstract class AbstractIntegrationTest {
 
     }
 
-    private static String artifactDirectory = Files.createTempDir().getAbsolutePath() + "/"
-            + RandomStringUtils.randomAlphanumeric(20);
+    private static final String ARTIFACT_DIRECTORY = createTempDir();
 
-    @After
+    private static String createTempDir() {
+        try {
+            return Files.createTempDirectory(null).toString() + "/" + RandomStringUtils.randomAlphanumeric(20);
+        } catch (final IOException e) {
+            throw new IllegalStateException("Failed to create temp directory");
+        }
+    }
+
+    @AfterEach
     public void cleanUp() {
-        if (new File(artifactDirectory).exists()) {
+        if (new File(ARTIFACT_DIRECTORY).exists()) {
             try {
-                FileUtils.cleanDirectory(new File(artifactDirectory));
+                FileUtils.cleanDirectory(new File(ARTIFACT_DIRECTORY));
             } catch (final IOException | IllegalArgumentException e) {
                 LOG.warn("Cannot cleanup file-directory", e);
             }
         }
     }
 
-    @BeforeClass
+    @BeforeAll
     public static void beforeClass() {
-        System.setProperty("org.eclipse.hawkbit.repository.file.path", artifactDirectory);
+        System.setProperty("org.eclipse.hawkbit.repository.file.path", ARTIFACT_DIRECTORY);
     }
 
-    @AfterClass
+    @AfterAll
     public static void afterClass() {
-        if (new File(artifactDirectory).exists()) {
+        if (new File(ARTIFACT_DIRECTORY).exists()) {
             try {
-                FileUtils.deleteDirectory(new File(artifactDirectory));
+                FileUtils.deleteDirectory(new File(ARTIFACT_DIRECTORY));
             } catch (final IOException | IllegalArgumentException e) {
                 LOG.warn("Cannot delete file-directory", e);
             }
@@ -461,20 +480,6 @@ public abstract class AbstractIntegrationTest {
         return currentTime.getOffset().getId().replace("Z", "+00:00");
     }
 
-    protected static String generateRandomStringWithLength(final int length) {
-        final StringBuilder randomStringBuilder = new StringBuilder(length);
-        final Random rand = new Random();
-        final int lowercaseACode = 97;
-        final int lowercaseZCode = 122;
-
-        for (int i = 0; i < length; i++) {
-            final char randomCharacter = (char) (rand.nextInt(lowercaseZCode - lowercaseACode + 1) + lowercaseACode);
-            randomStringBuilder.append(randomCharacter);
-        }
-
-        return randomStringBuilder.toString();
-    }
-
     protected static Action getFirstAssignedAction(
             final DistributionSetAssignmentResult distributionSetAssignmentResult) {
         return distributionSetAssignmentResult.getAssignedEntity().stream().findFirst()
@@ -493,4 +498,18 @@ public abstract class AbstractIntegrationTest {
     protected static Comparator<Target> controllerIdComparator() {
         return (o1, o2) -> o1.getControllerId().equals(o2.getControllerId()) ? 0 : 1;
     }
+
+    protected void enableBatchAssignments() {
+        tenantConfigurationManagement.addOrUpdateConfiguration(TenantConfigurationKey.BATCH_ASSIGNMENTS_ENABLED, true);
+    }
+
+    protected void disableBatchAssignments() {
+        tenantConfigurationManagement.addOrUpdateConfiguration(TenantConfigurationKey.BATCH_ASSIGNMENTS_ENABLED, false);
+    }
+
+    protected boolean isConfirmationFlowEnabled() {
+        return tenantConfigurationManagement
+                .getConfigurationValue(TenantConfigurationKey.USER_CONFIRMATION_ENABLED, Boolean.class).getValue();
+    }
+
 }

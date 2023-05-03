@@ -28,6 +28,8 @@ public class ProxyDistributionSet extends ProxyNamedEntity implements VersionAwa
 
     private boolean requiredMigrationStep;
 
+    private Boolean isValid;
+
     /**
      * Default constructor
      */
@@ -82,6 +84,27 @@ public class ProxyDistributionSet extends ProxyNamedEntity implements VersionAwa
      */
     public void setIsComplete(final Boolean isComplete) {
         this.isComplete = isComplete;
+    }
+
+    /**
+     * Flag that indicates if the distribution set is valid.
+     *
+     * @return <code>true</code> if the distribution set is valid, otherwise
+     *         <code>false</code>
+     */
+    public Boolean getIsValid() {
+        return isValid;
+    }
+
+    /**
+     * Sets the flag that indicates if the distribution set is valid
+     *
+     * @param isValid
+     *            <code>true</code> if the distribution set is valid, otherwise
+     *            <code>false</code>
+     */
+    public void setIsValid(final Boolean isValid) {
+        this.isValid = isValid;
     }
 
     /**
@@ -140,16 +163,18 @@ public class ProxyDistributionSet extends ProxyNamedEntity implements VersionAwa
         ds.setName(dsInfo.getName());
         ds.setVersion(dsInfo.getVersion());
         ds.setNameVersion(dsInfo.getNameVersion());
+        ds.setIsValid(dsInfo.isValid());
 
         return ds;
     }
 
     /**
-     * Gets the Id, Name and version of distribution set
+     * Gets the Id, name, version, dsTypeId and invalidation state of
+     * distribution set
      *
-     * @return proxy of Id, Name and version
+     * @return proxy of Id, name, version, dsTypeId and invalidation state
      */
     public ProxyDistributionSetInfo getInfo() {
-        return new ProxyDistributionSetInfo(getId(), getName(), getVersion());
+        return new ProxyDistributionSetInfo(getId(), getName(), getVersion(), getIsValid());
     }
 }

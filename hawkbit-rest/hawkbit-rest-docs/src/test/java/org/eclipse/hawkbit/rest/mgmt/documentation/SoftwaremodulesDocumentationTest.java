@@ -40,8 +40,7 @@ import org.eclipse.hawkbit.rest.util.JsonBuilder;
 import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -59,10 +58,8 @@ import io.qameta.allure.Story;
 public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentation {
 
     @Override
-    @Before
-    public void setUp() {
-        resourceName = "softwaremodules";
-        super.setUp();
+    public String getResourceName() {
+        return "softwaremodules";
     }
 
     @Test
@@ -87,6 +84,7 @@ public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentati
                         fieldWithPath("content[].name").description(ApiModelPropertiesGeneric.NAME),
                         fieldWithPath("content[].description").description(ApiModelPropertiesGeneric.DESCRPTION),
                         fieldWithPath("content[].vendor").description(MgmtApiModelProperties.VENDOR),
+                        fieldWithPath("content[].encrypted").description(MgmtApiModelProperties.ENCRYPTED),
                         fieldWithPath("content[].createdBy").description(ApiModelPropertiesGeneric.CREATED_BY),
                         fieldWithPath("content[].createdAt").description(ApiModelPropertiesGeneric.CREATED_AT),
                         fieldWithPath("content[].lastModifiedBy")
@@ -94,6 +92,7 @@ public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentati
                         fieldWithPath("content[].lastModifiedAt")
                                 .description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT),
                         fieldWithPath("content[].type").description(MgmtApiModelProperties.SM_TYPE),
+                        fieldWithPath("content[].typeName").description(MgmtApiModelProperties.SM_TYPE_NAME),
                         fieldWithPath("content[].version").description(MgmtApiModelProperties.VERSION),
                         fieldWithPath("content[]._links.self").ignored())));
     }
@@ -144,6 +143,7 @@ public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentati
                                 fieldWithPath("[].name").description(ApiModelPropertiesGeneric.NAME),
                                 fieldWithPath("[].description").description(ApiModelPropertiesGeneric.DESCRPTION),
                                 fieldWithPath("[].vendor").description(MgmtApiModelProperties.VENDOR),
+                                fieldWithPath("[].encrypted").description(MgmtApiModelProperties.ENCRYPTED),
                                 fieldWithPath("[].deleted").description(ApiModelPropertiesGeneric.DELETED),
                                 fieldWithPath("[].createdBy").description(ApiModelPropertiesGeneric.CREATED_BY),
                                 fieldWithPath("[].createdAt").description(ApiModelPropertiesGeneric.CREATED_AT),
@@ -152,6 +152,7 @@ public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentati
                                 fieldWithPath("[].lastModifiedAt")
                                         .description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT),
                                 fieldWithPath("[].type").description(MgmtApiModelProperties.SM_TYPE),
+                                fieldWithPath("[].typeName").description(MgmtApiModelProperties.SM_TYPE_NAME),
                                 fieldWithPath("[].version").description(MgmtApiModelProperties.VERSION),
                                 fieldWithPath("[]._links.self").ignored())));
     }
@@ -191,8 +192,10 @@ public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentati
                                 fieldWithPath("lastModifiedBy").description(ApiModelPropertiesGeneric.LAST_MODIFIED_BY),
                                 fieldWithPath("lastModifiedAt").description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT),
                                 fieldWithPath("vendor").description(MgmtApiModelProperties.VENDOR),
+                                fieldWithPath("encrypted").description(MgmtApiModelProperties.ENCRYPTED),
                                 fieldWithPath("deleted").description(ApiModelPropertiesGeneric.DELETED),
                                 fieldWithPath("type").description(MgmtApiModelProperties.SM_TYPE),
+                                fieldWithPath("typeName").description(MgmtApiModelProperties.SM_TYPE_NAME),
                                 fieldWithPath("version").description(MgmtApiModelProperties.VERSION),
                                 fieldWithPath("_links.self").ignored(),
                                 fieldWithPath("_links.type").description(MgmtApiModelProperties.SM_TYPE),
@@ -228,8 +231,10 @@ public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentati
                                 fieldWithPath("lastModifiedBy").description(ApiModelPropertiesGeneric.LAST_MODIFIED_BY),
                                 fieldWithPath("lastModifiedAt").description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT),
                                 fieldWithPath("type").description(MgmtApiModelProperties.SM_TYPE),
+                                fieldWithPath("typeName").description(MgmtApiModelProperties.SM_TYPE_NAME),
                                 fieldWithPath("version").description(MgmtApiModelProperties.VERSION),
                                 fieldWithPath("vendor").description(MgmtApiModelProperties.VENDOR),
+                                fieldWithPath("encrypted").description(MgmtApiModelProperties.ENCRYPTED),
                                 fieldWithPath("deleted").description(ApiModelPropertiesGeneric.DELETED),
                                 fieldWithPath("_links.self").ignored(),
                                 fieldWithPath("_links.type").description(MgmtApiModelProperties.SM_TYPE),
@@ -282,7 +287,9 @@ public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentati
         final byte random[] = RandomStringUtils.random(5).getBytes();
         final MockMultipartFile file = new MockMultipartFile("file", "origFilename", null, random);
 
-        mockMvc.perform(fileUpload(MgmtRestConstants.SOFTWAREMODULE_V1_REQUEST_MAPPING + "/{softwareModuleId}/artifacts", sm.getId()).file(file))
+        mockMvc.perform(
+                fileUpload(MgmtRestConstants.SOFTWAREMODULE_V1_REQUEST_MAPPING + "/{softwareModuleId}/artifacts",
+                        sm.getId()).file(file))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaTypes.HAL_JSON))
                 .andDo(this.document.document(
@@ -316,7 +323,8 @@ public class SoftwaremodulesDocumentationTest extends AbstractApiRestDocumentati
         final byte random[] = RandomStringUtils.random(5).getBytes();
         final MockMultipartFile file = new MockMultipartFile("file", "origFilename", null, random);
 
-        mockMvc.perform(fileUpload(MgmtRestConstants.SOFTWAREMODULE_V1_REQUEST_MAPPING + "/{softwareModuleId}/artifacts",
+        mockMvc.perform(
+                fileUpload(MgmtRestConstants.SOFTWAREMODULE_V1_REQUEST_MAPPING + "/{softwareModuleId}/artifacts",
                         sm.getId()).file(file).param("filename", "filename").param("file", "s")
                                 .param("md5sum", "md5sum").param("sha1sum", "sha1sum"))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isBadRequest())

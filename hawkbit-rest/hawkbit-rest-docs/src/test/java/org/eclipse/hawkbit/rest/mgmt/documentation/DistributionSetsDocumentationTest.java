@@ -39,8 +39,7 @@ import org.eclipse.hawkbit.rest.util.JsonBuilder;
 import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.JsonFieldType;
@@ -53,17 +52,14 @@ import io.qameta.allure.Story;
 
 /**
  * Documentation generation for Management API for {@link DistributionSet}.
- *
  */
 @Feature("Spring Rest Docs Tests - DistributionSet")
 @Story("DistributionSet Resource")
 public class DistributionSetsDocumentationTest extends AbstractApiRestDocumentation {
 
     @Override
-    @Before
-    public void setUp() {
-        resourceName = "distributionsets";
-        super.setUp();
+    public String getResourceName() {
+        return "distributionsets";
     }
 
     @Test
@@ -103,6 +99,7 @@ public class DistributionSetsDocumentationTest extends AbstractApiRestDocumentat
                         fieldWithPath("content[].lastModifiedAt")
                                 .description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT),
                         fieldWithPath("content[].type").description(MgmtApiModelProperties.DS_TYPE),
+                        fieldWithPath("content[].typeName").description(MgmtApiModelProperties.DS_TYPE_NAME),
                         fieldWithPath("content[].requiredMigrationStep")
                                 .description(MgmtApiModelProperties.DS_REQUIRED_STEP),
                         fieldWithPath("content[].complete").description(MgmtApiModelProperties.DS_COMPLETE),
@@ -357,6 +354,8 @@ public class DistributionSetsDocumentationTest extends AbstractApiRestDocumentat
     @Description("Handles the POST request for assigning multiple targets to a distribution set.The request body must always be a list of target IDs."
             + " Required Permission: " + SpPermission.READ_REPOSITORY + " and " + SpPermission.UPDATE_TARGET)
     public void createAssignedTarget() throws Exception {
+        enableConfirmationFlow();
+
         final DistributionSet set = testdataFactory.createUpdatedDistributionSet();
 
         // prepare targets
@@ -383,8 +382,7 @@ public class DistributionSetsDocumentationTest extends AbstractApiRestDocumentat
                                 parameterWithName("distributionSetId").description(ApiModelPropertiesGeneric.ITEM_ID)),
                         requestParameters(parameterWithName("offline")
                                 .description(MgmtApiModelProperties.OFFLINE_UPDATE).optional()),
-                        requestFields(
-                                requestFieldWithPath("[].id").description(ApiModelPropertiesGeneric.ITEM_ID),
+                        requestFields(requestFieldWithPath("[].id").description(ApiModelPropertiesGeneric.ITEM_ID),
                                 requestFieldWithPathMandatoryInMultiAssignMode("[].weight")
                                         .description(MgmtApiModelProperties.ASSIGNMENT_WEIGHT)
                                         .type(JsonFieldType.NUMBER).attributes(key("value").value("0 - 1000")),
@@ -399,8 +397,11 @@ public class DistributionSetsDocumentationTest extends AbstractApiRestDocumentat
                                 optionalRequestFieldWithPath("[].maintenanceWindow.timezone")
                                         .description(MgmtApiModelProperties.MAINTENANCE_WINDOW_TIMEZONE),
                                 optionalRequestFieldWithPath("[].type")
-                                        .description(MgmtApiModelProperties.ASSIGNMENT_TYPE)
-                                        .attributes(key("value").value("['soft', 'forced','timeforced', 'downloadonly']"))),
+                                        .description(MgmtApiModelProperties.ASSIGNMENT_TYPE).attributes(
+                                                key("value").value("['soft', 'forced','timeforced', 'downloadonly']")),
+                                optionalRequestFieldWithPath("[].confirmationRequired")
+                                        .description(MgmtApiModelProperties.ACTION_CONFIRMATION_REQUIRED)
+                                        .type(JsonFieldType.BOOLEAN.toString())),
                         responseFields(
                                 fieldWithPath("assigned").description(MgmtApiModelProperties.DS_NEW_ASSIGNED_TARGETS),
                                 fieldWithPath("alreadyAssigned").type(JsonFieldType.NUMBER)
@@ -449,13 +450,11 @@ public class DistributionSetsDocumentationTest extends AbstractApiRestDocumentat
         mockMvc.perform(delete(
                 MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING
                         + "/{distributionSetId}/assignedSM/{softwareModuleId}",
-                set.getId(), set.findFirstModuleByType(osType).get().getId())
-                        .contentType(MediaType.APPLICATION_JSON))
+                set.getId(), set.findFirstModuleByType(osType).get().getId()).contentType(MediaType.APPLICATION_JSON))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
                 .andDo(this.document.document(pathParameters(
                         parameterWithName("distributionSetId").description(ApiModelPropertiesGeneric.ITEM_ID),
                         parameterWithName("softwareModuleId").description(ApiModelPropertiesGeneric.ITEM_ID))));
-        ;
     }
 
     @Test
@@ -594,7 +593,7 @@ public class DistributionSetsDocumentationTest extends AbstractApiRestDocumentat
     }
 
     @Test
-    @Description("Update a single meta data value for speficic key." + " Required Permission: "
+    @Description("Update a single meta data value for specific key." + " Required Permission: "
             + SpPermission.UPDATE_REPOSITORY)
     public void updateMetadata() throws Exception {
         // prepare and create metadata for update
@@ -671,5 +670,29 @@ public class DistributionSetsDocumentationTest extends AbstractApiRestDocumentat
                         requestFields(requestFieldWithPath("[]key").description(MgmtApiModelProperties.META_DATA_KEY),
                                 optionalRequestFieldWithPath("[]value")
                                         .description(MgmtApiModelProperties.META_DATA_VALUE))));
+    }
+
+    @Test
+    @Description("Invalidates a distribution set. Required Permission: " + SpPermission.UPDATE_REPOSITORY)
+    public void invalidate() throws Exception {
+        final DistributionSet testDS = testdataFactory.createDistributionSet();
+
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("actionCancelationType", "soft");
+        jsonObject.put("cancelRollouts", true);
+
+        mockMvc.perform(post(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{distributionSetId}/invalidate",
+                testDS.getId()).content(jsonObject.toString()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk()).andDo(
+                        this.document.document(
+                                pathParameters(parameterWithName("distributionSetId")
+                                        .description(ApiModelPropertiesGeneric.ITEM_ID)),
+                                requestFields(
+                                        requestFieldWithPath("actionCancelationType")
+                                                .description(
+                                                        MgmtApiModelProperties.DS_INVALIDATION_ACTION_CANCELATION_TYPE)
+                                                .attributes(key("value").value("['force','soft','none']")),
+                                        optionalRequestFieldWithPath("cancelRollouts")
+                                                .description(MgmtApiModelProperties.DS_INVALIDATION_CANCEL_ROLLOUTS))));
     }
 }

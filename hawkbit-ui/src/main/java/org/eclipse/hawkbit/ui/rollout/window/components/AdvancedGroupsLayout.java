@@ -30,6 +30,7 @@ import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
 import org.eclipse.hawkbit.ui.decorators.SPUIButtonStyleNoBorderWithIcon;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
 import org.eclipse.hawkbit.ui.utils.VaadinMessageSource;
+import org.eclipse.hawkbit.utils.TenantConfigHelper;
 import org.springframework.util.StringUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 
@@ -56,6 +57,7 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
     private final GridLayout layout;
 
     private String targetFilter;
+    private Long dsTypeId;
 
     private final List<AdvancedGroupRow> groupRows;
     private int lastGroupIndex;
@@ -64,6 +66,8 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
 
     private BiConsumer<List<ProxyAdvancedRolloutGroup>, Boolean> advancedGroupDefinitionsChangedListener;
 
+    final TenantConfigHelper tenantConfigHelper;
+    
     /**
      * Constructor for AdvancedGroupsLayout
      *
@@ -80,7 +84,8 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
      */
     public AdvancedGroupsLayout(final VaadinMessageSource i18n, final EntityFactory entityFactory,
             final RolloutManagement rolloutManagement, final QuotaManagement quotaManagement,
-            final TargetFilterQueryDataProvider targetFilterQueryDataProvider) {
+            final TargetFilterQueryDataProvider targetFilterQueryDataProvider,
+            final TenantConfigHelper tenantConfigHelper) {
         super();
 
         this.i18n = i18n;
@@ -88,6 +93,7 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
         this.rolloutManagement = rolloutManagement;
         this.quotaManagement = quotaManagement;
         this.targetFilterQueryDataProvider = targetFilterQueryDataProvider;
+        this.tenantConfigHelper = tenantConfigHelper;
 
         this.layout = buildLayout();
 
@@ -101,7 +107,11 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
         gridLayout.setSpacing(true);
         gridLayout.setSizeUndefined();
         gridLayout.setRows(3);
-        gridLayout.setColumns(6);
+        if (tenantConfigHelper.isConfirmationFlowEnabled()) {
+            gridLayout.setColumns(7);
+        } else {
+            gridLayout.setColumns(6);
+        }
         gridLayout.setStyleName("marginTop");
 
         gridLayout.addComponent(SPUIComponentProvider.generateLabel(i18n, "caption.rollout.group.definition.desc"), 0,
@@ -113,8 +123,11 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
     }
 
     private void addHeaderRow(final GridLayout gridLayout, final int headerRow) {
-        final List<String> headerColumns = Arrays.asList("header.name", "header.target.filter.query",
-                "header.target.percentage", "header.rolloutgroup.threshold", "header.rolloutgroup.threshold.error");
+        final List<String> headerColumns = new ArrayList<>(Arrays.asList("header.name", "header.target.filter.query",
+                "header.target.percentage", "header.rolloutgroup.threshold", "header.rolloutgroup.threshold.error"));
+        if (tenantConfigHelper.isConfirmationFlowEnabled()) {
+            headerColumns.add("header.rolloutgroup.confirmation");
+        }
         for (int i = 0; i < headerColumns.size(); i++) {
             final Label label = SPUIComponentProvider.generateLabel(i18n, headerColumns.get(i));
             gridLayout.addComponent(label, i, headerRow);
@@ -167,7 +180,8 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
     }
 
     private AdvancedGroupRow addGroupRow() {
-        final AdvancedGroupRow groupRow = new AdvancedGroupRow(i18n, targetFilterQueryDataProvider);
+        final AdvancedGroupRow groupRow = new AdvancedGroupRow(i18n, targetFilterQueryDataProvider,
+                tenantConfigHelper.isConfirmationFlowEnabled());
 
         addRowToLayout(groupRow);
         groupRows.add(groupRow);
@@ -184,7 +198,9 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
 
         groupRow.addRowToLayout(layout, index);
 
-        layout.addComponent(createRemoveButton(groupRow, index), 5, index);
+        final int removeButtonColumnIndex = tenantConfigHelper.isConfirmationFlowEnabled() ? 6 : 5;
+
+        layout.addComponent(createRemoveButton(groupRow, index), removeButtonColumnIndex, index);
     }
 
     private Button createRemoveButton(final AdvancedGroupRow groupRow, final int index) {
@@ -237,7 +253,7 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
     private void validateTargetsPerGroup() {
         resetErrors();
 
-        if (StringUtils.isEmpty(targetFilter)) {
+        if (StringUtils.isEmpty(targetFilter) || dsTypeId == null) {
             return;
         }
 
@@ -245,7 +261,7 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
             final List<RolloutGroupCreate> groupsCreate = getRolloutGroupsCreateFromDefinitions(
                     getAdvancedRolloutGroupDefinitions());
             final ListenableFuture<RolloutGroupsValidation> validateTargetsInGroups = rolloutManagement
-                    .validateTargetsInGroups(groupsCreate, targetFilter, System.currentTimeMillis());
+                    .validateTargetsInGroups(groupsCreate, targetFilter, System.currentTimeMillis(), dsTypeId);
 
             final UI ui = UI.getCurrent();
             validateTargetsInGroups.addCallback(validation -> ui.access(() -> updateGroupsByValidation(validation)),
@@ -273,10 +289,9 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
     }
 
     /**
-     * YOU SHOULD NOT CALL THIS METHOD MANUALLY. It's only for the callback.
-     * Only 1 runningValidation should be executed. If this runningValidation is
-     * done, then this method is called. Maybe then a new runningValidation is
-     * executed.
+     * YOU SHOULD NOT CALL THIS METHOD MANUALLY. It's only for the callback. Only 1
+     * runningValidation should be executed. If this runningValidation is done, then
+     * this method is called. Maybe then a new runningValidation is executed.
      * 
      */
     private void updateGroupsByValidation(final RolloutGroupsValidation validation) {
@@ -338,7 +353,30 @@ public class AdvancedGroupsLayout extends ValidatableLayout {
      */
     public void setTargetFilter(final String targetFilter) {
         this.targetFilter = targetFilter;
+        updateValidation();
+    }
 
+    /**
+     * 
+     * @param dsTypeId
+     *            ID of the Distribution set type which is required for the
+     *            compatibility check
+     */
+    public void setDsTypeId(final Long dsTypeId) {
+        this.dsTypeId = dsTypeId;
+        updateValidation();
+    }
+
+    /**
+     * @param targetFilter
+     *            the target filter which is required for verification
+     * @param dsTypeId
+     *            ID of the Distribution set type which is required for the
+     *            compatibility check
+     */
+    public void setTargetFilterAndDsType(final String targetFilter, final Long dsTypeId) {
+        this.targetFilter = targetFilter;
+        this.dsTypeId = dsTypeId;
         updateValidation();
     }
 

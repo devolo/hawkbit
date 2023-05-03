@@ -20,19 +20,25 @@ final class DdiApiModelProperties {
 
     static final String TARGET_EXEC_STATUS = "status of the action execution";
 
+    static final String TARGET_EXEC_STATUS_CODE = "optional individual status code";
+
     static final String TARGET_RESULT_VALUE = "result of the action execution";
 
     static final String TARGET_RESULT_DETAILS = "List of details message information";
 
     static final String TARGET_RESULT_FINISHED = "defined status of the result";
 
-    static final String TARGET_RESULT_PROGRESS = "progress assumption of the device";
+    static final String TARGET_RESULT_PROGRESS = "progress assumption of the device (currently not supported).";
 
     static final String TARGET_PROGRESS_CNT = "current progress level";
 
     static final String TARGET_PROGRESS_OF = "assumption concerning max progress level";
 
     static final String ACTION_ID = "id of the action";
+
+    static final String FEEDBACK_ACTION_ID = "(@deprecated) id of the action";
+
+    static final String FEEDBACK_ACTION_TIME = "timestamp of the action";
 
     static final String CANCEL_ACTION = "action that needs to be canceled";
 
@@ -58,7 +64,7 @@ final class DdiApiModelProperties {
 
     static final String CHUNK_TYPE = "Type of the chunk, e.g. firmware, bundle, app. In update server mapped to Software Module Type.";
 
-    static final String SOFTWARE_MODUL_TYPE = "type of the software module, e.g. firmware, bundle, app";
+    static final String SOFTWARE_MODULE_TYPE = "type of the software module, e.g. firmware, bundle, app";
 
     static final String SOFTWARE_MODULE_VERSION = "version of the software module";
 
@@ -66,7 +72,7 @@ final class DdiApiModelProperties {
 
     static final String SOFTWARE_MODULE_ARTIFACT_LINKS = "artifact links of the software module";
 
-    static final String SOFTWARE_MODUL_ID = "id of the software module";
+    static final String SOFTWARE_MODULE_ID = "id of the software module";
 
     static final String CHUNK_VERSION = "software version of the chunk";
 
@@ -90,7 +96,11 @@ final class DdiApiModelProperties {
 
     static final String DEPLOYMENT = "Detailed deployment operation";
 
-    static final String CANCEL = "Detailed cancel operation of a deployment.";
+    static final String CONFIRMATION = "Deployment confirmation operation";
+
+    static final String CANCEL = "Detailed cancel operation of a deployment";
+
+    static final String INSTALLED = "Detailed operation of last successfully finished action";
 
     static final String HANDLING_DOWNLOAD = "handling for the download part of the provisioning process ('skip': do not download yet, 'attempt': server asks to download, 'forced': server requests immediate download)";
 
@@ -100,15 +110,15 @@ final class DdiApiModelProperties {
 
     static final String CHUNK = "Software chunks of an update. In server mapped by Software Module.";
 
-    static final String SOFTWARE_MODUL = "software modules of an update";
+    static final String SOFTWARE_MODULE = "software modules of an update";
 
     static final String ARTIFACT = "artifact modules of an update";
 
     static final String FILENAME = "file name of artifact";
 
     static final String TARGET_CONFIG_DATA = "Link which is provided whenever the provisioning target or device is supposed "
-                    + "to push its configuration data (aka. \"controller attributes\") to the server. Only shown for the initial "
-                    + "configuration, after a successful update action, or if requested explicitly (e.g. via the management UI).";
+            + "to push its configuration data (aka. \"controller attributes\") to the server. Only shown for the initial "
+            + "configuration, after a successful update action, or if requested explicitly (e.g. via the management UI).";
 
     static final String ARTIFACT_HASHES_SHA1 = "SHA1 hash of the artifact in Base 16 format";
     static final String ARTIFACT_HASHES_MD5 = "MD5 hash of the artifact";
@@ -123,9 +133,35 @@ final class DdiApiModelProperties {
 
     static final String ACTION_HISTORY_RESP_STATUS = "Status of the deployment based on previous feedback by the device.";
 
-    static final String ACTION_HISTORY_RESP_MESSAGES = "Messages are previously sent to the feedback channel in LIFO order by the device.";
+    static final String ACTION_HISTORY_RESP_MESSAGES = "Messages are previously sent to the feedback channel in LIFO order by the device. "
+            + "Note: The first status message is set by the system and describes the trigger of the deployment";
 
     static final String UPDATE_MODE = "Optional parameter to specify the update mode that should be applied when updating target attributes. "
             + "Valid values are 'merge', 'replace', and 'remove'. Defaults to 'merge'.";
+
+    static final String TARGET_CONFIRMATION_STATE = "action confirmation state";
+
+    static final String TARGET_CONFIRMATION_CODE = "optional individual status code";
+
+    static final String TARGET_CONFIRMATION_DETAILS = "List of detailed message information";
+
+    static final String TARGET_AUTO_CONFIRM = "id of the action";
+
+    static final String TARGET_AUTO_CONFIRM_STATE = "flag if auto confirm is active";
+
+    static final String TARGET_AUTO_CONFIRM_INITIATOR_RESPONSE = "(optional) initiator set on activation";
+
+    static final String TARGET_AUTO_CONFIRM_REMARK_RESPONSE = "(optional) remark set on activation";
+
+    static final String TARGET_AUTO_CONFIRM_ACTIVATED_AT = "timestamp of the activation";
+
+    static final String TARGET_AUTO_CONFIRM_REFERENCE_ACTIVATE_AUTO_CONFIRM = "reference link to activate auto confirm";
+
+    static final String TARGET_AUTO_CONFIRM_REFERENCE_DEACTIVATE_AUTO_CONFIRM = "reference link to deactivate auto confirm";
+
+    static final String TARGET_AUTO_CONFIRM_REFERENCE_CONFIRMATION_BASE_ACTION = "reference link in case an action with open confirmation is present";
+
+    static final String TARGET_AUTO_CONFIRM_ACTIVATE_INITIATOR = "individual value (e.g. username) stored as initiator and automatically used as confirmed user in future actions";
+    static final String TARGET_AUTO_CONFIRM_ACTIVATE_REMARK = "individual value to attach a remark which will be persisted when automatically confirming future actions";
 
 }

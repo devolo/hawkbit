@@ -58,6 +58,7 @@ import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.context.annotation.AdviceMode;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.Ordered;
@@ -103,8 +104,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.vaadin.spring.http.HttpService;
 import org.vaadin.spring.security.annotation.EnableVaadinSharedSecurity;
 import org.vaadin.spring.security.config.VaadinSharedSecurityConfiguration;
@@ -161,7 +160,9 @@ public class SecurityManagedConfiguration {
     static class ControllerSecurityConfigurationAdapter extends WebSecurityConfigurerAdapter {
 
         private static final String[] DDI_ANT_MATCHERS = { DdiRestConstants.BASE_V1_REQUEST_MAPPING + "/{controllerId}",
+                DdiRestConstants.BASE_V1_REQUEST_MAPPING + "/{controllerId}/confirmationBase/**",
                 DdiRestConstants.BASE_V1_REQUEST_MAPPING + "/{controllerId}/deploymentBase/**",
+                DdiRestConstants.BASE_V1_REQUEST_MAPPING + "/{controllerId}/installedBase/**",
                 DdiRestConstants.BASE_V1_REQUEST_MAPPING + "/{controllerId}/cancelAction/**",
                 DdiRestConstants.BASE_V1_REQUEST_MAPPING + "/{controllerId}/configData",
                 DdiRestConstants.BASE_V1_REQUEST_MAPPING
@@ -454,8 +455,8 @@ public class SecurityManagedConfiguration {
             http.csrf().disable();
             http.anonymous().disable();
 
-            http.regexMatcher(HttpDownloadAuthenticationFilter.REQUEST_ID_REGEX_PATTERN)
-                    .addFilterBefore(downloadIdAuthenticationFilter, FilterSecurityInterceptor.class);
+            http.antMatcher("/**/downloadId/**").addFilterBefore(downloadIdAuthenticationFilter,
+                    FilterSecurityInterceptor.class);
             http.authorizeRequests().anyRequest().authenticated().and().sessionManagement()
                     .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
         }
@@ -477,6 +478,7 @@ public class SecurityManagedConfiguration {
     public static class RestSecurityConfigurationAdapter extends WebSecurityConfigurerAdapter {
 
         @Autowired
+        @Lazy
         private UserAuthenticationFilter userAuthenticationFilter;
 
         @Autowired(required = false)
@@ -520,10 +522,11 @@ public class SecurityManagedConfiguration {
         @Override
         protected void configure(final HttpSecurity http) throws Exception {
 
-            HttpSecurity httpSec = http.regexMatcher("\\/rest.*|\\/system/admin.*").csrf().disable();
+            HttpSecurity httpSec = http.requestMatchers().antMatchers("/rest/**", "/system/admin/**").and().csrf()
+                    .disable();
 
             if (securityProperties.getCors().isEnabled()) {
-                httpSec = httpSec.cors().and();
+                httpSec = httpSec.cors().configurationSource(reuest -> corsConfiguration()).and();
             }
 
             if (securityProperties.isRequireSsl()) {
@@ -583,18 +586,16 @@ public class SecurityManagedConfiguration {
 
         @Bean
         @ConditionalOnProperty(prefix = "hawkbit.server.security.cors", name = "enabled", matchIfMissing = false)
-        CorsConfigurationSource corsConfigurationSource() {
-            final CorsConfiguration restCorsConfiguration = new CorsConfiguration();
+        CorsConfiguration corsConfiguration() {
+            final CorsConfiguration corsConfiguration = new CorsConfiguration();
 
-            restCorsConfiguration.setAllowedOrigins(securityProperties.getCors().getAllowedOrigins());
-            restCorsConfiguration.setAllowCredentials(true);
-            restCorsConfiguration.setAllowedHeaders(securityProperties.getCors().getAllowedHeaders());
-            restCorsConfiguration.setAllowedMethods(securityProperties.getCors().getAllowedMethods());
+            corsConfiguration.setAllowedOrigins(securityProperties.getCors().getAllowedOrigins());
+            corsConfiguration.setAllowCredentials(true);
+            corsConfiguration.setAllowedHeaders(securityProperties.getCors().getAllowedHeaders());
+            corsConfiguration.setAllowedMethods(securityProperties.getCors().getAllowedMethods());
+            corsConfiguration.setExposedHeaders(securityProperties.getCors().getExposedHeaders());
 
-            final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-            source.registerCorsConfiguration("/rest/**", restCorsConfiguration);
-
-            return source;
+            return corsConfiguration;
         }
     }
 
@@ -653,7 +654,9 @@ public class SecurityManagedConfiguration {
         }
 
         /**
-         * Overwriting VaadinAuthenticationSuccessHandler of default VaadinSharedSecurityConfiguration
+         * Overwriting VaadinAuthenticationSuccessHandler of default
+         * VaadinSharedSecurityConfiguration
+         * 
          * @return the vaadin success authentication handler
          */
         @Primary
@@ -690,12 +693,15 @@ public class SecurityManagedConfiguration {
             // https://vaadin.com/forum#!/thread/3200565.
             HttpSecurity httpSec;
             if (enableOidc) {
-                httpSec = http.regexMatcher("(?!.*HEARTBEAT)^.*\\/(UI|oauth2).*$");
+                httpSec = http.requestMatchers().antMatchers("/**/UI/**", "/**/oauth2/**").and();
             } else {
-                httpSec = http.regexMatcher("(?!.*HEARTBEAT)^.*\\/UI.*$");
+                httpSec = http.antMatcher("/**/UI/**");
             }
             // disable as CSRF is handled by Vaadin
             httpSec.csrf().disable();
+            // allow same origin X-Frame-Options for correct file download under
+            // Safari
+            httpSec.headers().frameOptions().sameOrigin();
 
             if (hawkbitSecurityProperties.isRequireSsl()) {
                 httpSec = httpSec.requiresChannel().anyRequest().requiresSecure().and();
@@ -762,7 +768,7 @@ public class SecurityManagedConfiguration {
                     return new FirewalledRequest(request) {
                         @Override
                         public void reset() {
-                            //nothing to do
+                            // nothing to do
                         }
                     };
                 }

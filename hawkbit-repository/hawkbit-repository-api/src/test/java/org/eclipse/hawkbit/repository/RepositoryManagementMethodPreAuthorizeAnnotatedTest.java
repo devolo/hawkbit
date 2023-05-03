@@ -20,7 +20,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.google.common.reflect.ClassPath;
@@ -76,7 +76,7 @@ public class RepositoryManagementMethodPreAuthorizeAnnotatedTest {
             }
             final PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
             assertThat(annotation).as("The public method " + method.getName() + " in class " + clazz.getName()
-                    + " is not annoated with @PreAuthorize, security leak?").isNotNull();
+                    + " is not annotated with @PreAuthorize, security leak?").isNotNull();
         }
     }
 

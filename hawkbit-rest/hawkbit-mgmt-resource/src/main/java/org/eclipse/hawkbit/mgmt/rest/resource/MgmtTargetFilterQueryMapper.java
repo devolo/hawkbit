@@ -38,14 +38,15 @@ public final class MgmtTargetFilterQueryMapper {
         // Utility class
     }
 
-    static List<MgmtTargetFilterQuery> toResponse(final List<TargetFilterQuery> filters) {
+    static List<MgmtTargetFilterQuery> toResponse(final List<TargetFilterQuery> filters,
+            final boolean confirmationFlowEnabled) {
         if (CollectionUtils.isEmpty(filters)) {
             return Collections.emptyList();
         }
-        return filters.stream().map(MgmtTargetFilterQueryMapper::toResponse).collect(Collectors.toList());
+        return filters.stream().map(filter -> toResponse(filter, confirmationFlowEnabled)).collect(Collectors.toList());
     }
 
-    static MgmtTargetFilterQuery toResponse(final TargetFilterQuery filter) {
+    static MgmtTargetFilterQuery toResponse(final TargetFilterQuery filter, final boolean confirmationFlowEnabled) {
         final MgmtTargetFilterQuery targetRest = new MgmtTargetFilterQuery();
         targetRest.setFilterId(filter.getId());
         targetRest.setName(filter.getName());
@@ -62,16 +63,20 @@ public final class MgmtTargetFilterQueryMapper {
             targetRest.setAutoAssignDistributionSet(distributionSet.getId());
             targetRest.setAutoAssignActionType(MgmtRestModelMapper.convertActionType(filter.getAutoAssignActionType()));
             filter.getAutoAssignWeight().ifPresent(targetRest::setAutoAssignWeight);
+            if (confirmationFlowEnabled) {
+                targetRest.setConfirmationRequired(filter.isConfirmationRequired());
+            }
         }
 
-        targetRest.add(linkTo(methodOn(MgmtTargetFilterQueryRestApi.class).getFilter(filter.getId())).withSelfRel());
+        targetRest.add(
+                linkTo(methodOn(MgmtTargetFilterQueryRestApi.class).getFilter(filter.getId())).withSelfRel().expand());
 
         return targetRest;
     }
 
     static void addLinks(final MgmtTargetFilterQuery targetRest) {
         targetRest.add(linkTo(methodOn(MgmtTargetFilterQueryRestApi.class)
-                .postAssignedDistributionSet(targetRest.getFilterId(), null)).withRel("autoAssignDS"));
+                .postAssignedDistributionSet(targetRest.getFilterId(), null)).withRel("autoAssignDS").expand());
     }
 
     static TargetFilterQueryCreate fromRequest(final EntityFactory entityFactory,

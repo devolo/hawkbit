@@ -13,11 +13,12 @@ import java.net.URI;
 import org.eclipse.hawkbit.repository.model.Action.Status;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
+import org.eclipse.hawkbit.ui.common.data.aware.TypeInfoAware;
 
 /**
  * Proxy for {@link Target}.
  */
-public class ProxyTarget extends ProxyNamedEntity {
+public class ProxyTarget extends ProxyNamedEntity implements TypeInfoAware {
 
     private static final long serialVersionUID = 1L;
 
@@ -35,9 +36,15 @@ public class ProxyTarget extends ProxyNamedEntity {
 
     private Status status;
 
+    private Integer lastActionStatusCode;
+
     private String securityToken;
 
     private boolean isRequestAttributes;
+
+    private ProxyTypeInfo typeInfo;
+
+    private transient ProxyTargetConfirmationOptions options = new ProxyTargetConfirmationOptions();
 
     /**
      * Gets the controllerId
@@ -168,6 +175,25 @@ public class ProxyTarget extends ProxyNamedEntity {
     }
 
     /**
+     * Gets the last action status code as reported by the controller
+     *
+     * @return statusCode
+     */
+    public Integer getLastActionStatusCode() {
+        return lastActionStatusCode;
+    }
+
+    /**
+     * Sets the last action status code
+     *
+     * @param lastActionStatusCode
+     *            Action status code as reported by the controller
+     */
+    public void setLastActionStatusCode(final Integer lastActionStatusCode) {
+        this.lastActionStatusCode = lastActionStatusCode;
+    }
+
+    /**
      * Gets the securityToken
      *
      * @return securityToken
@@ -205,5 +231,34 @@ public class ProxyTarget extends ProxyNamedEntity {
      */
     public void setRequestAttributes(final boolean isRequestAttributes) {
         this.isRequestAttributes = isRequestAttributes;
+    }
+
+    @Override
+    public void setTypeInfo(final ProxyTypeInfo typeInfo) {
+        this.typeInfo = typeInfo;
+    }
+
+    @Override
+    public ProxyTypeInfo getTypeInfo() {
+        return typeInfo;
+    }
+
+    /**
+     * Get the state of the current confirmation options
+     * 
+     * @return {@link ProxyTargetConfirmationOptions}
+     */
+    public ProxyTargetConfirmationOptions getTargetConfirmationOptions() {
+        return options;
+    }
+
+    /**
+     * Set the state of the current confirmation options
+     * 
+     * @param options
+     *            the {@link ProxyTargetConfirmationOptions}
+     */
+    public void setTargetConfirmationOptions(final ProxyTargetConfirmationOptions options) {
+        this.options = options;
     }
 }

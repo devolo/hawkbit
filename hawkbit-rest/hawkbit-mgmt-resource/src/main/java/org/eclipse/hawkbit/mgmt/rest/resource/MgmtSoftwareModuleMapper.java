@@ -45,7 +45,8 @@ public final class MgmtSoftwareModuleMapper {
     private static SoftwareModuleCreate fromRequest(final EntityFactory entityFactory,
             final MgmtSoftwareModuleRequestBodyPost smsRest) {
         return entityFactory.softwareModule().create().type(smsRest.getType()).name(smsRest.getName())
-                .version(smsRest.getVersion()).description(smsRest.getDescription()).vendor(smsRest.getVendor());
+                .version(smsRest.getVersion()).description(smsRest.getDescription()).vendor(smsRest.getVendor())
+                .encrypted(smsRest.isEncrypted());
     }
 
     static List<SoftwareModuleMetadataCreate> fromRequestSwMetadata(final EntityFactory entityFactory,
@@ -105,27 +106,29 @@ public final class MgmtSoftwareModuleMapper {
         response.setModuleId(softwareModule.getId());
         response.setVersion(softwareModule.getVersion());
         response.setType(softwareModule.getType().getKey());
+        response.setTypeName(softwareModule.getType().getName());
         response.setVendor(softwareModule.getVendor());
         response.setDeleted(softwareModule.isDeleted());
+        response.setEncrypted(softwareModule.isEncrypted());
 
         response.add(linkTo(methodOn(MgmtSoftwareModuleRestApi.class).getSoftwareModule(response.getModuleId()))
-                .withSelfRel());
+                .withSelfRel().expand());
 
         return response;
     }
 
     static void addLinks(final SoftwareModule softwareModule, final MgmtSoftwareModule response) {
         response.add(linkTo(methodOn(MgmtSoftwareModuleRestApi.class).getArtifacts(response.getModuleId()))
-                .withRel(MgmtRestConstants.SOFTWAREMODULE_V1_ARTIFACT));
+                .withRel(MgmtRestConstants.SOFTWAREMODULE_V1_ARTIFACT).expand());
 
         response.add(linkTo(
                 methodOn(MgmtSoftwareModuleTypeRestApi.class).getSoftwareModuleType(softwareModule.getType().getId()))
-                        .withRel(MgmtRestConstants.SOFTWAREMODULE_V1_TYPE));
+                        .withRel(MgmtRestConstants.SOFTWAREMODULE_V1_TYPE).expand());
 
         response.add(linkTo(methodOn(MgmtSoftwareModuleResource.class).getMetadata(response.getModuleId(),
                 MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_OFFSET_VALUE,
                 MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_LIMIT_VALUE, null, null)).withRel("metadata")
-                        .expand());
+                        .expand().expand());
     }
 
     static MgmtArtifact toResponse(final Artifact artifact) {
@@ -140,7 +143,7 @@ public final class MgmtSoftwareModuleMapper {
         MgmtRestModelMapper.mapBaseToBase(artifactRest, artifact);
 
         artifactRest.add(linkTo(methodOn(MgmtSoftwareModuleRestApi.class)
-                .getArtifact(artifact.getSoftwareModule().getId(), artifact.getId())).withSelfRel());
+                .getArtifact(artifact.getSoftwareModule().getId(), artifact.getId())).withSelfRel().expand());
 
         return artifactRest;
     }
@@ -148,7 +151,8 @@ public final class MgmtSoftwareModuleMapper {
     static void addLinks(final Artifact artifact, final MgmtArtifact response) {
 
         response.add(linkTo(methodOn(MgmtDownloadArtifactResource.class)
-                .downloadArtifact(artifact.getSoftwareModule().getId(), artifact.getId())).withRel("download"));
+                .downloadArtifact(artifact.getSoftwareModule().getId(), artifact.getId())).withRel("download")
+                        .expand());
     }
 
     static List<MgmtArtifact> artifactsToResponse(final Collection<Artifact> artifacts) {

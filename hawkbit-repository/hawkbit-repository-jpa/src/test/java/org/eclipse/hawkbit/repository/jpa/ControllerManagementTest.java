@@ -39,20 +39,23 @@ import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
+import org.assertj.core.api.Assertions;
 import org.eclipse.hawkbit.repository.RepositoryProperties;
 import org.eclipse.hawkbit.repository.UpdateMode;
+import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
+import org.eclipse.hawkbit.repository.event.remote.CancelTargetAssignmentEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetAssignDistributionSetEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetAttributesRequestedEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetDeletedEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetPollEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.ActionCreatedEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.ActionUpdatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.CancelTargetAssignmentEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.DistributionSetCreatedEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.SoftwareModuleCreatedEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.SoftwareModuleUpdatedEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.TargetCreatedEvent;
 import org.eclipse.hawkbit.repository.event.remote.entity.TargetUpdatedEvent;
+import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.exception.CancelActionNotAllowedException;
 import org.eclipse.hawkbit.repository.exception.EntityAlreadyExistsException;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
@@ -74,8 +77,9 @@ import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.test.matcher.Expect;
 import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
+import org.eclipse.hawkbit.repository.test.util.TargetTestData;
 import org.eclipse.hawkbit.repository.test.util.WithSpringAuthorityRule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.ConcurrencyFailureException;
@@ -87,7 +91,7 @@ import io.qameta.allure.Story;
 
 @Feature("Component Tests - Repository")
 @Story("Controller Management")
-public class ControllerManagementTest extends AbstractJpaIntegrationTest {
+class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
     @Autowired
     private RepositoryProperties repositoryProperties;
@@ -97,7 +101,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             + "of Optional not present.")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 1) })
-    public void nonExistingEntityAccessReturnsNotPresent() {
+    void nonExistingEntityAccessReturnsNotPresent() {
         final Target target = testdataFactory.createTarget();
         final SoftwareModule module = testdataFactory.createSoftwareModuleOs();
 
@@ -118,7 +122,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             + " by means of throwing EntityNotFoundException.")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 1) })
-    public void entityQueriesReferringToNotExistingEntitiesThrowsException() throws URISyntaxException {
+    void entityQueriesReferringToNotExistingEntitiesThrowsException() throws URISyntaxException {
         final Target target = testdataFactory.createTarget();
         final SoftwareModule module = testdataFactory.createSoftwareModuleOs();
 
@@ -159,7 +163,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = TargetAttributesRequestedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerConfirmsUpdateWithFinished() {
+    void controllerConfirmsUpdateWithFinished() {
         final Long actionId = createTargetAndAssignDs();
 
         simulateIntermediateStatusOnUpdate(actionId);
@@ -180,7 +184,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionCreatedEvent.class, count = 1), @Expect(type = TargetUpdatedEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerConfirmationFailsWithInvalidMessages() {
+    void controllerConfirmationFailsWithInvalidMessages() {
         final Long actionId = createTargetAndAssignDs();
 
         simulateIntermediateStatusOnUpdate(actionId);
@@ -211,7 +215,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = TargetAttributesRequestedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerConfirmsUpdateWithFinishedAndIgnoresCancellationWithThat() {
+    void controllerConfirmsUpdateWithFinishedAndIgnoresCancellationWithThat() {
         final Long actionId = createTargetAndAssignDs();
         deploymentManagement.cancelAction(actionId);
 
@@ -231,7 +235,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionCreatedEvent.class, count = 1), @Expect(type = TargetUpdatedEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void cancellationFeedbackRejectedIfActionIsNotInCanceling() {
+    void cancellationFeedbackRejectedIfActionIsNotInCanceling() {
         final Long actionId = createTargetAndAssignDs();
 
         assertThatExceptionOfType(CancelActionNotAllowedException.class)
@@ -255,7 +259,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = CancelTargetAssignmentEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerConfirmsActionCancellationWithFinished() {
+    void controllerConfirmsActionCancellationWithFinished() {
         final Long actionId = createTargetAndAssignDs();
 
         deploymentManagement.cancelAction(actionId);
@@ -282,7 +286,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = CancelTargetAssignmentEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerConfirmsActionCancellationWithCanceled() {
+    void controllerConfirmsActionCancellationWithCanceled() {
         final Long actionId = createTargetAndAssignDs();
 
         deploymentManagement.cancelAction(actionId);
@@ -310,7 +314,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = CancelTargetAssignmentEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerRejectsActionCancellationWithReject() {
+    void controllerRejectsActionCancellationWithReject() {
         final Long actionId = createTargetAndAssignDs();
 
         deploymentManagement.cancelAction(actionId);
@@ -338,7 +342,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = CancelTargetAssignmentEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerRejectsActionCancellationWithError() {
+    void controllerRejectsActionCancellationWithError() {
         final Long actionId = createTargetAndAssignDs();
 
         deploymentManagement.cancelAction(actionId);
@@ -422,29 +426,31 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
     @Step
     private void simulateIntermediateStatusOnUpdate(final Long actionId) {
-        controllerManagement
-                .addUpdateActionStatus(entityFactory.actionStatus().create(actionId).status(Action.Status.RUNNING));
-        assertActionStatus(actionId, DEFAULT_CONTROLLER_ID, TargetUpdateStatus.PENDING, Action.Status.RUNNING,
-                Action.Status.RUNNING, true);
+        addUpdateActionStatusAndAssert(actionId, Action.Status.RUNNING);
 
-        controllerManagement
-                .addUpdateActionStatus(entityFactory.actionStatus().create(actionId).status(Action.Status.DOWNLOAD));
-        assertActionStatus(actionId, DEFAULT_CONTROLLER_ID, TargetUpdateStatus.PENDING, Action.Status.RUNNING,
-                Action.Status.DOWNLOAD, true);
-        controllerManagement
-                .addUpdateActionStatus(entityFactory.actionStatus().create(actionId).status(Action.Status.DOWNLOADED));
-        assertActionStatus(actionId, DEFAULT_CONTROLLER_ID, TargetUpdateStatus.PENDING, Action.Status.RUNNING,
-                Action.Status.DOWNLOADED, true);
+        addUpdateActionStatusAndAssert(actionId, Action.Status.DOWNLOAD);
 
-        controllerManagement
-                .addUpdateActionStatus(entityFactory.actionStatus().create(actionId).status(Action.Status.RETRIEVED));
-        assertActionStatus(actionId, DEFAULT_CONTROLLER_ID, TargetUpdateStatus.PENDING, Action.Status.RUNNING,
-                Action.Status.RETRIEVED, true);
+        addUpdateActionStatusAndAssert(actionId, Action.Status.DOWNLOADED);
 
+        addUpdateActionStatusAndAssert(actionId, Action.Status.RETRIEVED);
+
+        addUpdateActionStatusAndAssert(actionId, Action.Status.WARNING);
+    }
+
+    private void addUpdateActionStatusAndAssert(final Long actionId, final Action.Status actionStatus) {
+        addUpdateActionStatusAndAssert(actionId, actionStatus, null);
+    }
+
+    private void addUpdateActionStatusAndAssert(final Long actionId, final Action.Status actionStatus,
+            final Integer code) {
+        final ActionStatusCreate status = entityFactory.actionStatus().create(actionId).status(actionStatus);
+        if (code != null) {
+            status.code(code.intValue());
+        }
         controllerManagement
-                .addUpdateActionStatus(entityFactory.actionStatus().create(actionId).status(Action.Status.WARNING));
+                .addUpdateActionStatus(status);
         assertActionStatus(actionId, DEFAULT_CONTROLLER_ID, TargetUpdateStatus.PENDING, Action.Status.RUNNING,
-                Action.Status.WARNING, true);
+                actionStatus, true);
     }
 
     private void assertActionStatus(final Long actionId, final String controllerId,
@@ -474,7 +480,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 6),
             @Expect(type = SoftwareModuleUpdatedEvent.class, count = 2) })
-    public void hasTargetArtifactAssignedIsTrueWithMultipleArtifacts() {
+    void hasTargetArtifactAssignedIsTrueWithMultipleArtifacts() {
         final int artifactSize = 5 * 1024;
         final byte[] random = RandomUtils.nextBytes(artifactSize);
 
@@ -505,7 +511,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Description("Register a controller which does not exist")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetPollEvent.class, count = 2) })
-    public void findOrRegisterTargetIfItDoesNotExist() {
+    void findOrRegisterTargetIfItDoesNotExist() {
         final Target target = controllerManagement.findOrRegisterTargetIfItDoesNotExist("AA", LOCALHOST);
         assertThat(target).as("target should not be null").isNotNull();
 
@@ -518,7 +524,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Description("Register a controller with name which does not exist and update its name")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetPollEvent.class, count = 2), @Expect(type = TargetUpdatedEvent.class, count = 1) })
-    public void findOrRegisterTargetIfItDoesNotExistWithName() {
+    void findOrRegisterTargetIfItDoesNotExistWithName() {
         final Target target = controllerManagement.findOrRegisterTargetIfItDoesNotExist("AA", LOCALHOST, "TestName");
         final Target sameTarget = controllerManagement.findOrRegisterTargetIfItDoesNotExist("AA", LOCALHOST,
                 "ChangedTestName");
@@ -530,7 +536,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Tries to register a target with an invalid controller id")
-    public void findOrRegisterTargetIfItDoesNotExistThrowsExceptionForInvalidControllerIdParam() {
+    void findOrRegisterTargetIfItDoesNotExistThrowsExceptionForInvalidControllerIdParam() {
         assertThatExceptionOfType(ConstraintViolationException.class)
                 .as("register target with null as controllerId should fail")
                 .isThrownBy(() -> controllerManagement.findOrRegisterTargetIfItDoesNotExist(null, LOCALHOST));
@@ -552,7 +558,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Test
     @Description("Register a controller which does not exist, when a ConcurrencyFailureException is raised, the "
             + "exception is rethrown after max retries")
-    public void findOrRegisterTargetIfItDoesNotExistThrowsExceptionAfterMaxRetries() {
+    void findOrRegisterTargetIfItDoesNotExistThrowsExceptionAfterMaxRetries() {
         final TargetRepository mockTargetRepository = Mockito.mock(TargetRepository.class);
         when(mockTargetRepository.findOne(any())).thenThrow(ConcurrencyFailureException.class);
         ((JpaControllerManagement) controllerManagement).setTargetRepository(mockTargetRepository);
@@ -574,7 +580,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             + "exception is not rethrown when the max retries are not yet reached")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetPollEvent.class, count = 1) })
-    public void findOrRegisterTargetIfItDoesNotExistDoesNotThrowExceptionBeforeMaxRetries() {
+    void findOrRegisterTargetIfItDoesNotExistDoesNotThrowExceptionBeforeMaxRetries() {
 
         final TargetRepository mockTargetRepository = Mockito.mock(TargetRepository.class);
         ((JpaControllerManagement) controllerManagement).setTargetRepository(mockTargetRepository);
@@ -600,7 +606,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Description("Register a controller which does not exist, then update the controller twice, first time by providing a name property and second time without a new name")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetPollEvent.class, count = 3), @Expect(type = TargetUpdatedEvent.class, count = 1) })
-    public void findOrRegisterTargetIfItDoesNotExistDoesUpdateNameOnExistingTargetProperly() {
+    void findOrRegisterTargetIfItDoesNotExistDoesUpdateNameOnExistingTargetProperly() {
 
         final String controllerId = "12345";
         final String targetName = "UpdatedName";
@@ -622,7 +628,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Test
     @Description("Register a controller which does not exist, if a EntityAlreadyExistsException is raised, the "
             + "exception is rethrown and no further retries will be attempted")
-    public void findOrRegisterTargetIfItDoesNotExistDoesntRetryWhenEntityAlreadyExistsException() {
+    void findOrRegisterTargetIfItDoesNotExistDoesntRetryWhenEntityAlreadyExistsException() {
 
         final TargetRepository mockTargetRepository = Mockito.mock(TargetRepository.class);
         ((JpaControllerManagement) controllerManagement).setTargetRepository(mockTargetRepository);
@@ -645,7 +651,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Test
     @Description("Retry is aborted when an unchecked exception is thrown and the exception should also be "
             + "rethrown")
-    public void recoverFindOrRegisterTargetIfItDoesNotExistIsNotInvokedForOtherExceptions() {
+    void recoverFindOrRegisterTargetIfItDoesNotExistIsNotInvokedForOtherExceptions() {
 
         final TargetRepository mockTargetRepository = Mockito.mock(TargetRepository.class);
         ((JpaControllerManagement) controllerManagement).setTargetRepository(mockTargetRepository);
@@ -668,7 +674,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @ExpectEvents({ @Expect(type = DistributionSetCreatedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3),
             @Expect(type = SoftwareModuleUpdatedEvent.class, count = 6) })
-    public void findTargetVisibleMetaDataBySoftwareModuleId() {
+    void findTargetVisibleMetaDataBySoftwareModuleId() {
         final DistributionSet set = testdataFactory.createDistributionSet();
         testdataFactory.addSoftwareModuleMetadata(set);
 
@@ -684,7 +690,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Description("Verify that controller registration does not result in a TargetPollEvent if feature is disabled")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetPollEvent.class, count = 0) })
-    public void targetPollEventNotSendIfDisabled() {
+    void targetPollEventNotSendIfDisabled() {
         repositoryProperties.setPublishTargetPollEvent(false);
         controllerManagement.findOrRegisterTargetIfItDoesNotExist("AA", LOCALHOST);
         repositoryProperties.setPublishTargetPollEvent(true);
@@ -698,7 +704,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = TargetUpdatedEvent.class, count = 2),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void tryToFinishWithErrorUpdateProcessMoreThanOnce() {
+    void tryToFinishWithErrorUpdateProcessMoreThanOnce() {
         final Long actionId = createTargetAndAssignDs();
 
         // test and verify
@@ -745,7 +751,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = TargetAttributesRequestedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void tryToFinishUpdateProcessMoreThanOnce() {
+    void tryToFinishUpdateProcessMoreThanOnce() {
         final Long actionId = prepareFinishedUpdate().getId();
 
         // try with disabled late feedback
@@ -782,7 +788,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = TargetAttributesRequestedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void sendUpdatesForFinishUpdateProcessDroppedIfDisabled() {
+    void sendUpdatesForFinishUpdateProcessDroppedIfDisabled() {
         repositoryProperties.setRejectActionStatusForClosedAction(true);
 
         final Action action = prepareFinishedUpdate();
@@ -794,6 +800,8 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         assertThat(targetManagement.getByControllerID(DEFAULT_CONTROLLER_ID).get().getUpdateStatus())
                 .isEqualTo(TargetUpdateStatus.IN_SYNC);
 
+        assertThat(actionRepository.findById(action.getId()))
+                .hasValueSatisfying(a -> assertThat(a.getStatus()).isEqualTo(Status.FINISHED));
         assertThat(actionStatusRepository.count()).isEqualTo(3);
         assertThat(controllerManagement.findActionStatusByAction(PAGE, action.getId()).getNumberOfElements())
                 .isEqualTo(3);
@@ -804,12 +812,13 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             + "configured to accept them.")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = DistributionSetCreatedEvent.class, count = 1),
-            @Expect(type = ActionCreatedEvent.class, count = 1), @Expect(type = ActionUpdatedEvent.class, count = 1),
+            @Expect(type = ActionCreatedEvent.class, count = 1),
+            @Expect(type = ActionUpdatedEvent.class, count = 1),
             @Expect(type = TargetUpdatedEvent.class, count = 2),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = TargetAttributesRequestedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void sendUpdatesForFinishUpdateProcessAcceptedIfEnabled() {
+    void sendUpdatesForFinishUpdateProcessAcceptedIfEnabled() {
         repositoryProperties.setRejectActionStatusForClosedAction(false);
 
         Action action = prepareFinishedUpdate();
@@ -830,11 +839,11 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Description("Ensures that target attribute update is reflected by the repository.")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetUpdatedEvent.class, count = 3) })
-    public void updateTargetAttributes() throws Exception {
+    void updateTargetAttributes() throws Exception {
         final String controllerId = "test123";
         final Target target = testdataFactory.createTarget(controllerId);
 
-        securityRule.runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
+        WithSpringAuthorityRule.runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
             addAttributeAndVerify(controllerId);
             addSecondAttributeAndVerify(controllerId);
             updateAttributeAndVerify(controllerId);
@@ -903,7 +912,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Description("Ensures that target attributes can be updated using different update modes.")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetUpdatedEvent.class, count = 4) })
-    public void updateTargetAttributesWithDifferentUpdateModes() {
+    void updateTargetAttributesWithDifferentUpdateModes() {
 
         final String controllerId = "testCtrl";
         testdataFactory.createTarget(controllerId);
@@ -1017,7 +1026,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
         testdataFactory.createTarget(controllerId);
 
-        assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> securityRule
+        assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> WithSpringAuthorityRule
                 .runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
                     writeAttributes(controllerId, allowedAttributes + 1, "key", "value");
                     return null;
@@ -1028,7 +1037,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
         // Write allowed number of attributes twice with same key should result
         // in update but work
-        securityRule.runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
+        WithSpringAuthorityRule.runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
             writeAttributes(controllerId, allowedAttributes, "key", "value1");
             writeAttributes(controllerId, allowedAttributes, "key", "value2");
             return null;
@@ -1036,7 +1045,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         assertThat(targetManagement.getControllerAttributes(controllerId)).hasSize(10);
 
         // Now write one more
-        assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> securityRule
+        assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> WithSpringAuthorityRule
                 .runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
                     writeAttributes(controllerId, 2, "additional", "value1");
                     return null;
@@ -1056,33 +1065,28 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Test
     @Description("Checks if invalid values of attribute-key and attribute-value are handled correctly")
     public void updateTargetAttributesFailsForInvalidAttributes() {
-        final String keyTooLong = generateRandomStringWithLength(Target.CONTROLLER_ATTRIBUTE_KEY_SIZE + 1);
-        final String keyValid = generateRandomStringWithLength(Target.CONTROLLER_ATTRIBUTE_KEY_SIZE);
-        final String valueTooLong = generateRandomStringWithLength(Target.CONTROLLER_ATTRIBUTE_VALUE_SIZE + 1);
-        final String valueValid = generateRandomStringWithLength(Target.CONTROLLER_ATTRIBUTE_VALUE_SIZE);
-        final String keyNull = null;
-
         final String controllerId = "targetId123";
         testdataFactory.createTarget(controllerId);
 
         assertThatExceptionOfType(InvalidTargetAttributeException.class)
                 .as("Attribute with key too long should not be created")
                 .isThrownBy(() -> controllerManagement.updateControllerAttributes(controllerId,
-                        Collections.singletonMap(keyTooLong, valueValid), null));
+                        Collections.singletonMap(TargetTestData.ATTRIBUTE_KEY_TOO_LONG, TargetTestData.ATTRIBUTE_VALUE_VALID), null));
 
         assertThatExceptionOfType(InvalidTargetAttributeException.class)
                 .as("Attribute with key too long and value too long should not be created")
                 .isThrownBy(() -> controllerManagement.updateControllerAttributes(controllerId,
-                        Collections.singletonMap(keyTooLong, valueTooLong), null));
+                        Collections.singletonMap(TargetTestData.ATTRIBUTE_KEY_TOO_LONG, TargetTestData.ATTRIBUTE_VALUE_TOO_LONG), null));
 
         assertThatExceptionOfType(InvalidTargetAttributeException.class)
                 .as("Attribute with value too long should not be created")
                 .isThrownBy(() -> controllerManagement.updateControllerAttributes(controllerId,
-                        Collections.singletonMap(keyValid, valueTooLong), null));
+                        Collections.singletonMap(TargetTestData.ATTRIBUTE_KEY_VALID, TargetTestData.ATTRIBUTE_VALUE_TOO_LONG), null));
 
         assertThatExceptionOfType(InvalidTargetAttributeException.class)
                 .as("Attribute with key NULL should not be created").isThrownBy(() -> controllerManagement
-                        .updateControllerAttributes(controllerId, Collections.singletonMap(keyNull, valueValid), null));
+                        .updateControllerAttributes(controllerId,
+                                Collections.singletonMap(null, TargetTestData.ATTRIBUTE_VALUE_VALID), null));
     }
 
     @Test
@@ -1097,7 +1101,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         final Long actionId = createTargetAndAssignDs();
 
         // Fails as one entry is already in there from the assignment
-        assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> securityRule
+        assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> WithSpringAuthorityRule
                 .runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
                     writeStatus(actionId, allowStatusEntries);
                     return null;
@@ -1121,9 +1125,11 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         final Long actionId = getFirstAssignedActionId(assignDistributionSet(testDs, testTarget));
 
         controllerManagement.addUpdateActionStatus(entityFactory.actionStatus().create(actionId)
-                .status(Action.Status.RUNNING).messages(Lists.newArrayList("proceeding message 1")));
+                .status(Action.Status.RUNNING).occurredAt(System.currentTimeMillis())
+                .messages(Lists.newArrayList("proceeding message 1")));
         controllerManagement.addUpdateActionStatus(entityFactory.actionStatus().create(actionId)
-                .status(Action.Status.RUNNING).messages(Lists.newArrayList("proceeding message 2")));
+                .status(Action.Status.RUNNING).occurredAt(System.currentTimeMillis())
+                .messages(Lists.newArrayList("proceeding message 2")));
 
         final List<String> messages = controllerManagement.getActionHistoryMessages(actionId, 2);
 
@@ -1227,7 +1233,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionUpdatedEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerReportsDownloadedForDownloadOnlyAction() {
+    void controllerReportsDownloadedForDownloadOnlyAction() {
         testdataFactory.createTarget();
         final Long actionId = createAndAssignDsAsDownloadOnly("downloadOnlyDs", DEFAULT_CONTROLLER_ID);
         assertThat(actionId).isNotNull();
@@ -1250,7 +1256,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionUpdatedEvent.class, count = 2),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerReportsActionFinishedForDownloadOnlyActionThatIsNotActive() {
+    void controllerReportsActionFinishedForDownloadOnlyActionThatIsNotActive() {
         testdataFactory.createTarget();
         final Long actionId = createAndAssignDsAsDownloadOnly("downloadOnlyDs", DEFAULT_CONTROLLER_ID);
         assertThat(actionId).isNotNull();
@@ -1273,7 +1279,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionUpdatedEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void controllerReportsMultipleDownloadedForDownloadOnlyAction() {
+    void controllerReportsMultipleDownloadedForDownloadOnlyAction() {
         testdataFactory.createTarget();
         final Long actionId = createAndAssignDsAsDownloadOnly("downloadOnlyDs", DEFAULT_CONTROLLER_ID);
         assertThat(actionId).isNotNull();
@@ -1288,7 +1294,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         assertThat(actionRepository.activeActionExistsForControllerId(DEFAULT_CONTROLLER_ID)).isEqualTo(false);
     }
 
-    @Test(expected = AssignmentQuotaExceededException.class)
+    @Test
     @Description("Verifies that quota is asserted when a controller reports too many DOWNLOADED events for a "
             + "DOWNLOAD_ONLY action.")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
@@ -1298,14 +1304,15 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = TargetAttributesRequestedEvent.class, count = 9),
             @Expect(type = ActionUpdatedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void quotaExceptionWhencontrollerReportsTooManyDownloadedMessagesForDownloadOnlyAction() {
+    void quotaExceptionWhencontrollerReportsTooManyDownloadedMessagesForDownloadOnlyAction() {
         final int maxMessages = quotaManagement.getMaxMessagesPerActionStatus();
         testdataFactory.createTarget();
         final Long actionId = createAndAssignDsAsDownloadOnly("downloadOnlyDs", DEFAULT_CONTROLLER_ID);
         assertThat(actionId).isNotNull();
 
-        IntStream.range(0, maxMessages).forEach(i -> controllerManagement
-                .addUpdateActionStatus(entityFactory.actionStatus().create(actionId).status(Status.DOWNLOADED)));
+        Assertions.assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() ->
+                IntStream.range(0, maxMessages).forEach(i -> controllerManagement
+                        .addUpdateActionStatus(entityFactory.actionStatus().create(actionId).status(Status.DOWNLOADED))));
     }
 
     @Test
@@ -1317,7 +1324,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionUpdatedEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void quotaExceededExceptionWhenControllerReportsTooManyUpdateActionStatusMessagesForDownloadOnlyAction() {
+    void quotaExceededExceptionWhenControllerReportsTooManyUpdateActionStatusMessagesForDownloadOnlyAction() {
         final int maxMessages = quotaManagement.getMaxMessagesPerActionStatus();
         testdataFactory.createTarget();
         final Long actionId = createAndAssignDsAsDownloadOnly("downloadOnlyDs", DEFAULT_CONTROLLER_ID);
@@ -1346,7 +1353,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionCreatedEvent.class, count = 1), @Expect(type = TargetUpdatedEvent.class, count = 1),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3) })
-    public void quotaExceededExceptionWhenControllerReportsTooManyUpdateActionStatusMessagesForForced() {
+    void quotaExceededExceptionWhenControllerReportsTooManyUpdateActionStatusMessagesForForced() {
         final int maxMessages = quotaManagement.getMaxMessagesPerActionStatus();
         final Long actionId = createTargetAndAssignDs();
         assertThat(actionId).isNotNull();
@@ -1369,7 +1376,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the attaching externalRef to an action is properly stored")
-    public void updatedExternalRefOnActionIsReallyUpdated() {
+    void updatedExternalRefOnActionIsReallyUpdated() {
         final List<String> allExternalRef = new ArrayList<>();
         final List<Long> allActionId = new ArrayList<>();
         final int numberOfActions = 3;
@@ -1397,7 +1404,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that getting a single action using externalRef works")
-    public void getActionUsingSingleExternalRef() {
+    void getActionUsingSingleExternalRef() {
 
         final String knownControllerId = "controllerId";
         final String knownExternalRef = "externalRefId";
@@ -1409,7 +1416,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
                 knownControllerId);
         final Long actionId = getFirstAssignedActionId(assignmentResult);
         controllerManagement.updateActionExternalRef(actionId, knownExternalRef);
-        
+
         // WHEN
         final Optional<Action> foundAction = controllerManagement.getActionByExternalRef(knownExternalRef);
 
@@ -1420,7 +1427,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that a null externalRef cannot be assigned to an action")
-    public void externalRefCannotBeNull() {
+    void externalRefCannotBeNull() {
         assertThatExceptionOfType(ConstraintViolationException.class)
                 .as("No ConstraintViolationException thrown when a null externalRef was set on an action")
                 .isThrownBy(() -> controllerManagement.updateActionExternalRef(1L, null));
@@ -1436,7 +1443,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = TargetAttributesRequestedEvent.class, count = 6),
             @Expect(type = ActionUpdatedEvent.class, count = 8),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 12) })
-    public void targetCanAlwaysReportFinishedOrErrorAfterActionIsClosedForDownloadOnlyAssignments() {
+    void targetCanAlwaysReportFinishedOrErrorAfterActionIsClosedForDownloadOnlyAssignments() {
 
         testdataFactory.createTarget();
 
@@ -1487,7 +1494,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionUpdatedEvent.class, count = 3),
             @Expect(type = TargetAssignDistributionSetEvent.class, count = 2),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 6) })
-    public void controllerReportsFinishedForOldDownloadOnlyActionAfterSuccessfulForcedAssignment() {
+    void controllerReportsFinishedForOldDownloadOnlyActionAfterSuccessfulForcedAssignment() {
 
         testdataFactory.createTarget();
         final DistributionSet downloadOnlyDs = testdataFactory.createDistributionSet("downloadOnlyDs1");
@@ -1523,7 +1530,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Actions are exposed according to thier weight in multi assignment mode.")
-    public void actionsAreExposedAccordingToTheirWeight() {
+    void actionsAreExposedAccordingToTheirWeight() {
         final String targetId = testdataFactory.createTarget().getControllerId();
         final DistributionSet ds = testdataFactory.createDistributionSet();
         final Long actionWeightNull = assignDistributionSet(ds.getId(), targetId).getAssignedEntity().get(0).getId();
@@ -1580,7 +1587,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Description("Delete a target on requested target deletion from client side")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetPollEvent.class, count = 1), @Expect(type = TargetDeletedEvent.class, count = 1) })
-    public void deleteTargetWithValidThingId() {
+    void deleteTargetWithValidThingId() {
         final Target target = controllerManagement.findOrRegisterTargetIfItDoesNotExist("AA", LOCALHOST);
         assertThat(target).as("target should not be null").isNotNull();
         assertThat(targetRepository.count()).as("target exists and is ready for deletion").isEqualTo(1L);
@@ -1593,7 +1600,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Test
     @Description("Delete a target with a non existing thingId")
     @ExpectEvents({ @Expect(type = TargetDeletedEvent.class, count = 0) })
-    public void deleteTargetWithInvalidThingId() {
+    void deleteTargetWithInvalidThingId() {
         assertThatExceptionOfType(EntityNotFoundException.class)
                 .as("No EntityNotFoundException thrown when deleting a non-existing target")
                 .isThrownBy(() -> controllerManagement.deleteExistingTarget("BB"));
@@ -1604,7 +1611,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Description("Delete a target after it has been deleted already")
     @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
             @Expect(type = TargetPollEvent.class, count = 1), @Expect(type = TargetDeletedEvent.class, count = 1) })
-    public void deleteTargetAfterItWasDeleted() {
+    void deleteTargetAfterItWasDeleted() {
         final Target target = controllerManagement.findOrRegisterTargetIfItDoesNotExist("AA", LOCALHOST);
         assertThat(target).as("target should not be null").isNotNull();
         assertThat(targetRepository.count()).as("target exists and is ready for deletion").isEqualTo(1L);
@@ -1620,7 +1627,7 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
     @Test
     @Description("Trigger check for Distribution Set assignment for a specific target, based on Target Filter Queries,"
             + "  whenever the target uploads its configuration via PUT request to /configData")
-    public void distributionSetAssignTrigger(){
+    public void distributionSetAssignTrigger() {
 
         final String TEST_QUERY_1 = "id==0123";
         final String TEST_QUERY_2 = "attribute.device_type==dev_test_type";
@@ -1702,5 +1709,27 @@ public class ControllerManagementTest extends AbstractJpaIntegrationTest {
         long t2_numberOfRunningActions = t2_actions.stream().filter(action -> action.getStatus().equals(Status.RUNNING)).count();
 
         assertThat(t2_numberOfRunningActions).isEqualTo(1);
+    }
+
+    @Test
+    @Description("When action status code is provided in feedback it is also stored in the action field lastActionStatusCode")
+    void lastActionStatusCodeIsSet() {
+        final Long actionId = createTargetAndAssignDs();
+
+        addUpdateActionStatusAndAssert(actionId, Action.Status.RUNNING, 10);
+        assertLastActionStatusCodeInAction(actionId, 10);
+
+        addUpdateActionStatusAndAssert(actionId, Action.Status.RUNNING);
+        assertLastActionStatusCodeInAction(actionId, null);
+
+        addUpdateActionStatusAndAssert(actionId, Action.Status.RUNNING, 20);
+        assertLastActionStatusCodeInAction(actionId, 20);
+
+    }
+
+    private void assertLastActionStatusCodeInAction(final Long actionId, final Integer expectedLastActionStatusCode) {
+        final Optional<Action> action = actionRepository.getActionById(actionId);
+        assertThat(action).isPresent();
+        assertThat(action.get().getLastActionStatusCode()).isEqualTo(Optional.ofNullable(expectedLastActionStatusCode));
     }
 }

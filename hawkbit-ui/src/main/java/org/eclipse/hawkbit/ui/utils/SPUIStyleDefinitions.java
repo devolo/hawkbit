@@ -28,6 +28,8 @@ public final class SPUIStyleDefinitions {
 
     public static final String SP_TEXTFIELD_LAYOUT_ERROR_HIGHTLIGHT = "v-textfield-error";
 
+    public static final String DIST_CHECKBOX_STYLE = "dist-checkbox-style";
+
     /**
      * Action history message grid style.
      */
@@ -115,6 +117,11 @@ public final class SPUIStyleDefinitions {
      * Simple tag filter header layout.
      */
     public static final String SIMPLE_FILTER_HEADER = "simple-tag-filter-header";
+
+    /**
+     * Target type filter header layout.
+     */
+    public static final String TARGET_TYPE_FILTER_HEADER = "target-type-filter-header";
 
     /**
      * Simple tag filter header layout.

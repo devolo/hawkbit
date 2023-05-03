@@ -21,14 +21,15 @@ import javax.validation.constraints.NotNull;
 
 import org.eclipse.hawkbit.im.authentication.SpPermission.SpringEvalExpressions;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
+import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.exception.CancelActionNotAllowedException;
 import org.eclipse.hawkbit.repository.exception.EntityAlreadyExistsException;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.exception.InvalidTargetAttributeException;
-import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.Action.Status;
 import org.eclipse.hawkbit.repository.model.ActionStatus;
+import org.eclipse.hawkbit.repository.model.AutoConfirmationStatus;
 import org.eclipse.hawkbit.repository.model.SoftwareModule;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleMetadata;
 import org.eclipse.hawkbit.repository.model.Target;
@@ -531,4 +532,37 @@ public interface ControllerManagement {
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_DELETE_REPOSITORY)
     void deleteByIds(List<Long> actionStatusIds);
+
+    /**
+     * Finds an {@link Action} based on the target that it's assigned to
+     *
+     * @param controllerId
+     *            of the target the action is assigned to
+     */
+    @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
+    Optional<Action> getInstalledActionByTarget(@NotEmpty String controllerId);
+
+    /**
+     * Activate auto confirmation for a given controllerId
+     * 
+     * @param controllerId
+     *            to activate auto-confirmation on
+     * @param initiator
+     *            can be set optionally (fallback is the current acting security
+     *            user)
+     * @param remark
+     *            (optional) remark
+     * @return the persisted {@link AutoConfirmationStatus}
+     */
+    @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
+    AutoConfirmationStatus activateAutoConfirmation(@NotEmpty String controllerId, String initiator, String remark);
+
+    /**
+     * Deactivate auto confirmation for a given controllerId
+     * 
+     * @param controllerId
+     *            to deactivate auto-confirmation on
+     */
+    @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
+    void deactivateAutoConfirmation(@NotEmpty String controllerId);
 }

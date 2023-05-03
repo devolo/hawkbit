@@ -9,7 +9,6 @@
 package org.eclipse.hawkbit.repository.jpa;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -92,6 +91,9 @@ public class JpaSystemManagement implements CurrentTenantCacheKeyGenerator, Syst
 
     @Autowired
     private TargetTagRepository targetTagRepository;
+
+    @Autowired
+    private TargetTypeRepository targetTypeRepository;
 
     @Autowired
     private DistributionSetTagRepository distributionSetTagRepository;
@@ -183,12 +185,7 @@ public class JpaSystemManagement implements CurrentTenantCacheKeyGenerator, Syst
     }
 
     private void usageStatsPerTenant(final SystemUsageReportWithTenants report) {
-        final List<String> tenants = findTenants(PageRequest.of(0, MAX_TENANTS_QUERY)).getContent();
-
-        tenants.forEach(tenant -> tenantAware.runAsTenant(tenant, () -> {
-            report.addTenantData(systemStatsManagement.getStatsOfTenant());
-            return null;
-        }));
+        forEachTenant(tenant -> report.addTenantData(systemStatsManagement.getStatsOfTenant()));
     }
 
     @Override
@@ -203,11 +200,11 @@ public class JpaSystemManagement implements CurrentTenantCacheKeyGenerator, Syst
         // Create if it does not exist
         if (result == null) {
             try {
-                currentTenantCacheKeyGenerator.getCreateInitialTenant().set(tenant);
+                currentTenantCacheKeyGenerator.setTenantInCreation(tenant);
                 return createInitialTenantMetaData(tenant);
 
             } finally {
-                currentTenantCacheKeyGenerator.getCreateInitialTenant().remove();
+                currentTenantCacheKeyGenerator.removeTenantInCreation();
             }
         }
         return result;
@@ -260,6 +257,7 @@ public class JpaSystemManagement implements CurrentTenantCacheKeyGenerator, Syst
             targetRepository.deleteByTenant(tenant);
             targetFilterQueryRepository.deleteByTenant(tenant);
             rolloutRepository.deleteByTenant(tenant);
+            targetTypeRepository.deleteByTenant(tenant);
             targetTagRepository.deleteByTenant(tenant);
             distributionSetTagRepository.deleteByTenant(tenant);
             distributionSetRepository.deleteByTenant(tenant);
@@ -276,20 +274,17 @@ public class JpaSystemManagement implements CurrentTenantCacheKeyGenerator, Syst
         if (tenantAware.getCurrentTenant() == null) {
             throw new IllegalStateException("Tenant not set");
         }
-
         return getTenantMetadata(tenantAware.getCurrentTenant());
     }
 
     @Override
     @Cacheable(value = "currentTenant", keyGenerator = "currentTenantKeyGenerator", cacheManager = "directCacheManager", unless = "#result == null")
     public String currentTenant() {
-        final String initialTenantCreation = currentTenantCacheKeyGenerator.getCreateInitialTenant().get();
-        if (initialTenantCreation == null) {
+        return currentTenantCacheKeyGenerator.getTenantInCreation().orElseGet(() -> {
             final TenantMetaData findByTenant = tenantMetaDataRepository
                     .findByTenantIgnoreCase(tenantAware.getCurrentTenant());
             return findByTenant != null ? findByTenant.getTenant() : null;
-        }
-        return initialTenantCreation;
+        });
     }
 
     @Override
@@ -312,7 +307,7 @@ public class JpaSystemManagement implements CurrentTenantCacheKeyGenerator, Syst
                         Integer.MAX_VALUE));
         final SoftwareModuleType os = softwareModuleTypeRepository.save(new JpaSoftwareModuleType(
                 org.eclipse.hawkbit.repository.Constants.SMT_DEFAULT_OS_KEY,
-                org.eclipse.hawkbit.repository.Constants.SMT_DEFAULT_OS_NAME, "Core firmware or operationg system", 1));
+                org.eclipse.hawkbit.repository.Constants.SMT_DEFAULT_OS_NAME, "Core firmware or operation system", 1));
 
         // make sure the module types get their IDs
         entityManager.flush();

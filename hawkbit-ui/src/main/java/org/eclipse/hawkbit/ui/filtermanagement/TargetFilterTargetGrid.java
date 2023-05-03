@@ -12,14 +12,15 @@ import org.eclipse.hawkbit.repository.TargetManagement;
 import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.builder.GridComponentBuilder;
 import org.eclipse.hawkbit.ui.common.builder.StatusIconBuilder.TargetStatusIconSupplier;
-import org.eclipse.hawkbit.ui.common.data.mappers.TargetToProxyTargetMapper;
-import org.eclipse.hawkbit.ui.common.data.providers.TargetFilterStateDataProvider;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
+import org.eclipse.hawkbit.ui.common.data.suppliers.TargetFilterStateDataSupplier;
 import org.eclipse.hawkbit.ui.common.event.FilterType;
 import org.eclipse.hawkbit.ui.common.grid.AbstractGrid;
 import org.eclipse.hawkbit.ui.common.grid.support.FilterSupport;
 import org.eclipse.hawkbit.ui.filtermanagement.state.TargetFilterDetailsLayoutUiState;
 import org.eclipse.hawkbit.ui.utils.UIComponentIdProvider;
+
+import com.vaadin.ui.Label;
 
 /**
  * Shows the targets as a result of the executed filter query.
@@ -36,14 +37,23 @@ public class TargetFilterTargetGrid extends AbstractGrid<ProxyTarget, String> {
 
     private final TargetFilterDetailsLayoutUiState uiState;
 
-    TargetFilterTargetGrid(final CommonUiDependencies uiDependencies, final TargetManagement targetManagement,
-            final TargetFilterDetailsLayoutUiState uiState) {
-        super(uiDependencies.getI18n(), uiDependencies.getEventBus());
+    /**
+     * TargetFilterTargetGrid constructor.
+     *
+     * @param uiDependencies                {@link CommonUiDependencies}
+     * @param targetManagement
+     * @param targetFilterStateDataSupplier data supplier
+     * @param uiState                       layout state
+     */
+    public TargetFilterTargetGrid(final CommonUiDependencies uiDependencies,
+                                  TargetManagement targetManagement, final TargetFilterStateDataSupplier targetFilterStateDataSupplier,
+                                  final TargetFilterDetailsLayoutUiState uiState) {
+        super(uiDependencies.getI18n(), uiDependencies.getEventBus(), null,
+                targetFilterStateDataSupplier.dataCommunicator());
 
         this.uiState = uiState;
 
-        setFilterSupport(new FilterSupport<>(
-                new TargetFilterStateDataProvider(targetManagement, new TargetToProxyTargetMapper(i18n))));
+        setFilterSupport(new FilterSupport<>(targetFilterStateDataSupplier.dataProvider()));
         initFilterMappings();
 
         targetStatusIconSupplier = new TargetStatusIconSupplier<>(i18n, ProxyTarget::getUpdateStatus, TARGET_STATUS_ID);
@@ -79,8 +89,10 @@ public class TargetFilterTargetGrid extends AbstractGrid<ProxyTarget, String> {
 
         GridComponentBuilder.addDescriptionColumn(this, i18n, TARGET_DESCRIPTION_ID);
 
-        GridComponentBuilder.addIconColumn(this, targetStatusIconSupplier::getLabel, TARGET_STATUS_ID,
+        final Column<ProxyTarget, Label> statusColumn = GridComponentBuilder.addIconColumn(this,
+                targetStatusIconSupplier::getLabel, TARGET_STATUS_ID,
                 i18n.getMessage("header.status"));
+        GridComponentBuilder.setColumnSortable(statusColumn, "updateStatus");
 
         GridComponentBuilder.addCreatedAndModifiedColumns(this, i18n);
 

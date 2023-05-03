@@ -54,7 +54,8 @@ public class RolloutGroupTargetGridLayout extends AbstractGridComponentLayout {
         this.rolloutGroupTargetsListHeader = new RolloutGroupTargetGridHeader(uiDependencies, rolloutManagementUIState);
         this.rolloutGroupTargetsListGrid = new RolloutGroupTargetGrid(uiDependencies, rolloutGroupManagement,
                 rolloutManagementUIState);
-        this.rolloutGroupTargetCountMessageLabel = new TargetFilterCountMessageLabel(uiDependencies.getI18n());
+        this.rolloutGroupTargetCountMessageLabel = new TargetFilterCountMessageLabel(uiDependencies.getI18n(),
+                uiDependencies.getUiNotification());
 
         initGridDataUpdatedListener();
 
@@ -73,25 +74,27 @@ public class RolloutGroupTargetGridLayout extends AbstractGridComponentLayout {
 
     private void initGridDataUpdatedListener() {
         rolloutGroupTargetsListGrid.addDataChangedListener(event -> rolloutGroupTargetCountMessageLabel
-                .updateTotalFilteredTargetsCount(rolloutGroupTargetsListGrid.getDataSize()));
+                .updateTotalFilteredTargetsCount(rolloutGroupTargetsListGrid::getDataSize));
     }
 
     private List<MasterEntityAwareComponent<ProxyRolloutGroup>> getMasterEntityAwareComponents() {
         return Arrays.asList(rolloutGroupTargetsListHeader, rolloutGroupTargetsListGrid.getMasterEntitySupport());
     }
 
-    /**
-     * Restore the rollout group target list state
-     */
+    @Override
     public void restoreState() {
         rolloutGroupTargetsListHeader.restoreState();
         rolloutGroupTargetsListGrid.restoreState();
     }
 
-    /**
-     * unsubscribe all listener
-     */
-    public void unsubscribeListener() {
+    @Override
+    public void subscribeListeners() {
+        rolloutChangedListener.subscribe();
+        rolloutGroupChangedListener.subscribe();
+    }
+
+    @Override
+    public void unsubscribeListeners() {
         rolloutChangedListener.unsubscribe();
         rolloutGroupChangedListener.unsubscribe();
     }

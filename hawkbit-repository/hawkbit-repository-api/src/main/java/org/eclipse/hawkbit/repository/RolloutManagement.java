@@ -20,15 +20,17 @@ import org.eclipse.hawkbit.im.authentication.SpPermission.SpringEvalExpressions;
 import org.eclipse.hawkbit.repository.builder.RolloutCreate;
 import org.eclipse.hawkbit.repository.builder.RolloutGroupCreate;
 import org.eclipse.hawkbit.repository.builder.RolloutUpdate;
+import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.exception.EntityReadOnlyException;
-import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
 import org.eclipse.hawkbit.repository.exception.RolloutIllegalStateException;
 import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.repository.model.Rollout.RolloutStatus;
 import org.eclipse.hawkbit.repository.model.RolloutGroup.RolloutGroupStatus;
+import org.eclipse.hawkbit.repository.model.RolloutGroupConditions;
+import org.eclipse.hawkbit.repository.model.RolloutGroupsValidation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -43,37 +45,7 @@ import org.springframework.util.concurrent.ListenableFuture;
 public interface RolloutManagement {
 
     /**
-     * Process rollout based on its current {@link Rollout#getStatus()}.
-     * 
-     * For {@link RolloutStatus#CREATING} that means creating the
-     * {@link RolloutGroup}s with {@link Target}s and when finished switch to
-     * {@link RolloutStatus#READY}.
-     * 
-     * For {@link RolloutStatus#READY} that means switching to
-     * {@link RolloutStatus#STARTING} if the {@link Rollout#getStartAt()} is set
-     * and time of calling this method is beyond this point in time. This auto
-     * start mechanism is optional. Call {@link #start(Long)} otherwise.
-     * 
-     * For {@link RolloutStatus#STARTING} that means starting the first
-     * {@link RolloutGroup}s in line and when finished switch to
-     * {@link RolloutStatus#RUNNING}.
-     * 
-     * For {@link RolloutStatus#RUNNING} that means checking to activate further
-     * groups based on the defined thresholds. Switched to
-     * {@link RolloutStatus#FINISHED} is all groups are finished.
-     * 
-     * For {@link RolloutStatus#DELETING} that means either soft delete in case
-     * rollout was already {@link RolloutStatus#RUNNING} which results in status
-     * change {@link RolloutStatus#DELETED} or hard delete from the persistence
-     * otherwise.
-     * 
-     */
-    @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
-    void handleRollouts();
-
-    /**
-     * Counts all {@link Rollout}s in the repository that are not marked as
-     * deleted.
+     * Counts all {@link Rollout}s in the repository that are not marked as deleted.
      *
      * @return number of roll outs
      */
@@ -97,28 +69,40 @@ public interface RolloutManagement {
     long countByFilters(@NotEmpty String searchText);
 
     /**
+     * Counts all {@link Rollout}s for a specific {@link DistributionSet} that
+     * are stoppable
+     *
+     * @param setId
+     *            the distribution set
+     * @return the count
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
+    long countByDistributionSetIdAndRolloutIsStoppable(long setId);
+
+    /**
      * Persists a new rollout entity. The filter within the
-     * {@link Rollout#getTargetFilterQuery()} is used to retrieve the targets
-     * which are effected by this rollout to create. The amount of groups will
-     * be defined as equally sized.
+     * {@link Rollout#getTargetFilterQuery()} is used to retrieve the targets which
+     * are effected by this rollout to create. The amount of groups will be defined
+     * as equally sized.
      *
      * The rollout is not started. Only the preparation of the rollout is done,
-     * creating and persisting all the necessary groups. The Rollout and the
-     * groups are persisted in {@link RolloutStatus#CREATING} and
+     * creating and persisting all the necessary groups. The Rollout and the groups
+     * are persisted in {@link RolloutStatus#CREATING} and
      * {@link RolloutGroupStatus#CREATING}.
      *
      * The RolloutScheduler will start to assign targets to the groups. Once all
-     * targets have been assigned to the groups, the rollout status is changed
-     * to {@link RolloutStatus#READY} so it can be started with
-     * {@link #start(Rollout)}.
+     * targets have been assigned to the groups, the rollout status is changed to
+     * {@link RolloutStatus#READY} so it can be started with .
      *
      * @param create
      *            the rollout entity to create
      * @param amountGroup
      *            the amount of groups to split the rollout into
+     * @param confirmationRequired
+     *            if a confirmation is required by the device group(s) of the rollout
      * @param conditions
-     *            the rolloutgroup conditions and actions which should be
-     *            applied for each {@link RolloutGroup}
+     *            the rolloutgroup conditions and actions which should be applied
+     *            for each {@link RolloutGroup}
      * @return the persisted rollout.
      *
      * @throws EntityNotFoundException
@@ -130,22 +114,23 @@ public interface RolloutManagement {
      *             exceeded.
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_CREATE)
-    Rollout create(@NotNull @Valid RolloutCreate create, int amountGroup, @NotNull RolloutGroupConditions conditions);
+    Rollout create(@NotNull @Valid RolloutCreate create, int amountGroup, boolean confirmationRequired,
+            @NotNull RolloutGroupConditions conditions);
 
     /**
      * Persists a new rollout entity. The filter within the
-     * {@link Rollout#getTargetFilterQuery()} is used to filter the targets
-     * which are affected by this rollout. The given groups will be used to
-     * create the groups.
+     * {@link Rollout#getTargetFilterQuery()} is used to filter the targets which
+     * are affected by this rollout. The given groups will be used to create the
+     * groups.
      *
      * The rollout is not started. Only the preparation of the rollout is done,
-     * creating and persisting all the necessary groups. The Rollout and the
-     * groups are persisted in {@link RolloutStatus#CREATING} and
+     * creating and persisting all the necessary groups. The Rollout and the groups
+     * are persisted in {@link RolloutStatus#CREATING} and
      * {@link RolloutGroupStatus#CREATING}.
      *
      * The RolloutScheduler will start to assign targets to the groups. Once all
-     * targets have been assigned to the groups, the rollout status is changed
-     * to {@link RolloutStatus#READY} so it can be started with
+     * targets have been assigned to the groups, the rollout status is changed to
+     * {@link RolloutStatus#READY} so it can be started with
      * {@link #start(Rollout)}.
      *
      * @param rollout
@@ -153,9 +138,9 @@ public interface RolloutManagement {
      * @param groups
      *            optional definition of groups
      * @param conditions
-     *            the rollout group conditions and actions which should be
-     *            applied for each {@link RolloutGroup} if not defined by the
-     *            RolloutGroup itself
+     *            the rollout group conditions and actions which should be applied
+     *            for each {@link RolloutGroup} if not defined by the RolloutGroup
+     *            itself
      * @return the persisted rollout.
      *
      * @throws EntityNotFoundException
@@ -180,6 +165,8 @@ public interface RolloutManagement {
      *            the rollout
      * @param createdAt
      *            timestamp when the rollout was created
+     * @param dsTypeId
+     *            ID of the type of distribution set of the rollout
      * @return the validation information
      * @throws RolloutIllegalStateException
      *             thrown when no targets are targeted by the rollout
@@ -189,7 +176,7 @@ public interface RolloutManagement {
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ_AND_TARGET_READ)
     ListenableFuture<RolloutGroupsValidation> validateTargetsInGroups(@Valid List<RolloutGroupCreate> groups,
-            String targetFilter, Long createdAt);
+            String targetFilter, Long createdAt, @NotNull Long dsTypeId);
 
     /**
      * Retrieves all rollouts.
@@ -214,11 +201,11 @@ public interface RolloutManagement {
      *         statuses
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
-    Page<Rollout> findAllWithDetailedStatus(@NotNull Pageable pageable, boolean deleted);
+    Slice<Rollout> findAllWithDetailedStatus(@NotNull Pageable pageable, boolean deleted);
 
     /**
      * Retrieves all rollouts found by the given specification.
-     * 
+     *
      * @param pageable
      *            the page request to sort and limit the result
      * @param rsqlParam
@@ -227,7 +214,7 @@ public interface RolloutManagement {
      *            flag if deleted rollouts should be included
      *
      * @return a page of found rollouts
-     * 
+     *
      * @throws RSQLParameterUnsupportedFieldException
      *             if a field in the RSQL string is used but not provided by the
      *             given {@code fieldNameProvider}
@@ -260,6 +247,14 @@ public interface RolloutManagement {
     Page<Rollout> findByIsCleanedUpIsFalseAndDeletedIsTrue(@NotNull Pageable pageable);
 
     /**
+     * Find rollouts which are still active and needs to be handled.
+     * 
+     * @return a list of active rollouts
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
+    List<Long> findActiveRollouts();
+
+    /**
      * Retrieves a specific rollout by its ID.
      *
      * @param rolloutId
@@ -289,7 +284,7 @@ public interface RolloutManagement {
      * @param deleted
      *            flag if deleted rollouts should be included
      * @return rollout details of targets count for different statuses
-     * 
+     *
      *
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_READ)
@@ -300,7 +295,7 @@ public interface RolloutManagement {
      *
      * @param rolloutId
      *            rollout id
-     * 
+     *
      * @return <code>true</code> if rollout exists
      */
     boolean exists(long rolloutId);
@@ -325,7 +320,7 @@ public interface RolloutManagement {
      * @throws RolloutIllegalStateException
      *             if given rollout is not in {@link RolloutStatus#RUNNING}.
      *             Only running rollouts can be paused.
-     * 
+     *
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_HANDLE)
     void pauseRollout(long rolloutId);
@@ -337,7 +332,7 @@ public interface RolloutManagement {
      *
      * @param rolloutId
      *            the rollout to be resumed
-     * 
+     *
      * @throws EntityNotFoundException
      *             if rollout with given ID does not exist
      * @throws RolloutIllegalStateException
@@ -375,14 +370,14 @@ public interface RolloutManagement {
      * {@link RolloutStatus#WAITING_FOR_APPROVAL}. If the rollout is approved,
      * it switches state to {@link RolloutStatus#READY}, otherwise it switches
      * to state {@link RolloutStatus#APPROVAL_DENIED}
-     * 
+     *
      * @param rolloutId
      *            the rollout to be approved or denied.
      * @param decision
      *            decision whether a rollout is approved or denied.
      * @param remark
      *            user remark on approve / deny decision
-     * 
+     *
      * @return approved or denied rollout
      *
      * @throws EntityNotFoundException
@@ -406,7 +401,7 @@ public interface RolloutManagement {
      *            the rollout to be started
      *
      * @return started rollout
-     * 
+     *
      * @throws EntityNotFoundException
      *             if rollout with given ID does not exist
      * @throws RolloutIllegalStateException
@@ -423,13 +418,13 @@ public interface RolloutManagement {
      *            rollout to be updated
      *
      * @return Rollout updated rollout
-     * 
+     *
      * @throws EntityNotFoundException
      *             if rollout or DS with given IDs do not exist
      * @throws EntityReadOnlyException
      *             if rollout is in soft deleted state, i.e. only kept as
      *             reference
-     * 
+     *
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_UPDATE)
     Rollout update(@NotNull @Valid RolloutUpdate update);
@@ -437,8 +432,8 @@ public interface RolloutManagement {
     /**
      * Deletes a rollout. A rollout might be deleted asynchronously by
      * indicating the rollout by {@link RolloutStatus#DELETING}
-     * 
-     * 
+     *
+     *
      * @param rolloutId
      *            the ID of the rollout to be deleted
      */
@@ -446,5 +441,35 @@ public interface RolloutManagement {
     void delete(long rolloutId);
 
     @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
+    void setIsCleanedUpToFalseForTargetWithId(@NotNull final long targetId);
+
+    @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
     void setRolloutAsCleanedUp(@NotNull final Rollout rollout);
+    /**
+     * Cancels all rollouts that refer to the given {@link DistributionSet}.
+     * This is called when a distribution set is invalidated and the cancel
+     * rollouts option is activated.
+     *
+     * @param set
+     *            the {@link DistributionSet} for that the rollouts should be
+     *            canceled
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_UPDATE)
+    void cancelRolloutsForDistributionSet(DistributionSet set);
+
+    /**
+     * Triggers next group of a rollout for processing even success threshold
+     * isn't met yet. Current running groups will not change their status.
+     *
+     * @param rolloutId
+     *            the rollout to be paused.
+     *
+     * @throws EntityNotFoundException
+     *             if rollout or group with given ID does not exist
+     * @throws RolloutIllegalStateException
+     *             if given rollout is not in {@link RolloutStatus#RUNNING}.
+     *
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_UPDATE)
+    void triggerNextGroup(long rolloutId);
 }

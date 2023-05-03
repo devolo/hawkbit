@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -55,15 +56,20 @@ public abstract class AbstractArtifactRepository implements ArtifactRepository {
         }
 
         String tempFile = null;
-        try (final DigestInputStream inputstream = wrapInDigestInputStream(content, mdSHA1, mdMD5, mdSHA256)) {
+        try (final DigestInputStream inputStream = wrapInDigestInputStream(content, mdSHA1, mdMD5, mdSHA256)) {
 
-            tempFile = storeTempFile(inputstream);
+            tempFile = storeTempFile(inputStream);
 
             final String sha1Hash16 = BaseEncoding.base16().lowerCase().encode(mdSHA1.digest());
             final String md5Hash16 = BaseEncoding.base16().lowerCase().encode(mdMD5.digest());
             final String sha256Hash16 = BaseEncoding.base16().lowerCase().encode(mdSHA256.digest());
 
             checkHashes(sha1Hash16, md5Hash16, sha256Hash16, providedHashes);
+
+            // Check if file with same sha1 hash exists and if so return it
+            if (existsByTenantAndSha1(tenant, sha1Hash16)) {
+                return addMissingHashes(getArtifactBySha1(tenant, sha1Hash16), sha1Hash16, md5Hash16, sha256Hash16);
+            }
 
             return store(sanitizeTenant(tenant), new DbArtifactHash(sha1Hash16, md5Hash16, sha256Hash16), contentType,
                     tempFile);
@@ -76,27 +82,40 @@ public abstract class AbstractArtifactRepository implements ArtifactRepository {
         }
     }
 
+    private AbstractDbArtifact addMissingHashes(final AbstractDbArtifact existing, final String calculatedSha1,
+            final String calculatedMd5, final String calculatedSha256) {
+
+        final String sha1 = checkEmpty(existing.getHashes().getSha1(), calculatedSha1);
+        final String md5 = checkEmpty(existing.getHashes().getMd5(), calculatedMd5);
+        final String sha256 = checkEmpty(existing.getHashes().getSha256(), calculatedSha256);
+
+        existing.setHashes(new DbArtifactHash(sha1, md5, sha256));
+        return existing;
+    }
+
+    private String checkEmpty(final String value, final String fallback) {
+        return StringUtils.isEmpty(value) ? fallback : value;
+    }
+
     protected void deleteTempFile(final String tempFile) {
         final File file = new File(tempFile);
-
-        if (file.exists() && !file.delete()) {
-            LOG.error("Could not delete temp file {}", file);
+        try {
+            Files.deleteIfExists(file.toPath());
+        } catch (IOException e) {
+            LOG.error("Could not delete temp file {} ({})", file, e.getMessage());
         }
     }
 
     protected String storeTempFile(final InputStream content) throws IOException {
         final File file = createTempFile();
-
         try (final OutputStream outputstream = new BufferedOutputStream(new FileOutputStream(file))) {
             ByteStreams.copy(content, outputstream);
             outputstream.flush();
         }
-
         return file.getPath();
     }
 
     private static File createTempFile() {
-
         try {
             return File.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
         } catch (final IOException e) {
@@ -118,12 +137,14 @@ public abstract class AbstractArtifactRepository implements ArtifactRepository {
                     + " does not match the calculated md5 hash " + md5Hash16, HashNotMatchException.MD5);
         }
         if (areHashesNotMatching(providedHashes.getSha256(), sha256Hash16)) {
-            throw new HashNotMatchException("The given sha256 hash " + providedHashes.getSha256()
-                    + " does not match the calculated sha256 hash " + sha256Hash16, HashNotMatchException.SHA256);
+            throw new HashNotMatchException(
+                    "The given sha256 hash " + providedHashes.getSha256()
+                            + " does not match the calculated sha256 hash " + sha256Hash16,
+                    HashNotMatchException.SHA256);
         }
     }
 
-    private static boolean areHashesNotMatching(String providedHashValue, String hashValue) {
+    private static boolean areHashesNotMatching(final String providedHashValue, final String hashValue) {
         return providedHashValue != null && !hashValue.equals(providedHashValue);
     }
 
@@ -138,5 +159,4 @@ public abstract class AbstractArtifactRepository implements ArtifactRepository {
     protected static String sanitizeTenant(final String tenant) {
         return tenant.trim().toUpperCase();
     }
-
 }

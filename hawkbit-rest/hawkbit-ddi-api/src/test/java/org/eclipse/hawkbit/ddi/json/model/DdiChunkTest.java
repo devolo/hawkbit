@@ -10,12 +10,13 @@
 package org.eclipse.hawkbit.ddi.json.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
@@ -31,21 +32,21 @@ import io.qameta.allure.Story;
 @Story("Serializability of DDI api Models")
 public class DdiChunkTest {
 
-    private ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
     @Description("Verify the correct serialization and deserialization of the model")
     public void shouldSerializeAndDeserializeObject() throws IOException {
         // Setup
-        String part = "1234";
-        String version = "1.0";
-        String name = "Dummy-Artifact";
-        List<DdiArtifact> dummyArtifacts = Collections.emptyList();
-        DdiChunk ddiChunk = new DdiChunk(part, version, name, dummyArtifacts, null);
+        final String part = "1234";
+        final String version = "1.0";
+        final String name = "Dummy-Artifact";
+        final List<DdiArtifact> dummyArtifacts = Collections.emptyList();
+        final DdiChunk ddiChunk = new DdiChunk(part, version, name, null, dummyArtifacts, null);
 
         // Test
-        String serializedDdiChunk = mapper.writeValueAsString(ddiChunk);
-        DdiChunk deserializedDdiChunk = mapper.readValue(serializedDdiChunk, DdiChunk.class);
+        final String serializedDdiChunk = mapper.writeValueAsString(ddiChunk);
+        final DdiChunk deserializedDdiChunk = mapper.readValue(serializedDdiChunk, DdiChunk.class);
 
         assertThat(serializedDdiChunk).contains(part, version, name);
         assertThat(deserializedDdiChunk.getPart()).isEqualTo(part);
@@ -58,10 +59,10 @@ public class DdiChunkTest {
     @Description("Verify the correct deserialization of a model with a additional unknown property")
     public void shouldDeserializeObjectWithUnknownProperty() throws IOException {
         // Setup
-        String serializedDdiChunk = "{\"part\":\"1234\",\"version\":\"1.0\",\"name\":\"Dummy-Artifact\",\"artifacts\":[],\"unknownProperty\":\"test\"}";
+        final String serializedDdiChunk = "{\"part\":\"1234\",\"version\":\"1.0\",\"name\":\"Dummy-Artifact\",\"artifacts\":[],\"unknownProperty\":\"test\"}";
 
         // Test
-        DdiChunk ddiChunk = mapper.readValue(serializedDdiChunk, DdiChunk.class);
+        final DdiChunk ddiChunk = mapper.readValue(serializedDdiChunk, DdiChunk.class);
 
         assertThat(ddiChunk.getPart()).isEqualTo("1234");
         assertThat(ddiChunk.getVersion()).isEqualTo("1.0");
@@ -69,13 +70,14 @@ public class DdiChunkTest {
         assertThat(ddiChunk.getArtifacts().size()).isEqualTo(0);
     }
 
-    @Test(expected = MismatchedInputException.class)
+    @Test
     @Description("Verify that deserialization fails for known properties with a wrong datatype")
     public void shouldFailForObjectWithWrongDataTypes() throws IOException {
         // Setup
-        String serializedDdiChunk = "{\"part\":[\"1234\"],\"version\":\"1.0\",\"name\":\"Dummy-Artifact\",\"artifacts\":[]}";
+        final String serializedDdiChunk = "{\"part\":[\"1234\"],\"version\":\"1.0\",\"name\":\"Dummy-Artifact\",\"artifacts\":[]}";
 
         // Test
-        mapper.readValue(serializedDdiChunk, DdiChunk.class);
+        assertThatExceptionOfType(MismatchedInputException.class)
+                .isThrownBy(() -> mapper.readValue(serializedDdiChunk, DdiChunk.class));
     }
 }

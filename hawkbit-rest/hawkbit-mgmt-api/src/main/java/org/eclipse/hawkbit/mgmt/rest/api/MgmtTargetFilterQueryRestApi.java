@@ -24,13 +24,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * Api for handling target operations.
  */
-@RequestMapping(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING)
+// no request mapping specified here to avoid CVE-2021-22044 in Feign client
 public interface MgmtTargetFilterQueryRestApi {
 
     /**
@@ -41,7 +40,8 @@ public interface MgmtTargetFilterQueryRestApi {
      * @return a single target with status OK.
      */
 
-    @GetMapping(value = "/{filterId}", produces = { MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
+    @GetMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{filterId}", produces = {
+            MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<MgmtTargetFilterQuery> getFilter(@PathVariable("filterId") Long filterId);
 
     /**
@@ -64,7 +64,8 @@ public interface MgmtTargetFilterQueryRestApi {
      *         JsonResponseExceptionHandler is handling the response.
      */
 
-    @GetMapping(produces = { MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
+    @GetMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING, produces = { MediaTypes.HAL_JSON_VALUE,
+            MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<PagedList<MgmtTargetFilterQuery>> getFilters(
             @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_PAGING_OFFSET, defaultValue = MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_OFFSET) int pagingOffsetParam,
             @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_PAGING_LIMIT, defaultValue = MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_LIMIT) int pagingLimitParam,
@@ -82,8 +83,9 @@ public interface MgmtTargetFilterQueryRestApi {
      *         is returned. In any failure the JsonResponseExceptionHandler is
      *         handling the response.
      */
-    @PostMapping(consumes = { MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE }, produces = {
-            MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
+    @PostMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING, consumes = { MediaTypes.HAL_JSON_VALUE,
+            MediaType.APPLICATION_JSON_VALUE }, produces = { MediaTypes.HAL_JSON_VALUE,
+                    MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<MgmtTargetFilterQuery> createFilter(@RequestBody MgmtTargetFilterQueryRequestBody filter);
 
     /**
@@ -100,8 +102,8 @@ public interface MgmtTargetFilterQueryRestApi {
      * @return the updated target filter response which contains all fields
      *         including fields which have not been updated
      */
-    @PutMapping(value = "/{filterId}", consumes = { MediaTypes.HAL_JSON_VALUE,
-            MediaType.APPLICATION_JSON_VALUE }, produces = { MediaTypes.HAL_JSON_VALUE,
+    @PutMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{filterId}", consumes = {
+            MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE }, produces = { MediaTypes.HAL_JSON_VALUE,
                     MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<MgmtTargetFilterQuery> updateFilter(@PathVariable("filterId") Long filterId,
             @RequestBody MgmtTargetFilterQueryRequestBody targetFilterRest);
@@ -115,7 +117,8 @@ public interface MgmtTargetFilterQueryRestApi {
      *         OK. In any failure the JsonResponseExceptionHandler is handling
      *         the response.
      */
-    @DeleteMapping(value = "/{filterId}", produces = { MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
+    @DeleteMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{filterId}", produces = {
+            MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<Void> deleteFilter(@PathVariable("filterId") Long filterId);
 
     /**
@@ -126,7 +129,7 @@ public interface MgmtTargetFilterQueryRestApi {
      *            the ID of the target filter to be queried
      * @return list of controller IDs matching the target filter criteria.
      */
-    @GetMapping(value = "/{filterId}/results", produces = { MediaTypes.HAL_JSON_VALUE,
+    @GetMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{filterId}/results", produces = { MediaTypes.HAL_JSON_VALUE,
             MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<List<String>> getResults(@PathVariable("filterId") Long filterId);
 
@@ -139,8 +142,8 @@ public interface MgmtTargetFilterQueryRestApi {
      * @return the assigned distribution set with status OK, if none is assigned
      *         than {@code null} content (e.g. "{}")
      */
-    @GetMapping(value = "/{filterId}/autoAssignDS", produces = { MediaTypes.HAL_JSON_VALUE,
-            MediaType.APPLICATION_JSON_VALUE })
+    @GetMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{filterId}/autoAssignDS", produces = {
+            MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<MgmtDistributionSet> getAssignedDistributionSet(@PathVariable("filterId") Long filterId);
 
     /**
@@ -154,8 +157,8 @@ public interface MgmtTargetFilterQueryRestApi {
      *            assignment
      * @return http status
      */
-    @PostMapping(value = "/{filterId}/autoAssignDS", consumes = { MediaTypes.HAL_JSON_VALUE,
-            MediaType.APPLICATION_JSON_VALUE }, produces = { MediaTypes.HAL_JSON_VALUE,
+    @PostMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{filterId}/autoAssignDS", consumes = {
+            MediaTypes.HAL_JSON_VALUE, MediaType.APPLICATION_JSON_VALUE }, produces = { MediaTypes.HAL_JSON_VALUE,
                     MediaType.APPLICATION_JSON_VALUE })
     ResponseEntity<MgmtTargetFilterQuery> postAssignedDistributionSet(@PathVariable("filterId") Long filterId,
             @RequestBody MgmtDistributionSetAutoAssignment dsIdWithActionType);
@@ -168,7 +171,7 @@ public interface MgmtTargetFilterQueryRestApi {
      *            of the target to change
      * @return http status
      */
-    @DeleteMapping(value = "/{filterId}/autoAssignDS")
+    @DeleteMapping(value = MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{filterId}/autoAssignDS")
     ResponseEntity<Void> deleteAssignedDistributionSet(@PathVariable("filterId") Long filterId);
 
 }

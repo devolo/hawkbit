@@ -10,9 +10,7 @@ package org.eclipse.hawkbit.repository.jpa.rsql;
 
 import io.qameta.allure.Description;
 import org.eclipse.hawkbit.repository.TargetFields;
-import org.junit.Test;
-
-import static org.junit.Assert.assertTrue;
+import org.junit.jupiter.api.Test;
 
 public class RSQLTargetFieldValidationTest {
     @Test
@@ -24,17 +22,17 @@ public class RSQLTargetFieldValidationTest {
                 " and IPADDRESS == 0123 and LASTCONTROLLERREQUESTAT == 0123" +
                 " and tag == beta";
 
-        assertTrue("All fields should be valid", RSQLUtility.isValid(rsql1, TargetFields.class));
+        RSQLUtility.validateRsqlFor(rsql1, TargetFields.class);
 
         final String rsql2 = "ASSIGNEDDS.name == abcd and ASSIGNEDDS.version == 0123" +
                 " and INSTALLEDDS.name == abcd and INSTALLEDDS.version == 0123";
-        assertTrue(RSQLUtility.isValid(rsql2, TargetFields.class));
+        RSQLUtility.validateRsqlFor(rsql2, TargetFields.class);
 
         final String rsql3 = "ATTRIBUTE.subkey1 == test and ATTRIBUTE.subkey2 == test" +
                 " and METADATA.metakey1 == abcd and METADATA.metavalue2 == asdfg";
-        assertTrue("All fields should be valid", RSQLUtility.isValid(rsql3, TargetFields.class));
+        RSQLUtility.validateRsqlFor(rsql3, TargetFields.class);
 
         final String rsql4 = "CREATEDAT =lt= ${NOW_TS} and LASTMODIFIEDAT =ge= ${OVERDUE_TS}";
-        assertTrue(RSQLUtility.isValid(rsql4, TargetFields.class));
+        RSQLUtility.validateRsqlFor(rsql4, TargetFields.class);
     }
 }

@@ -10,11 +10,11 @@ Eclipse [hawkBit](http://www.eclipse.org/hawkbit/index.html) is an domain indepe
 This is a fork maintained by [devolo AG,](https://www.devolo.com) Germany.
 
 Build: [![Circle CI](https://circleci.com/gh/eclipse/hawkbit.svg?style=shield)](https://circleci.com/gh/eclipse/hawkbit)
-[![SonarQuality](https://sonar.ops.bosch-iot-rollouts.com/api/badges/gate?key=org.eclipse.hawkbit:hawkbit-parent)](https://sonar.ops.bosch-iot-rollouts.com)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.eclipse.hawkbit/hawkbit-parent/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.eclipse.hawkbit/hawkbit-parent)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=org.eclipse.hawkbit%3Ahawkbit-parent&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=org.eclipse.hawkbit%3Ahawkbit-parent)
+[![Maven Central](https://img.shields.io/maven-central/v/org.eclipse.hawkbit/hawkbit-parent?color=blue)](https://maven-badges.herokuapp.com/maven-central/org.eclipse.hawkbit/hawkbit-parent)
 [![Lines of code](https://img.shields.io/badge/dynamic/xml.svg?label=Lines%20of%20code&url=https%3A%2F%2Fwww.openhub.net%2Fprojects%2Fhawkbit.xml%3Fapi_key%3D30bc3f3fad087c2c5a6a67a8071665ba0fbe3b6236ffbf71b7d20849f4a5e35a&query=%2Fresponse%2Fresult%2Fproject%2Fanalysis%2Ftotal_code_lines&colorB=lightgrey)](https://www.openhub.net/p/hawkbit)
 
-Docker: [![Docker](https://images.microbadger.com/badges/version/hawkbit/hawkbit-update-server.svg)](https://hub.docker.com/r/hawkbit/hawkbit-update-server) [![Docker MYSQL](https://images.microbadger.com/badges/version/hawkbit/hawkbit-update-server:latest-mysql.svg)](https://hub.docker.com/r/hawkbit/hawkbit-update-server)
+Docker: [![Docker](https://img.shields.io/docker/v/hawkbit/hawkbit-update-server/latest?color=blue)](https://hub.docker.com/r/hawkbit/hawkbit-update-server) [![Docker MYSQL](https://img.shields.io/docker/v/hawkbit/hawkbit-update-server/latest-mysql?color=blue)](https://hub.docker.com/r/hawkbit/hawkbit-update-server)
 
 # Documentation
 
@@ -35,22 +35,38 @@ Next to the hawkBit core hosted here the project maintains as well [examples](ht
 
 We offer a sandbox installation that is free for everyone to try out hawkBit. However, keep in mind that the sandbox database will be reset from time to time. It is also not possible to upload any artifacts into the sandbox. But you can use it to try out the Management UI, Management API and DDI API. Keep in mind as well that you are not permitted to store any kind of personal data in the sandbox.
 
-[https://hawkbit.eclipse.org](https://hawkbit.eclipse.org)
+[https://hawkbit.eclipseprojects.io/UI/login](https://hawkbit.eclipseprojects.io/UI/login)
 
 In addition the following vendors offer free trial accounts for their hawkBit compatible products:
 
 - [Bosch IoT Rollouts](https://developer.bosch-iot-suite.com/service/rollouts)
 - [Kynetics Update Factory](https://www.kynetics.com/iot-platform-update-factory)
 
-# Device Integration
+# Device Integration (Client libraries)
 
-hawkBit does not provide off the shelf clients for devices as part of the project. The long term goal is to provide an [Eclipse hono](https://github.com/eclipse/hono) integration which will provide connectivity through various IoT protocols and as a result allows a wide range of clients to connect to hawkBit. However, the hawkBit [Direct Device Integration (API) API](https://www.eclipse.org/hawkbit/apis/ddi_api/) is HTTP/JSon based which should allow any update client to integrate quite easily.
+hawkBit exposes HTTP/JSon based [Direct Device Integration (API) API](https://www.eclipse.org/hawkbit/apis/ddi_api/) that allow any update client to integrate quite easily.
+
+The [Eclipse Hara subproject](https://projects.eclipse.org/projects/iot.hawkbit.hara) aims to provide a reference agent software implementation of the Eclipse hawkBit device API. The [hara-ddiclient repository](https://github.com/eclipse/hara-ddiclient) provides:
+
+- a Kotlin library that facilitates and speeds up the development of DDI API clients running on the JVM
+- a virtual-device application which provides:
+    - a reference example on how to use the library
+    - a configurable virtual device that can be used for different testing scenarios
+
+The hara-ddiclient library has [reached version 2.x](https://github.com/eclipse/hara-ddiclient/releases), and has been successfully used in production for years.
+
+Additionally, the hawkBit project has the long term goal to provide [Eclipse Hono](https://github.com/eclipse/hono) integration which will provide connectivity through various IoT protocols and as a result will allow a wide range of clients to connect to hawkBit.
+
+## Other open-source hawkBit Clients
 
 There are clients outside of the Eclipse IoT eco system as well, e.g.:
 
 - [SWupdate](https://github.com/sbabic/swupdate) which is a Linux Update agent with focus on a efficient and safe way to update embedded systems.
-- [rauc-hawkbit](https://github.com/rauc/rauc-hawkbit) which is a python-based hawkBit client application and library for the [RAUC](https://github.com/rauc/rauc) update framework.
+- [rauc-hawkbit-updater](https://github.com/rauc/rauc-hawkbit-updater) which is a hawkBit client for the [RAUC](https://github.com/rauc/rauc) update framework written in C/glib.
+- [rauc-hawkbit](https://github.com/rauc/rauc-hawkbit) which is a python-based hawkBit client demo application and library for the [RAUC](https://github.com/rauc/rauc) update framework.
 - [hawkbit-rs](https://github.com/collabora/hawkbit-rs) provides a couple of [Rust](https://www.rust-lang.org) crates to help [implement](https://crates.io/crates/hawkbit) and [test](https://crates.io/crates/hawkbit_mock) hawkBit clients.
+- [Zephyr-RTOS](https://docs.zephyrproject.org/apidoc/latest/group__hawkbit.html#details):  The Zephyr OS is a small-footprint kernel designed for use on resource-constrained and embedded systems: from simple embedded environmental sensors and LED wearables to sophisticated embedded controllers, smart watches, and IoT wireless applications.
+- [ChirpStack](https://www.chirpstack.io/docs/chirpstack-gateway-os/use/software-update.html): ChirpStack Gateway OS uses [SWUpdate](https://github.com/sbabic/swupdate) for handling updates which can be integrated with Eclipse hawkBit. ChirpStack is an open-source LoRaWAN Network Server which can be used to to setup private or public LoRaWAN networks.
 
 # Runtime dependencies and support
 
@@ -58,14 +74,14 @@ There are clients outside of the Eclipse IoT eco system as well, e.g.:
 
 ## SQL database
 
-| Database                          |                           H2                           |                                MySQL/MariaDB                                |                          MS SQL Server                           |                                  PostgreSQL                        |      IBM DB2       |
+| Database                          |                           H2                           |                                MySQL/MariaDB                                |                          MS SQL Server                           |                             PostgreSQL                             |      IBM DB2       |
 | --------------------------------- | :----------------------------------------------------: | :-------------------------------------------------------------------------: | :--------------------------------------------------------------: | :----------------------------------------------------------------: | :----------------: |
-| DDLs maintained by project        |                   :white_check_mark:                   |                             :white_check_mark:                              |                       :white_check_mark:                         |                              :white_check_mark:                    | :white_check_mark: |
-| Test dependencies defined         |                   :white_check_mark:                   |                             :white_check_mark:                              |                       :white_check_mark:                         |                              :white_check_mark:                    |                    |
-| Versions tested                   |                          1.4                           |                          MySQL 5.6/5.7, AWS Aurora                          |                       MS SQL Server 2017/2019                    |                                PostgreSQL 12/13                    |  DB2 Server v11.1  |
-| Docker image with driver provided |                   :white_check_mark:                   |                     :white_check_mark: (Tag: "-mysql")                      |                       :white_check_mark:                         |                              :white_check_mark:                    |                    |
-| JDBC driver                       | [H2 1.4.200](https://github.com/h2database/h2database) | [MariaDB Connector/J 2.6.2](https://github.com/MariaDB/mariadb-connector-j) | [MSSQL-JDBC 7.4.1.jre8](https://github.com/Microsoft/mssql-jdbc) | [PostgreSQL JDBC Driver 42.2.14](https://github.com/pgjdbc/pgjdbc) |                    |
-| Status                            |                    Test, Dev                           |                              Production grade                               |                     Production grade                             |                                   Test, Dev                        |      Test, Dev     |
+| DDLs maintained by project        |                   :white_check_mark:                   |                             :white_check_mark:                              |                        :white_check_mark:                        |                         :white_check_mark:                         | :white_check_mark: |
+| Test dependencies defined         |                   :white_check_mark:                   |                             :white_check_mark:                              |                        :white_check_mark:                        |                         :white_check_mark:                         |                    |
+| Versions tested                   |                          2.1                           |                          MySQL 8.0.23, AWS Aurora                          |                     MS SQL Server 2017/2019                      |                          PostgreSQL 12/13                          |  DB2 Server v11.1  |
+| Docker image with driver provided |                   :white_check_mark:                   |                     :white_check_mark: (Tag: "-mysql")                      |                        :white_check_mark:                        |                         :white_check_mark:                         |                    |
+| JDBC driver                       | [H2 2.1.214](https://github.com/h2database/h2database) | [MariaDB Connector/J 2.7.8](https://github.com/MariaDB/mariadb-connector-j) | [MSSQL-JDBC 10.2.3.jre8](https://github.com/Microsoft/mssql-jdbc) | [PostgreSQL JDBC Driver 42.3.8](https://github.com/pgjdbc/pgjdbc) |                    |
+| Status                            |                       Test, Dev                        |                              Production grade                               |                         Production grade                         |                             Test, Dev                              |     Test, Dev      |
 
 ## (Optional) RabbitMQ: 3.6,3.7,3.8
 

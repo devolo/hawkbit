@@ -93,7 +93,8 @@ public class JpaRollout extends AbstractJpaNamedEntity implements Rollout, Event
             @ConversionValue(objectValue = "DELETING", dataValue = "9"),
             @ConversionValue(objectValue = "DELETED", dataValue = "10"),
             @ConversionValue(objectValue = "WAITING_FOR_APPROVAL", dataValue = "11"),
-            @ConversionValue(objectValue = "APPROVAL_DENIED", dataValue = "12") })
+            @ConversionValue(objectValue = "APPROVAL_DENIED", dataValue = "12"),
+            @ConversionValue(objectValue = "STOPPING", dataValue = "13") })
     @Convert("rolloutstatus")
     @NotNull
     private RolloutStatus status = RolloutStatus.CREATING;
@@ -277,24 +278,24 @@ public class JpaRollout extends AbstractJpaNamedEntity implements Rollout, Event
 
         if (isSoftDeleted(descriptorEvent)) {
             EventPublisherHolder.getInstance().getEventPublisher().publishEvent(new RolloutDeletedEvent(getTenant(),
-                    getId(), getClass().getName(), EventPublisherHolder.getInstance().getApplicationId()));
+                    getId(), getClass(), EventPublisherHolder.getInstance().getApplicationId()));
         }
     }
 
     private static boolean isSoftDeleted(final DescriptorEvent event) {
         final ObjectChangeSet changeSet = ((UpdateObjectQuery) event.getQuery()).getObjectChangeSet();
         final List<DirectToFieldChangeRecord> changes = changeSet.getChanges().stream()
-                .filter(record -> record instanceof DirectToFieldChangeRecord)
-                .map(record -> (DirectToFieldChangeRecord) record).collect(Collectors.toList());
+                .filter(DirectToFieldChangeRecord.class::isInstance).map(DirectToFieldChangeRecord.class::cast)
+                .collect(Collectors.toList());
 
-        return changes.stream().filter(record -> DELETED_PROPERTY.equals(record.getAttribute())
-                && Boolean.parseBoolean(record.getNewValue().toString())).count() > 0;
+        return changes.stream().anyMatch(changeRecord -> DELETED_PROPERTY.equals(changeRecord.getAttribute())
+                && Boolean.parseBoolean(changeRecord.getNewValue().toString()));
     }
 
     @Override
     public void fireDeleteEvent(final DescriptorEvent descriptorEvent) {
         EventPublisherHolder.getInstance().getEventPublisher().publishEvent(new RolloutDeletedEvent(getTenant(),
-                getId(), getClass().getName(), EventPublisherHolder.getInstance().getApplicationId()));
+                getId(), getClass(), EventPublisherHolder.getInstance().getApplicationId()));
     }
 
     @Override

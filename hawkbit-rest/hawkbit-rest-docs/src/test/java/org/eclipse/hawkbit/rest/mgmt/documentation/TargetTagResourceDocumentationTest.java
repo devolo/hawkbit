@@ -33,8 +33,8 @@ import org.eclipse.hawkbit.rest.documentation.ApiModelPropertiesGeneric;
 import org.eclipse.hawkbit.rest.documentation.DocumenationResponseFieldsSnippet;
 import org.eclipse.hawkbit.rest.documentation.MgmtApiModelProperties;
 import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
@@ -58,10 +58,12 @@ public class TargetTagResourceDocumentationTest extends AbstractApiRestDocumenta
     private DistributionSet distributionSet;
 
     @Override
-    @Before
+    public String getResourceName() {
+        return "targettag";
+    }
+
+    @BeforeEach
     public void setUp() {
-        resourceName = "targettag";
-        super.setUp();
         distributionSet = createDistributionSet();
     }
 
@@ -75,7 +77,7 @@ public class TargetTagResourceDocumentationTest extends AbstractApiRestDocumenta
                 .andDo(this.document.document(getResponseFieldTargetTag(true,
                         fieldWithPath("size").type(JsonFieldType.NUMBER).description(ApiModelPropertiesGeneric.SIZE),
                         fieldWithPath("total").description(ApiModelPropertiesGeneric.TOTAL_ELEMENTS),
-                        fieldWithPath("content").description(MgmtApiModelProperties.TARGET_LIST))));
+                        fieldWithPath("content").description(MgmtApiModelProperties.TARGET_TAG_LIST))));
     }
 
     @Test
@@ -151,6 +153,8 @@ public class TargetTagResourceDocumentationTest extends AbstractApiRestDocumenta
     @Test
     @Description("Handles the GET request of retrieving all assigned targets by the given")
     public void getAssignedTargets() throws Exception {
+        enableConfirmationFlow();
+
         final TargetTag tag = createTargetTagEntitiy();
         final Target target = createTargetByGivenNameWithAttributes("Target1", distributionSet);
         targetManagement.assignTag(Arrays.asList(target.getControllerId()), tag.getId());
@@ -167,7 +171,7 @@ public class TargetTagResourceDocumentationTest extends AbstractApiRestDocumenta
                                 fieldWithPath("size").type(JsonFieldType.NUMBER)
                                         .description(ApiModelPropertiesGeneric.SIZE),
                                 fieldWithPath("total").description(ApiModelPropertiesGeneric.TOTAL_ELEMENTS),
-                                fieldWithPath("content").description(MgmtApiModelProperties.TARGET_LIST))));
+                                fieldWithPath("content").description(MgmtApiModelProperties.TARGET_TAG_LIST))));
     }
 
     @Test
@@ -198,6 +202,8 @@ public class TargetTagResourceDocumentationTest extends AbstractApiRestDocumenta
     @Test
     @Description("Handles the POST request to assign targets to the given tag id")
     public void assignTargets() throws Exception {
+        enableConfirmationFlow();
+
         final Long tagId = createTargetTagId();
         final MgmtAssignedTargetRequestBody assignedTargetRequestBody1 = new MgmtAssignedTargetRequestBody();
         assignedTargetRequestBody1

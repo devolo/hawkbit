@@ -32,8 +32,7 @@ import org.eclipse.hawkbit.rest.documentation.MgmtApiModelProperties;
 import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.FieldDescriptor;
@@ -94,16 +93,18 @@ public class TenantResourceDocumentationTest extends AbstractApiRestDocumentatio
                 "the expiry time in milliseconds that needs to elapse before an action may be cleaned up.");
         CONFIG_ITEM_DESCRIPTIONS.put(TenantConfigurationKey.MULTI_ASSIGNMENTS_ENABLED,
                 "if multiple distribution sets can be assigned to the same targets.");
+        CONFIG_ITEM_DESCRIPTIONS.put(TenantConfigurationKey.BATCH_ASSIGNMENTS_ENABLED,
+                "if distribution set can be assigned to multiple targets in a single batch message.");
+        CONFIG_ITEM_DESCRIPTIONS.put(TenantConfigurationKey.USER_CONFIRMATION_ENABLED,
+                "if confirmation is required when distribution set is assigned to target.");
     }
 
     @Autowired
     protected TenantConfigurationProperties tenantConfigurationProperties;
 
     @Override
-    @Before
-    public void setUp() {
-        resourceName = "tenant";
-        super.setUp();
+    public String getResourceName() {
+        return "tenant";
     }
 
     @Test

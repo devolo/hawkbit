@@ -90,6 +90,9 @@ public class JpaSoftwareModule extends AbstractJpaNamedVersionedEntity implement
     @OneToMany(mappedBy = "softwareModule", fetch = FetchType.LAZY, targetEntity = JpaSoftwareModuleMetadata.class)
     private List<JpaSoftwareModuleMetadata> metadata;
 
+    @Column(name = "encrypted")
+    private boolean encrypted;
+
     /**
      * Default constructor.
      */
@@ -106,16 +109,33 @@ public class JpaSoftwareModule extends AbstractJpaNamedVersionedEntity implement
      *            abstract name of the {@link SoftwareModule}
      * @param version
      *            of the {@link SoftwareModule}
+     */
+    public JpaSoftwareModule(final SoftwareModuleType type, final String name, final String version) {
+        this(type, name, version, null, null, false);
+    }
+
+    /**
+     * parameterized constructor.
+     *
+     * @param type
+     *            of the {@link SoftwareModule}
+     * @param name
+     *            abstract name of the {@link SoftwareModule}
+     * @param version
+     *            of the {@link SoftwareModule}
      * @param description
      *            of the {@link SoftwareModule}
      * @param vendor
      *            of the {@link SoftwareModule}
+     * @param encrypted
+     *            encryption flag of the {@link SoftwareModule}
      */
     public JpaSoftwareModule(final SoftwareModuleType type, final String name, final String version,
-            final String description, final String vendor) {
+            final String description, final String vendor, final boolean encrypted) {
         super(name, version, description);
         this.vendor = vendor;
         this.type = (JpaSoftwareModuleType) type;
+        this.encrypted = encrypted;
     }
 
     public void addArtifact(final Artifact artifact) {
@@ -175,8 +195,8 @@ public class JpaSoftwareModule extends AbstractJpaNamedVersionedEntity implement
      * Marks or un-marks this software module as deleted.
      * 
      * @param deleted
-     *            {@code true} if the software module should be marked as
-     *            deleted otherwise {@code false}
+     *            {@code true} if the software module should be marked as deleted
+     *            otherwise {@code false}
      */
     public void setDeleted(final boolean deleted) {
         this.deleted = deleted;
@@ -187,9 +207,26 @@ public class JpaSoftwareModule extends AbstractJpaNamedVersionedEntity implement
     }
 
     @Override
+    public boolean isEncrypted() {
+        return encrypted;
+    }
+
+    /**
+     * Marks this software module as encrypted.
+     * 
+     * @param encrypted
+     *            {@code true} if the software module should be marked as encrypted
+     *            otherwise {@code false}
+     */
+    public void setEncrypted(final boolean encrypted) {
+        this.encrypted = encrypted;
+    }
+
+    @Override
     public String toString() {
-        return "SoftwareModule [deleted=" + deleted + ", name=" + getName() + ", version=" + getVersion()
-                + ", revision=" + getOptLockRevision() + ", Id=" + getId() + ", type=" + getType().getName() + "]";
+        return "SoftwareModule [deleted=" + isDeleted() + ", encrypted=" + isEncrypted() + ", name=" + getName()
+                + ", version=" + getVersion() + ", revision=" + getOptLockRevision() + ", Id=" + getId() + ", type="
+                + getType().getName() + "]";
     }
 
     @Override
@@ -214,24 +251,24 @@ public class JpaSoftwareModule extends AbstractJpaNamedVersionedEntity implement
 
         if (isSoftDeleted(descriptorEvent)) {
             EventPublisherHolder.getInstance().getEventPublisher().publishEvent(new SoftwareModuleDeletedEvent(
-                    getTenant(), getId(), getClass().getName(), EventPublisherHolder.getInstance().getApplicationId()));
+                    getTenant(), getId(), getClass(), EventPublisherHolder.getInstance().getApplicationId()));
         }
     }
 
     private static boolean isSoftDeleted(final DescriptorEvent event) {
         final ObjectChangeSet changeSet = ((UpdateObjectQuery) event.getQuery()).getObjectChangeSet();
         final List<DirectToFieldChangeRecord> changes = changeSet.getChanges().stream()
-                .filter(record -> record instanceof DirectToFieldChangeRecord)
-                .map(record -> (DirectToFieldChangeRecord) record).collect(Collectors.toList());
+                .filter(DirectToFieldChangeRecord.class::isInstance).map(DirectToFieldChangeRecord.class::cast)
+                .collect(Collectors.toList());
 
-        return changes.stream().filter(record -> DELETED_PROPERTY.equals(record.getAttribute())
-                && Boolean.parseBoolean(record.getNewValue().toString())).count() > 0;
+        return changes.stream().anyMatch(changeRecord -> DELETED_PROPERTY.equals(changeRecord.getAttribute())
+                && Boolean.parseBoolean(changeRecord.getNewValue().toString()));
     }
 
     @Override
     public void fireDeleteEvent(final DescriptorEvent descriptorEvent) {
         EventPublisherHolder.getInstance().getEventPublisher().publishEvent(new SoftwareModuleDeletedEvent(getTenant(),
-                getId(), getClass().getName(), EventPublisherHolder.getInstance().getApplicationId()));
+                getId(), getClass(), EventPublisherHolder.getInstance().getApplicationId()));
     }
 
 }

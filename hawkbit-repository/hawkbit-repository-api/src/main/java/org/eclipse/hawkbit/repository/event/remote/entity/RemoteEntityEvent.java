@@ -8,6 +8,8 @@
  */
 package org.eclipse.hawkbit.repository.event.remote.entity;
 
+import java.util.Optional;
+
 import org.eclipse.hawkbit.repository.event.remote.EventEntityManagerHolder;
 import org.eclipse.hawkbit.repository.event.remote.RemoteIdEvent;
 import org.eclipse.hawkbit.repository.model.TenantAwareBaseEntity;
@@ -47,16 +49,16 @@ public class RemoteEntityEvent<E extends TenantAwareBaseEntity> extends RemoteId
      *            the origin application id
      */
     protected RemoteEntityEvent(final E baseEntity, final String applicationId) {
-        super(baseEntity.getId(), baseEntity.getTenant(), baseEntity.getClass().getName(), applicationId);
+        super(baseEntity.getId(), baseEntity.getTenant(), baseEntity.getClass(), applicationId);
         this.entity = baseEntity;
     }
 
     @JsonIgnore
-    public E getEntity() {
+    public Optional<E> getEntity() {
         if (entity == null) {
             entity = reloadEntityFromRepository();
         }
-        return entity;
+        return Optional.ofNullable(entity);
     }
 
     @SuppressWarnings("unchecked")

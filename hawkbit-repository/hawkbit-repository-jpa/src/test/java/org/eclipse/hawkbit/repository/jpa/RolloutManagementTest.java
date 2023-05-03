@@ -13,23 +13,30 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.validation.ConstraintViolationException;
 import javax.validation.ValidationException;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Condition;
+import org.awaitility.Awaitility;
+import org.awaitility.Duration;
+import org.eclipse.hawkbit.repository.Identifiable;
 import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
 import org.eclipse.hawkbit.repository.builder.RolloutCreate;
 import org.eclipse.hawkbit.repository.builder.RolloutGroupCreate;
+import org.eclipse.hawkbit.repository.builder.RolloutUpdate;
 import org.eclipse.hawkbit.repository.event.remote.RolloutDeletedEvent;
 import org.eclipse.hawkbit.repository.event.remote.RolloutGroupDeletedEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetAssignDistributionSetEvent;
@@ -46,12 +53,12 @@ import org.eclipse.hawkbit.repository.event.remote.entity.TargetUpdatedEvent;
 import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.exception.EntityAlreadyExistsException;
 import org.eclipse.hawkbit.repository.exception.EntityReadOnlyException;
+import org.eclipse.hawkbit.repository.exception.IncompleteDistributionSetException;
+import org.eclipse.hawkbit.repository.exception.InvalidDistributionSetException;
 import org.eclipse.hawkbit.repository.exception.MultiAssignmentIsNotEnabledException;
 import org.eclipse.hawkbit.repository.exception.RolloutIllegalStateException;
 import org.eclipse.hawkbit.repository.jpa.model.JpaAction;
 import org.eclipse.hawkbit.repository.jpa.model.JpaRollout;
-import org.eclipse.hawkbit.repository.jpa.utils.MultipleInvokeHelper;
-import org.eclipse.hawkbit.repository.jpa.utils.SuccessCondition;
 import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.Action.Status;
@@ -67,15 +74,21 @@ import org.eclipse.hawkbit.repository.model.RolloutGroup.RolloutGroupSuccessCond
 import org.eclipse.hawkbit.repository.model.RolloutGroupConditionBuilder;
 import org.eclipse.hawkbit.repository.model.RolloutGroupConditions;
 import org.eclipse.hawkbit.repository.model.Target;
+import org.eclipse.hawkbit.repository.model.TargetType;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.model.TotalTargetCountStatus;
 import org.eclipse.hawkbit.repository.test.matcher.Expect;
 import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
+import org.eclipse.hawkbit.repository.test.util.WithSpringAuthorityRule;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
@@ -86,21 +99,20 @@ import io.qameta.allure.Step;
 import io.qameta.allure.Story;
 
 /**
- * Junit tests for RolloutManagment.
+ * Junit tests for RolloutManagement.
  */
 @Feature("Component Tests - Repository")
 @Story("Rollout Management")
-public class RolloutManagementTest extends AbstractJpaIntegrationTest {
+class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
-    @Before
-    @After
-    public void reset() {
+    @BeforeEach
+    void reset() {
         this.approvalStrategy.setApprovalNeeded(false);
     }
 
     @Test
     @Description("Verifies that a running action with distribution-set (A) is not canceled by a rollout which tries to also assign a distribution-set (A)")
-    public void rolloutShouldNotCancelRunningActionWithTheSameDistributionSet() {
+    void rolloutShouldNotCancelRunningActionWithTheSameDistributionSet() {
         // manually assign distribution set to target
         final String knownControllerId = "controller12345";
         final DistributionSet knownDistributionSet = testdataFactory.createDistributionSet();
@@ -114,7 +126,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         final Rollout rollout = testdataFactory.createRolloutByVariables("rolloutNotCancelRunningAction", "description",
                 1, "name==*", knownDistributionSet, "50", "5");
         rolloutManagement.start(rollout.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // verify that manually created action is still running and action
         // created from rollout is finished
@@ -132,9 +144,45 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         assertThat(rolloutCreatedAction.getStatus()).isEqualTo(Status.FINISHED);
     }
 
+    @ParameterizedTest
+    @MethodSource("simpleRolloutsPossibilities")
+    @Description("Verifies that action states are correctly initialized after starting a rollout with different options in regard to the confirmation.")
+    void runRolloutWithConfirmationFlagAndCoonfirmationFlowOptions(final boolean confirmationFlowActive,
+            final boolean confirmationRequired, final Status expectedStatus) {
+        // manually assign distribution set to target
+        final String knownControllerId = "controller12345";
+        final DistributionSet knownDistributionSet = testdataFactory.createDistributionSet();
+        testdataFactory.createTarget(knownControllerId);
+
+        if (confirmationFlowActive) {
+            enableConfirmationFlow();
+        }
+
+        // create rollout with the same distribution set already assigned
+        // start rollout
+        final Rollout rollout = testdataFactory.createRolloutByVariables("rolloutNotCancelRunningAction", "description",
+                1, "name==*", knownDistributionSet, "50", "5", confirmationRequired);
+        rolloutManagement.start(rollout.getId());
+        rolloutHandler.handleAll();
+
+        // verify that manually created action is still running and action
+        // created from rollout is finished
+        final List<Action> actionsByKnownTarget = deploymentManagement.findActionsByTarget(knownControllerId, PAGE)
+                .getContent();
+        assertThat(actionsByKnownTarget).hasSize(1);
+        assertThat(actionsByKnownTarget.get(0).getStatus()).isEqualTo(expectedStatus);
+    }
+
+    private static Stream<Arguments> simpleRolloutsPossibilities() {
+        return Stream.of(Arguments.of(true, true, Status.WAIT_FOR_CONFIRMATION), //
+                Arguments.of(true, false, Status.RUNNING), //
+                Arguments.of(false, true, Status.RUNNING), //
+                Arguments.of(false, false, Status.RUNNING));//
+    }
+
     @Test
     @Description("Verifies that a running action is auto canceled by a rollout which assigns another distribution-set.")
-    public void rolloutAssignesNewDistributionSetAndAutoCloseActiveActions() {
+    void rolloutAssignsNewDistributionSetAndAutoCloseActiveActions() {
         tenantConfigurationManagement
                 .addOrUpdateConfiguration(TenantConfigurationKey.REPOSITORY_ACTIONS_AUTOCLOSE_ENABLED, true);
 
@@ -153,7 +201,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
             final Rollout rollout = testdataFactory.createRolloutByVariables("rolloutNotCancelRunningAction",
                     "description", 1, "name==*", secondDistributionSet, "50", "5");
             rolloutManagement.start(rollout.getId());
-            rolloutManagement.handleRollouts();
+            rolloutHandler.handleAll();
 
             // verify that manually created action is canceled and action
             // created from rollout is running
@@ -176,26 +224,26 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
     }
 
     @Test
-    @Description("Verifies that management get access reacts as specfied on calls for non existing entities by means "
+    @Description("Verifies that management get access reacts as specified on calls for non existing entities by means "
             + "of Optional not present.")
-    @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 0) })
-    public void nonExistingEntityAccessReturnsNotPresent() {
+    @ExpectEvents({ @Expect(type = TargetCreatedEvent.class) })
+    void nonExistingEntityAccessReturnsNotPresent() {
         assertThat(rolloutManagement.get(NOT_EXIST_IDL)).isNotPresent();
         assertThat(rolloutManagement.getByName(NOT_EXIST_ID)).isNotPresent();
         assertThat(rolloutManagement.getWithDetailedStatus(NOT_EXIST_IDL)).isNotPresent();
     }
 
     @Test
-    @Description("Verifies that management queries react as specfied on calls for non existing entities "
+    @Description("Verifies that management queries react as specified on calls for non existing entities "
             + " by means of throwing EntityNotFoundException.")
     @ExpectEvents({ @Expect(type = RolloutDeletedEvent.class, count = 0),
-            @Expect(type = RolloutGroupCreatedEvent.class, count = 10),
-            @Expect(type = RolloutGroupUpdatedEvent.class, count = 10),
+            @Expect(type = RolloutGroupCreatedEvent.class, count = 5),
+            @Expect(type = RolloutGroupUpdatedEvent.class, count = 5),
             @Expect(type = DistributionSetCreatedEvent.class, count = 1),
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3),
-            @Expect(type = RolloutUpdatedEvent.class, count = 1), @Expect(type = RolloutCreatedEvent.class, count = 1),
-            @Expect(type = TargetCreatedEvent.class, count = 10) })
-    public void entityQueriesReferringToNotExistingEntitiesThrowsException() {
+            @Expect(type = RolloutCreatedEvent.class, count = 1), @Expect(type = RolloutUpdatedEvent.class, count = 1),
+            @Expect(type = TargetCreatedEvent.class, count = 125) })
+    void entityQueriesReferringToNotExistingEntitiesThrowsException() {
         testdataFactory.createRollout("xxx");
 
         verifyThrownExceptionBy(() -> rolloutManagement.delete(NOT_EXIST_IDL), "Rollout");
@@ -206,35 +254,38 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
         verifyThrownExceptionBy(() -> rolloutManagement.update(entityFactory.rollout().update(NOT_EXIST_IDL)),
                 "Rollout");
+        verifyThrownExceptionBy(() -> rolloutManagement.triggerNextGroup(NOT_EXIST_IDL), "Rollout");
     }
 
     @Test
     @Description("Verifying that the rollout is created correctly, executing the filter and split up the targets in the correct group size.")
-    public void creatingRolloutIsCorrectPersisted() {
+    void creatingRolloutIsCorrectPersisted() {
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 15;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout,
+        final Rollout createdRollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(
+                amountTargetsForRollout,
                 amountOtherTargets, amountGroups, successCondition, errorCondition);
 
         // verify the split of the target and targetGroup
         final Page<RolloutGroup> rolloutGroups = rolloutGroupManagement.findByRollout(PAGE, createdRollout.getId());
-        // we have total of #amountTargetsForRollout in rollouts splitted in
+        // we have total of #amountTargetsForRollout in rollouts split in
         // group size #groupSize
         assertThat(rolloutGroups).hasSize(amountGroups);
     }
 
     @Test
     @Description("Verifying that when the rollout is started the actions for all targets in the rollout is created and the state of the first group is running as well as the corresponding actions")
-    public void startRolloutSetFirstGroupAndActionsInRunningStateAndOthersInScheduleState() {
+    void startRolloutSetFirstGroupAndActionsInRunningStateAndOthersInScheduleState() {
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 15;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        final Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout,
+                amountOtherTargets, amountGroups,
                 successCondition, errorCondition);
 
         // verify first group is running
@@ -244,15 +295,17 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         assertThat(firstGroup.getStatus()).isEqualTo(RolloutGroupStatus.RUNNING);
 
         // verify other groups are scheduled
-        final List<RolloutGroup> scheduledGroups = rolloutGroupManagement.findByRollout(
-                new OffsetBasedPageRequest(1, 100, Sort.by(Direction.ASC, "id")), createdRollout.getId()).getContent();
-        scheduledGroups.forEach(group -> assertThat(group.getStatus()).isEqualTo(RolloutGroupStatus.SCHEDULED)
-                .as("group which should be in scheduled state is in " + group.getStatus() + " state"));
+        final List<RolloutGroup> scheduledGroups = rolloutGroupManagement
+                .findByRollout(new OffsetBasedPageRequest(1, 100, Sort.by(Direction.ASC, "id")), createdRollout.getId())
+                .getContent();
+        scheduledGroups.forEach(group -> assertThat(group.getStatus())
+                .as("group which should be in scheduled state is in " + group.getStatus() + " state")
+                .isEqualTo(RolloutGroupStatus.SCHEDULED));
         // verify that the first group actions has been started and are in state
         // running
         final List<Action> runningActions = findActionsByRolloutAndStatus(createdRollout, Status.RUNNING);
-        assertThat(runningActions).hasSize(amountTargetsForRollout / amountGroups);
-        assertThat(runningActions).as("Created actions are initiated by rollout creator")
+        assertThat(runningActions).hasSize(amountTargetsForRollout / amountGroups)
+                .as("Created actions are initiated by rollout creator")
                 .allMatch(a -> a.getInitiatedBy().equals(createdRollout.getCreatedBy()));
         // the rest targets are only scheduled
         assertThat(findActionsByRolloutAndStatus(createdRollout, Status.SCHEDULED))
@@ -261,13 +314,14 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verifying that a finish condition of a group is hit the next group of the rollout is also started")
-    public void checkRunningRolloutsDoesNotStartNextGroupIfFinishConditionIsNotHit() {
+    void checkRunningRolloutsDoesNotStartNextGroupIfFinishConditionIsNotHit() {
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 15;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        final Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout,
+                amountOtherTargets, amountGroups,
                 successCondition, errorCondition);
 
         final List<Action> runningActions = findActionsByRolloutAndStatus(createdRollout, Status.RUNNING);
@@ -279,36 +333,39 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
         // check running rollouts again, now the finish condition should be hit
         // and should start the next group
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // verify that now the first and the second group are in running state
         final List<RolloutGroup> runningRolloutGroups = rolloutGroupManagement
                 .findByRollout(new OffsetBasedPageRequest(0, 2, Sort.by(Direction.ASC, "id")), createdRollout.getId())
                 .getContent();
-        runningRolloutGroups.forEach(group -> assertThat(group.getStatus()).isEqualTo(RolloutGroupStatus.RUNNING)
+        runningRolloutGroups.forEach(group -> assertThat(group.getStatus())
                 .as("group should be in running state because it should be started but it is in " + group.getStatus()
-                        + " state"));
+                        + " state")
+                .isEqualTo(RolloutGroupStatus.RUNNING));
 
         // verify that the other groups are still in schedule state
         final List<RolloutGroup> scheduledRolloutGroups = rolloutGroupManagement
                 .findByRollout(new OffsetBasedPageRequest(2, 10, Sort.by(Direction.ASC, "id")), createdRollout.getId())
                 .getContent();
-        scheduledRolloutGroups.forEach(group -> assertThat(group.getStatus()).isEqualTo(RolloutGroupStatus.SCHEDULED)
+        scheduledRolloutGroups.forEach(group -> assertThat(group.getStatus())
                 .as("group should be in scheduled state because it should not be started but it is in "
-                        + group.getStatus() + " state"));
+                        + group.getStatus() + " state")
+                .isEqualTo(RolloutGroupStatus.SCHEDULED));
     }
 
     @Test
     // @Title("Deleting targets of a rollout")
-    @Description("Verfiying that next group is started when targets of the group have been deleted.")
-    public void checkRunningRolloutsStartsNextGroupIfTargetsDeleted() {
+    @Description("Verifying that next group is started when targets of the group have been deleted.")
+    void checkRunningRolloutsStartsNextGroupIfTargetsDeleted() {
 
         final int amountTargetsForRollout = 15;
         final int amountOtherTargets = 0;
         final int amountGroups = 3;
         final String successCondition = "100";
         final String errorCondition = "80";
-        final Rollout createdRollout = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        final Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout,
+                amountOtherTargets, amountGroups,
                 successCondition, errorCondition);
 
         finishActionAndDeleteTargetsOfFirstRunningGroup(createdRollout);
@@ -321,20 +378,6 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
         verifyRolloutAndAllGroupsAreFinished(createdRollout);
 
-    }
-
-    @Step("Create a rollout by the given parameter and start it.")
-    private Rollout createAndStartRollout(final int amountTargetsForRollout, final int amountOtherTargets,
-            final int amountGroups, final String successCondition, final String errorCondition) {
-
-        final Rollout createdRollout = createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout,
-                amountOtherTargets, amountGroups, successCondition, errorCondition);
-        rolloutManagement.start(createdRollout.getId());
-
-        // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
-
-        return rolloutManagement.get(createdRollout.getId()).get();
     }
 
     @Step("Finish three actions of the rollout group and delete two targets")
@@ -352,7 +395,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Step("Check the status of the rollout groups, second group should be in running status")
     private void checkSecondGroupStatusIsRunning(final Rollout createdRollout) {
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         final List<RolloutGroup> runningRolloutGroups = rolloutGroupManagement
                 .findByRollout(new OffsetBasedPageRequest(0, 10, Sort.by(Direction.ASC, "id")), createdRollout.getId())
                 .getContent();
@@ -385,13 +428,13 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Step("Check the status of the rollout groups and the rollout")
     private void verifyRolloutAndAllGroupsAreFinished(final Rollout createdRollout) {
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         final List<RolloutGroup> runningRolloutGroups = rolloutGroupManagement
                 .findByRollout(PAGE, createdRollout.getId()).getContent();
         assertThat(runningRolloutGroups.get(0).getStatus()).isEqualTo(RolloutGroupStatus.FINISHED);
         assertThat(runningRolloutGroups.get(1).getStatus()).isEqualTo(RolloutGroupStatus.FINISHED);
         assertThat(runningRolloutGroups.get(2).getStatus()).isEqualTo(RolloutGroupStatus.FINISHED);
-        assertThat(rolloutManagement.get(createdRollout.getId()).get().getStatus()).isEqualTo(RolloutStatus.FINISHED);
+        assertThat(reloadRollout(createdRollout).getStatus()).isEqualTo(RolloutStatus.FINISHED);
 
     }
 
@@ -401,14 +444,15 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
     }
 
     @Test
-    @Description("Verfiying that the error handling action of a group is executed to pause the current rollout")
-    public void checkErrorHitOfGroupCallsErrorActionToPauseTheRollout() {
+    @Description("Verifying that the error handling action of a group is executed to pause the current rollout")
+    void checkErrorHitOfGroupCallsErrorActionToPauseTheRollout() {
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 15;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        final Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout,
+                amountOtherTargets, amountGroups,
                 successCondition, errorCondition);
 
         // set both actions in error state so error condition is hit and error
@@ -423,9 +467,9 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
         // check running rollouts again, now the error condition should be hit
         // and should execute the error action
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        final Rollout rollout = rolloutManagement.get(createdRollout.getId()).get();
+        final Rollout rollout = reloadRollout(createdRollout);
         // the rollout itself should be in paused based on the error action
         assertThat(rollout.getStatus()).isEqualTo(RolloutStatus.PAUSED);
 
@@ -437,20 +481,22 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         assertThat(errorGroup.get(0).getStatus()).isEqualTo(RolloutGroupStatus.ERROR);
 
         // all other groups should still be in scheduled state
-        final List<RolloutGroup> scheduleGroups = rolloutGroupManagement.findByRollout(
-                new OffsetBasedPageRequest(1, 100, Sort.by(Direction.ASC, "id")), createdRollout.getId()).getContent();
+        final List<RolloutGroup> scheduleGroups = rolloutGroupManagement
+                .findByRollout(new OffsetBasedPageRequest(1, 100, Sort.by(Direction.ASC, "id")), createdRollout.getId())
+                .getContent();
         scheduleGroups.forEach(group -> assertThat(group.getStatus()).isEqualTo(RolloutGroupStatus.SCHEDULED));
     }
 
     @Test
-    @Description("Verfiying a paused rollout in case of error action hit can be resumed again")
-    public void errorActionPausesRolloutAndRolloutGetsResumedStartsNextScheduledGroup() {
+    @Description("Verifying a paused rollout in case of error action hit can be resumed again")
+    void errorActionPausesRolloutAndRolloutGetsResumedStartsNextScheduledGroup() {
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 15;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        final Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout,
+                amountOtherTargets, amountGroups,
                 successCondition, errorCondition);
 
         // set both actions in error state so error condition is hit and error
@@ -464,25 +510,26 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
         // check running rollouts again, now the error condition should be hit
         // and should execute the error action
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        final Rollout rollout = rolloutManagement.get(createdRollout.getId()).get();
+        final Rollout rollout = reloadRollout(createdRollout);
         // the rollout itself should be in paused based on the error action
         assertThat(rollout.getStatus()).isEqualTo(RolloutStatus.PAUSED);
 
         // all other groups should still be in scheduled state
-        final List<RolloutGroup> scheduleGroups = rolloutGroupManagement.findByRollout(
-                new OffsetBasedPageRequest(1, 100, Sort.by(Direction.ASC, "id")), createdRollout.getId()).getContent();
+        final List<RolloutGroup> scheduleGroups = rolloutGroupManagement
+                .findByRollout(new OffsetBasedPageRequest(1, 100, Sort.by(Direction.ASC, "id")), createdRollout.getId())
+                .getContent();
         scheduleGroups.forEach(group -> assertThat(group.getStatus()).isEqualTo(RolloutGroupStatus.SCHEDULED));
 
         // resume the rollout again after it gets paused by error action
         rolloutManagement.resumeRollout(createdRollout.getId());
 
         // the rollout should be running again
-        assertThat(rolloutManagement.get(createdRollout.getId()).get().getStatus()).isEqualTo(RolloutStatus.RUNNING);
+        assertThat(reloadRollout(createdRollout).getStatus()).isEqualTo(RolloutStatus.RUNNING);
 
         // checking rollouts again
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // next group should be running again after resuming the rollout
         final List<RolloutGroup> resumedGroups = rolloutGroupManagement
@@ -493,14 +540,15 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
     }
 
     @Test
-    @Description("Verfiying that the rollout is starting group after group and gets finished at the end")
-    public void rolloutStartsGroupAfterGroupAndGetsFinished() {
+    @Description("Verifying that the rollout is starting group after group and gets finished at the end")
+    void rolloutStartsGroupAfterGroupAndGetsFinished() {
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 15;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        final Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout,
+                amountOtherTargets, amountGroups,
                 successCondition, errorCondition);
 
         // finish running actions, 2 actions should be finished
@@ -509,38 +557,37 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         // calculate the rest of the groups and finish them
         for (int groupsLeft = amountGroups - 1; groupsLeft >= 1; groupsLeft--) {
             // next check and start next group
-            rolloutManagement.handleRollouts();
+            rolloutHandler.handleAll();
             // finish running actions, 2 actions should be finished
             assertThat(changeStatusForAllRunningActions(createdRollout, Status.FINISHED)).isEqualTo(2);
-            assertThat(rolloutManagement.get(createdRollout.getId()).get().getStatus())
-                    .isEqualTo(RolloutStatus.RUNNING);
+            assertThat(getRollout(createdRollout.getId()).getStatus()).isEqualTo(RolloutStatus.RUNNING);
 
         }
         // check rollout to see that all actions and all groups are finished and
         // so can go to FINISHED state of the rollout
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // verify all groups are in finished state
         rolloutGroupManagement
-                .findByRollout(new OffsetBasedPageRequest(0, 100, Sort.by(Direction.ASC, "id")),
-                        createdRollout.getId())
+                .findByRollout(new OffsetBasedPageRequest(0, 100, Sort.by(Direction.ASC, "id")), createdRollout.getId())
                 .forEach(group -> assertThat(group.getStatus()).isEqualTo(RolloutGroupStatus.FINISHED));
 
         // verify that rollout itself is in finished state
-        final Rollout findRolloutById = rolloutManagement.get(createdRollout.getId()).get();
+        final Rollout findRolloutById = reloadRollout(createdRollout);
         assertThat(findRolloutById.getStatus()).isEqualTo(RolloutStatus.FINISHED);
     }
 
     @Test
     @Description("Verify that the targets have the right status during the rollout.")
-    public void countCorrectStatusForEachTargetDuringRollout() {
+    void countCorrectStatusForEachTargetDuringRollout() {
 
         final int amountTargetsForRollout = 8;
         final int amountOtherTargets = 15;
         final int amountGroups = 4;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout,
+        final Rollout createdRollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(
+                amountTargetsForRollout,
                 amountOtherTargets, amountGroups, successCondition, errorCondition);
 
         // targets have not started
@@ -551,7 +598,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         rolloutManagement.start(createdRollout.getId());
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // 6 targets are ready and 2 are running
         validationMap = createInitStatusMap();
@@ -560,7 +607,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 4 targets are ready, 2 are finished and 2 are running
         validationMap = createInitStatusMap();
         validationMap.put(TotalTargetCountStatus.Status.SCHEDULED, 4L);
@@ -569,7 +616,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 2 targets are ready, 4 are finished and 2 are running
         validationMap = createInitStatusMap();
         validationMap.put(TotalTargetCountStatus.Status.SCHEDULED, 2L);
@@ -578,7 +625,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 0 targets are ready, 6 are finished and 2 are running
         validationMap = createInitStatusMap();
         validationMap.put(TotalTargetCountStatus.Status.FINISHED, 6L);
@@ -586,7 +633,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 0 targets are ready, 8 are finished and 0 are running
         validationMap = createInitStatusMap();
         validationMap.put(TotalTargetCountStatus.Status.FINISHED, 8L);
@@ -596,14 +643,15 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the targets have the right status during a download_only rollout.")
-    public void countCorrectStatusForEachTargetDuringDownloadOnlyRollout() {
+    void countCorrectStatusForEachTargetDuringDownloadOnlyRollout() {
 
         final int amountTargetsForRollout = 8;
         final int amountOtherTargets = 15;
         final int amountGroups = 4;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout,
+        final Rollout createdRollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(
+                amountTargetsForRollout,
                 amountOtherTargets, amountGroups, successCondition, errorCondition, ActionType.DOWNLOAD_ONLY, null);
 
         // targets have not started
@@ -614,7 +662,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         rolloutManagement.start(createdRollout.getId());
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // 6 targets are ready and 2 are running
         validationMap = createInitStatusMap();
@@ -623,7 +671,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.DOWNLOADED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 4 targets are ready, 2 are finished(with DOWNLOADED action status)
         // and 2 are running
         validationMap = createInitStatusMap();
@@ -633,7 +681,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.DOWNLOADED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 2 targets are ready, 4 are finished(with DOWNLOADED action status)
         // and 2 are running
         validationMap = createInitStatusMap();
@@ -643,7 +691,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.DOWNLOADED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 0 targets are ready, 6 are finished(with DOWNLOADED action status)
         // and 2 are running
         validationMap = createInitStatusMap();
@@ -652,7 +700,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 0 targets are ready, 6 are finished(with DOWNLOADED action status), 2
         // are finished and 0 are running
         validationMap = createInitStatusMap();
@@ -663,14 +711,15 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the targets have the right status during the rollout when an error emerges.")
-    public void countCorrectStatusForEachTargetDuringRolloutWithError() {
+    void countCorrectStatusForEachTargetDuringRolloutWithError() {
 
         final int amountTargetsForRollout = 8;
         final int amountOtherTargets = 15;
         final int amountGroups = 4;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout,
+        final Rollout createdRollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(
+                amountTargetsForRollout,
                 amountOtherTargets, amountGroups, successCondition, errorCondition);
 
         // 8 targets have not started
@@ -681,7 +730,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         rolloutManagement.start(createdRollout.getId());
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // 6 targets are ready and 2 are running
         validationMap = createInitStatusMap();
@@ -690,7 +739,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         validateRolloutActionStatus(createdRollout.getId(), validationMap);
 
         changeStatusForAllRunningActions(createdRollout, Status.ERROR);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // 6 targets are ready and 2 are error
         validationMap = createInitStatusMap();
         validationMap.put(TotalTargetCountStatus.Status.SCHEDULED, 6L);
@@ -700,24 +749,25 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the targets have the right status during the rollout when receiving the status of rollout groups.")
-    public void countCorrectStatusForEachTargetGroupDuringRollout() {
+    void countCorrectStatusForEachTargetGroupDuringRollout() {
 
         final int amountTargetsForRollout = 9;
         final int amountOtherTargets = 15;
         final int amountGroups = 4;
         final String successCondition = "50";
         final String errorCondition = "80";
-        Rollout createdRollout = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout, amountOtherTargets,
+                amountGroups,
                 successCondition, errorCondition);
 
         changeStatusForAllRunningActions(createdRollout, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // round(9/4)=2 targets finished (Group 1)
         // round(7/3)=2 targets running (Group 3)
         // round(5/2)=3 targets SCHEDULED (Group 3)
         // round(2/1)=2 targets SCHEDULED (Group 4)
-        createdRollout = rolloutManagement.get(createdRollout.getId()).get();
+        createdRollout = reloadRollout(createdRollout);
         final List<RolloutGroup> rolloutGroups = rolloutGroupManagement.findByRollout(PAGE, createdRollout.getId())
                 .getContent();
 
@@ -741,18 +791,19 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that target actions of rollout get canceled when a manuel distribution sets assignment is done.")
-    public void targetsOfRolloutGetsManuelDsAssignment() {
+    void targetsOfRolloutGetsManuelDsAssignment() {
 
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 0;
         final int amountGroups = 2;
         final String successCondition = "50";
         final String errorCondition = "80";
-        Rollout createdRollout = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout, amountOtherTargets,
+                amountGroups,
                 successCondition, errorCondition);
         final DistributionSet ds = createdRollout.getDistributionSet();
 
-        createdRollout = rolloutManagement.get(createdRollout.getId()).get();
+        createdRollout = reloadRollout(createdRollout);
         // 5 targets are running
         final List<Action> runningActions = findActionsByRolloutAndStatus(createdRollout, Status.RUNNING);
         assertThat(runningActions.size()).isEqualTo(5);
@@ -784,24 +835,25 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that target actions of a rollout get cancelled when another rollout with same targets gets started.")
-    public void targetsOfRolloutGetDistributionSetAssignmentByOtherRollout() {
+    void targetsOfRolloutGetDistributionSetAssignmentByOtherRollout() {
 
         final int amountTargetsForRollout = 15;
         final int amountOtherTargets = 5;
         final int amountGroups = 3;
         final String successCondition = "50";
         final String errorCondition = "80";
-        Rollout rolloutOne = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        Rollout rolloutOne = testdataFactory.createAndStartRollout(amountTargetsForRollout, amountOtherTargets,
+                amountGroups,
                 successCondition, errorCondition);
 
-        rolloutOne = rolloutManagement.get(rolloutOne.getId()).get();
+        rolloutOne = reloadRollout(rolloutOne);
 
         final DistributionSet dsForRolloutTwo = testdataFactory.createDistributionSet("dsForRolloutTwo");
 
         final Rollout rolloutTwo = testdataFactory.createRolloutByVariables("rolloutTwo",
                 "This is the description for rollout two", 1, "controllerId==rollout-*", dsForRolloutTwo, "50", "80");
         changeStatusForAllRunningActions(rolloutOne, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // Verify that 5 targets are finished, 5 are running and 5 are ready.
         Map<TotalTargetCountStatus.Status, Long> expectedTargetCountStatus = createInitStatusMap();
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.RUNNING, 5L);
@@ -812,7 +864,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         rolloutManagement.start(rolloutTwo.getId());
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // Verify that 5 targets are finished, 5 are still running and 5 are
         // cancelled.
@@ -825,27 +877,28 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that error status of DistributionSet installation during rollout can get rerun with second rollout so that all targets have some DistributionSet installed at the end.")
-    public void startSecondRolloutAfterFristRolloutEndenWithErrors() {
+    void startSecondRolloutAfterFirstRolloutEndsWithErrors() {
 
         final int amountTargetsForRollout = 15;
         final int amountOtherTargets = 0;
         final int amountGroups = 3;
         final String successCondition = "50";
         final String errorCondition = "80";
-        Rollout rolloutOne = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        Rollout rolloutOne = testdataFactory.createAndStartRollout(amountTargetsForRollout, amountOtherTargets,
+                amountGroups,
                 successCondition, errorCondition);
         final DistributionSet distributionSet = rolloutOne.getDistributionSet();
 
-        rolloutOne = rolloutManagement.get(rolloutOne.getId()).get();
+        rolloutOne = reloadRollout(rolloutOne);
         changeStatusForRunningActions(rolloutOne, Status.ERROR, 2);
         changeStatusForRunningActions(rolloutOne, Status.FINISHED, 3);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         changeStatusForRunningActions(rolloutOne, Status.ERROR, 2);
         changeStatusForRunningActions(rolloutOne, Status.FINISHED, 3);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         changeStatusForRunningActions(rolloutOne, Status.ERROR, 2);
         changeStatusForRunningActions(rolloutOne, Status.FINISHED, 3);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // 9 targets are finished and 6 have error
         Map<TotalTargetCountStatus.Status, Long> expectedTargetCountStatus = createInitStatusMap();
@@ -853,7 +906,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.ERROR, 6L);
         validateRolloutActionStatus(rolloutOne.getId(), expectedTargetCountStatus);
         // rollout is finished
-        rolloutOne = rolloutManagement.get(rolloutOne.getId()).get();
+        rolloutOne = reloadRollout(rolloutOne);
         assertThat(rolloutOne.getStatus()).isEqualTo(RolloutStatus.FINISHED);
 
         final int amountGroupsForRolloutTwo = 1;
@@ -864,9 +917,9 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         rolloutManagement.start(rolloutTwo.getId());
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        rolloutTwo = rolloutManagement.get(rolloutTwo.getId()).get();
+        rolloutTwo = reloadRollout(rolloutTwo);
         // 6 error targets are now running
         expectedTargetCountStatus = createInitStatusMap();
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.RUNNING, 6L);
@@ -878,50 +931,52 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         // 15 targets in finished/IN_SYNC status and same DS assigned
         assertThat(targetList.size()).isEqualTo(amountTargetsForRollout);
         targetList.stream().map(Target::getControllerId).map(deploymentManagement::getAssignedDistributionSet)
-                .forEach(d -> assertThat(d.get()).isEqualTo(distributionSet));
+                .forEach(d -> assertThat(d).contains(distributionSet));
     }
 
     @Test
     @Description("Verify that the rollout moves to the next group when the success condition was achieved and the error condition was not exceeded.")
-    public void successConditionAchievedAndErrorConditionNotExceeded() {
+    void successConditionAchievedAndErrorConditionNotExceeded() {
 
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 0;
         final int amountGroups = 2;
         final String successCondition = "50";
         final String errorCondition = "80";
-        Rollout rolloutOne = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        Rollout rolloutOne = testdataFactory.createAndStartRollout(amountTargetsForRollout, amountOtherTargets,
+                amountGroups,
                 successCondition, errorCondition);
 
-        rolloutOne = rolloutManagement.get(rolloutOne.getId()).get();
+        rolloutOne = reloadRollout(rolloutOne);
         changeStatusForRunningActions(rolloutOne, Status.ERROR, 2);
         changeStatusForRunningActions(rolloutOne, Status.FINISHED, 3);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // verify: 40% error but 60% finished -> should move to next group
-        final List<RolloutGroup> rolloutGruops = rolloutGroupManagement.findByRollout(PAGE, rolloutOne.getId())
+        final List<RolloutGroup> rolloutGroups = rolloutGroupManagement.findByRollout(PAGE, rolloutOne.getId())
                 .getContent();
         final Map<TotalTargetCountStatus.Status, Long> expectedTargetCountStatus = createInitStatusMap();
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.RUNNING, 5L);
-        validateRolloutGroupActionStatus(rolloutGruops.get(1), expectedTargetCountStatus);
+        validateRolloutGroupActionStatus(rolloutGroups.get(1), expectedTargetCountStatus);
 
     }
 
     @Test
-    @Description("Verify that the rollout does not move to the next group when the sucess condition was not achieved.")
-    public void successConditionNotAchieved() {
+    @Description("Verify that the rollout does not move to the next group when the success condition was not achieved.")
+    void successConditionNotAchieved() {
 
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 0;
         final int amountGroups = 2;
         final String successCondition = "80";
         final String errorCondition = "90";
-        Rollout rolloutOne = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        Rollout rolloutOne = testdataFactory.createAndStartRollout(amountTargetsForRollout, amountOtherTargets,
+                amountGroups,
                 successCondition, errorCondition);
 
-        rolloutOne = rolloutManagement.get(rolloutOne.getId()).get();
+        rolloutOne = reloadRollout(rolloutOne);
         changeStatusForRunningActions(rolloutOne, Status.ERROR, 2);
         changeStatusForRunningActions(rolloutOne, Status.FINISHED, 3);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // verify: 40% error and 60% finished -> should not move to next group
         // because successCondition 80%
         final List<RolloutGroup> rolloutGruops = rolloutGroupManagement.findByRollout(PAGE, rolloutOne.getId())
@@ -933,28 +988,29 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the rollout pauses when the error condition was exceeded.")
-    public void errorConditionExceeded() {
+    void errorConditionExceeded() {
 
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 0;
         final int amountGroups = 2;
         final String successCondition = "50";
         final String errorCondition = "20";
-        Rollout rolloutOne = createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+        Rollout rolloutOne = testdataFactory.createAndStartRollout(amountTargetsForRollout, amountOtherTargets,
+                amountGroups,
                 successCondition, errorCondition);
 
-        rolloutOne = rolloutManagement.get(rolloutOne.getId()).get();
+        rolloutOne = reloadRollout(rolloutOne);
         changeStatusForRunningActions(rolloutOne, Status.ERROR, 2);
         changeStatusForRunningActions(rolloutOne, Status.FINISHED, 3);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         // verify: 40% error -> should pause because errorCondition is 20%
-        rolloutOne = rolloutManagement.get(rolloutOne.getId()).get();
-        assertThat(RolloutStatus.PAUSED).isEqualTo(rolloutOne.getStatus());
+        rolloutOne = reloadRollout(rolloutOne);
+        assertThat(rolloutOne.getStatus()).isEqualTo(RolloutStatus.PAUSED);
     }
 
     @Test
     @Description("Verify that all rollouts are return with expected target statuses.")
-    public void findAllRolloutsWithDetailedStatus() {
+    void findAllRolloutsWithDetailedStatus() {
 
         final int amountTargetsForRollout = 12;
         final int amountGroups = 2;
@@ -963,41 +1019,41 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         final Rollout rolloutA = createTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout, amountGroups,
                 successCondition, errorCondition, "RolloutA", "RolloutA");
         rolloutManagement.start(rolloutA.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         final int amountTargetsForRollout2 = 10;
         final int amountGroups2 = 2;
         final Rollout rolloutB = createTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout2, amountGroups2,
                 successCondition, errorCondition, "RolloutB", "RolloutB");
         rolloutManagement.start(rolloutB.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         changeStatusForAllRunningActions(rolloutB, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         final int amountTargetsForRollout3 = 10;
         final int amountGroups3 = 2;
         final Rollout rolloutC = createTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout3, amountGroups3,
                 successCondition, errorCondition, "RolloutC", "RolloutC");
         rolloutManagement.start(rolloutC.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         changeStatusForAllRunningActions(rolloutC, Status.ERROR);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         final int amountTargetsForRollout4 = 15;
         final int amountGroups4 = 3;
         final Rollout rolloutD = createTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout4, amountGroups4,
                 successCondition, errorCondition, "RolloutD", "RolloutD");
         rolloutManagement.start(rolloutD.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         changeStatusForRunningActions(rolloutD, Status.ERROR, 1);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         changeStatusForAllRunningActions(rolloutD, Status.FINISHED);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        final Page<Rollout> rolloutPage = rolloutManagement
+        final Slice<Rollout> rolloutPage = rolloutManagement
                 .findAllWithDetailedStatus(new OffsetBasedPageRequest(0, 100, Sort.by(Direction.ASC, "name")), false);
         final List<Rollout> rolloutList = rolloutPage.getContent();
 
@@ -1030,7 +1086,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify the count of existing rollouts.")
-    public void rightCountForAllRollouts() {
+    void rightCountForAllRollouts() {
 
         final int amountTargetsForRollout = 6;
         final int amountGroups = 2;
@@ -1046,7 +1102,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify the count of filtered existing rollouts.")
-    public void countRolloutsAllByFilters() {
+    void countRolloutsAllByFilters() {
 
         final int amountTargetsForRollout = 6;
         final int amountGroups = 2;
@@ -1068,7 +1124,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the filtering and sorting ascending for rollout is working correctly.")
-    public void findRolloutByFilters() {
+    void findRolloutByFilters() {
 
         final int amountTargetsForRollout = 6;
         final int amountGroups = 2;
@@ -1096,7 +1152,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the expected rollout is found by name.")
-    public void findRolloutByName() {
+    void findRolloutByName() {
 
         final int amountTargetsForRollout = 12;
         final int amountGroups = 2;
@@ -1113,7 +1169,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the percent count is acting like aspected when targets move to the status finished or error.")
-    public void getFinishedPercentForRunningGroup() {
+    void getFinishedPercentForRunningGroup() {
 
         final int amountTargetsForRollout = 10;
         final int amountGroups = 2;
@@ -1125,11 +1181,11 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         rolloutManagement.start(myRollout.getId());
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         changeStatusForRunningActions(myRollout, Status.FINISHED, 2);
-        rolloutManagement.handleRollouts();
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        rolloutHandler.handleAll();
+        myRollout = reloadRollout(myRollout);
 
         float percent = rolloutGroupManagement
                 .getWithDetailedStatus(
@@ -1138,7 +1194,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         assertThat(percent).isEqualTo(40);
 
         changeStatusForRunningActions(myRollout, Status.FINISHED, 3);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         percent = rolloutGroupManagement
                 .getWithDetailedStatus(
@@ -1148,7 +1204,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
         changeStatusForRunningActions(myRollout, Status.FINISHED, 4);
         changeStatusForAllRunningActions(myRollout, Status.ERROR);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         percent = rolloutGroupManagement
                 .getWithDetailedStatus(
@@ -1159,7 +1215,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify that the expected targets are returned for the rollout groups.")
-    public void findRolloutGroupTargetsWithRsqlParam() {
+    void findRolloutGroupTargetsWithRsqlParam() {
 
         final int amountTargetsForRollout = 15;
         final int amountGroups = 3;
@@ -1177,12 +1233,12 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         rolloutManagement.start(myRollout.getId());
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         final Condition<String> targetBelongsInRollout = new Condition<>(s -> s.startsWith(rolloutName),
                 "Target belongs into rollout");
 
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        myRollout = reloadRollout(myRollout);
         final List<RolloutGroup> rolloutGroups = rolloutGroupManagement.findByRollout(PAGE, myRollout.getId())
                 .getContent();
 
@@ -1211,7 +1267,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify the creation of a Rollout without targets throws an Exception.")
-    public void createRolloutNotMatchingTargets() {
+    void createRolloutNotMatchingTargets() {
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
@@ -1228,7 +1284,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify the creation of a Rollout with the same name throws an Exception.")
-    public void createDuplicateRollout() {
+    void createDuplicateRollout() {
         final int amountGroups = 5;
         final int amountTargetsForRollout = 10;
         final String successCondition = "50";
@@ -1249,97 +1305,90 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify the creation and the start of a Rollout with more groups than targets.")
-    public void createAndStartRolloutWithEmptyGroups() throws Exception {
+    void createAndStartRolloutWithEmptyGroups() {
         final int amountTargetsForRollout = 3;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
         final String rolloutName = "rolloutTestG";
-        final String targetPrefixName = rolloutName;
         final DistributionSet distributionSet = testdataFactory.createDistributionSet("dsFor" + rolloutName);
-        testdataFactory.createTargets(amountTargetsForRollout, targetPrefixName + "-", targetPrefixName);
+        testdataFactory.createTargets(amountTargetsForRollout, rolloutName + "-", rolloutName);
 
         Rollout myRollout = testdataFactory.createRolloutByVariables(rolloutName, "desc", amountGroups,
-                "controllerId==" + targetPrefixName + "-*", distributionSet, successCondition, errorCondition);
+                "controllerId==" + rolloutName + "-*", distributionSet, successCondition, errorCondition);
 
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.READY);
 
-        final List<RolloutGroup> groups = rolloutGroupManagement.findByRollout(PAGE, myRollout.getId()).getContent();
+        final Long myRolloutId = myRollout.getId();
+        final List<RolloutGroup> groups = rolloutGroupManagement.findByRollout(PAGE, myRolloutId).getContent();
 
         assertThat(groups.get(0).getStatus()).isEqualTo(RolloutGroupStatus.READY);
         assertThat(groups.get(0).getTotalTargets()).isEqualTo(1);
         assertThat(groups.get(1).getStatus()).isEqualTo(RolloutGroupStatus.READY);
         assertThat(groups.get(1).getTotalTargets()).isEqualTo(1);
         assertThat(groups.get(2).getStatus()).isEqualTo(RolloutGroupStatus.READY);
-        assertThat(groups.get(2).getTotalTargets()).isEqualTo(0);
+        assertThat(groups.get(2).getTotalTargets()).isZero();
         assertThat(groups.get(3).getStatus()).isEqualTo(RolloutGroupStatus.READY);
         assertThat(groups.get(3).getTotalTargets()).isEqualTo(1);
         assertThat(groups.get(4).getStatus()).isEqualTo(RolloutGroupStatus.READY);
-        assertThat(groups.get(4).getTotalTargets()).isEqualTo(0);
+        assertThat(groups.get(4).getTotalTargets()).isZero();
 
-        rolloutManagement.start(myRollout.getId());
+        rolloutManagement.start(myRolloutId);
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        final SuccessConditionRolloutStatus conditionRolloutStatus = new SuccessConditionRolloutStatus(
-                RolloutStatus.RUNNING);
-        assertThat(MultipleInvokeHelper.doWithTimeout(new RolloutStatusCallable(myRollout.getId()),
-                conditionRolloutStatus, 15000, 500)).as("Rollout status").isNotNull();
+        awaitRunningState(myRolloutId);
 
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        myRollout = getRollout(myRolloutId);
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.RUNNING);
         final Map<TotalTargetCountStatus.Status, Long> expectedTargetCountStatus = createInitStatusMap();
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.RUNNING, 1L);
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.SCHEDULED, 2L);
-        validateRolloutActionStatus(myRollout.getId(), expectedTargetCountStatus);
-
+        validateRolloutActionStatus(myRolloutId, expectedTargetCountStatus);
     }
 
     @Test
     @Description("Verify the creation and the start of a rollout.")
-    public void createAndStartRollout() throws Exception {
+    void createAndStartRollout() {
 
         final int amountTargetsForRollout = 50;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
         final String rolloutName = "rolloutTest";
-        final String targetPrefixName = rolloutName;
         final DistributionSet distributionSet = testdataFactory.createDistributionSet("dsFor" + rolloutName);
-        testdataFactory.createTargets(amountTargetsForRollout, targetPrefixName + "-", targetPrefixName);
+        testdataFactory.createTargets(amountTargetsForRollout, rolloutName + "-", rolloutName);
 
         Rollout myRollout = testdataFactory.createRolloutByVariables(rolloutName, "desc", amountGroups,
-                "controllerId==" + targetPrefixName + "-*", distributionSet, successCondition, errorCondition);
+                "controllerId==" + rolloutName + "-*", distributionSet, successCondition, errorCondition);
 
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.READY);
 
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        final Long myRolloutId = myRollout.getId();
+        myRollout = getRollout(myRolloutId);
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.READY);
 
-        rolloutManagement.start(myRollout.getId());
+        rolloutManagement.start(myRolloutId);
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        final SuccessConditionRolloutStatus conditionRolloutTargetCount = new SuccessConditionRolloutStatus(
-                RolloutStatus.RUNNING);
-        assertThat(MultipleInvokeHelper.doWithTimeout(new RolloutStatusCallable(myRollout.getId()),
-                conditionRolloutTargetCount, 15000, 500)).as("Rollout status").isNotNull();
+        awaitRunningState(myRolloutId);
 
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        myRollout = reloadRollout(myRollout);
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.RUNNING);
         final Map<TotalTargetCountStatus.Status, Long> expectedTargetCountStatus = createInitStatusMap();
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.RUNNING, 10L);
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.SCHEDULED, 40L);
-        validateRolloutActionStatus(myRollout.getId(), expectedTargetCountStatus);
+        validateRolloutActionStatus(myRolloutId, expectedTargetCountStatus);
     }
 
     @Test
     @Description("Verify that a rollout cannot be created if the 'max targets per rollout group' quota is violated.")
-    public void createRolloutFailsIfQuotaGroupQuotaIsViolated() throws Exception {
+    void createRolloutFailsIfQuotaGroupQuotaIsViolated() {
 
         final int maxTargets = quotaManagement.getMaxTargetsPerRolloutGroup();
 
@@ -1357,24 +1406,23 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
                 .errorCondition(RolloutGroupErrorCondition.THRESHOLD, errorCondition)
                 .errorAction(RolloutGroupErrorAction.PAUSE, null).build();
 
-        assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> rolloutManagement.create(
-                entityFactory.rollout().create().name(rolloutName).description(rolloutName)
-                        .targetFilterQuery("controllerId==" + targetPrefixName + "-*").set(distributionSet),
-                amountGroups, conditions));
+        final RolloutCreate rollout = entityFactory.rollout().create().name(rolloutName).description(rolloutName)
+                .targetFilterQuery("controllerId==" + targetPrefixName + "-*").set(distributionSet);
 
+        assertThatExceptionOfType(AssignmentQuotaExceededException.class)
+                .isThrownBy(() -> rolloutManagement.create(rollout, amountGroups, false, conditions));
     }
 
     @Test
     @Description("Verify that a rollout cannot be created based on group definitions if the 'max targets per rollout group' quota is violated for one of the groups.")
-    public void createRolloutWithGroupDefinitionsFailsIfQuotaGroupQuotaIsViolated() throws Exception {
+    void createRolloutWithGroupDefinitionsFailsIfQuotaGroupQuotaIsViolated() {
 
         final int maxTargets = quotaManagement.getMaxTargetsPerRolloutGroup();
 
         final int amountTargetsForRollout = maxTargets * 2 + 2;
         final String rolloutName = "rolloutTest";
-        final String targetPrefixName = rolloutName;
         final DistributionSet distributionSet = testdataFactory.createDistributionSet("dsFor" + rolloutName);
-        testdataFactory.createTargets(amountTargetsForRollout, targetPrefixName + "-", targetPrefixName);
+        testdataFactory.createTargets(amountTargetsForRollout, rolloutName + "-", rolloutName);
 
         final RolloutGroupConditions conditions = new RolloutGroupConditionBuilder().withDefaults().build();
 
@@ -1387,7 +1435,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         // group1 exceeds the quota
         assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> rolloutManagement.create(
                 entityFactory.rollout().create().name(rolloutName).description(rolloutName)
-                        .targetFilterQuery("controllerId==" + targetPrefixName + "-*").set(distributionSet),
+                        .targetFilterQuery("controllerId==" + rolloutName + "-*").set(distributionSet),
                 Arrays.asList(group1, group2), conditions));
 
         // create group definitions
@@ -1399,7 +1447,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         // group4 exceeds the quota
         assertThatExceptionOfType(AssignmentQuotaExceededException.class).isThrownBy(() -> rolloutManagement.create(
                 entityFactory.rollout().create().name(rolloutName).description(rolloutName)
-                        .targetFilterQuery("controllerId==" + targetPrefixName + "-*").set(distributionSet),
+                        .targetFilterQuery("controllerId==" + rolloutName + "-*").set(distributionSet),
                 Arrays.asList(group3, group4), conditions));
 
         // create group definitions
@@ -1413,70 +1461,75 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         // should work fine
         assertThat(rolloutManagement.create(
                 entityFactory.rollout().create().name(rolloutName).description(rolloutName)
-                        .targetFilterQuery("controllerId==" + targetPrefixName + "-*").set(distributionSet),
+                        .targetFilterQuery("controllerId==" + rolloutName + "-*").set(distributionSet),
                 Arrays.asList(group5, group6, group7), conditions)).isNotNull();
 
     }
 
     @Test
     @Description("Verify the creation and the automatic start of a rollout.")
-    public void createAndAutoStartRollout() throws Exception {
+    void createAndAutoStartRollout() {
 
         final int amountTargetsForRollout = 50;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
         final String rolloutName = "rolloutTest8";
-        final String targetPrefixName = rolloutName;
         final DistributionSet distributionSet = testdataFactory.createDistributionSet("dsFor" + rolloutName);
-        testdataFactory.createTargets(amountTargetsForRollout, targetPrefixName + "-", targetPrefixName);
+        testdataFactory.createTargets(amountTargetsForRollout, rolloutName + "-", rolloutName);
 
         Rollout myRollout = testdataFactory.createRolloutByVariables(rolloutName, "desc", amountGroups,
-                "controllerId==" + targetPrefixName + "-*", distributionSet, successCondition, errorCondition);
+                "controllerId==" + rolloutName + "-*", distributionSet, successCondition, errorCondition);
 
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.READY);
 
         // schedule rollout auto start into the future
+        final Long myRolloutId = myRollout.getId();
         rolloutManagement
-                .update(entityFactory.rollout().update(myRollout.getId()).startAt(System.currentTimeMillis() + 60000));
-        rolloutManagement.handleRollouts();
+                .update(entityFactory.rollout().update(myRolloutId).startAt(System.currentTimeMillis() + 60000));
+        rolloutHandler.handleAll();
 
         // rollout should not have been started
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        myRollout = getRollout(myRolloutId);
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.READY);
 
         // schedule to now
-        rolloutManagement.update(entityFactory.rollout().update(myRollout.getId()).startAt(System.currentTimeMillis()));
-        rolloutManagement.handleRollouts();
+        rolloutManagement.update(entityFactory.rollout().update(myRolloutId).startAt(System.currentTimeMillis()));
+        rolloutHandler.handleAll();
 
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        myRollout = getRollout(myRolloutId);
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.STARTING);
 
         // Run here, because scheduler is disabled during tests
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        final SuccessConditionRolloutStatus conditionRolloutTargetCount = new SuccessConditionRolloutStatus(
-                RolloutStatus.RUNNING);
-        assertThat(MultipleInvokeHelper.doWithTimeout(new RolloutStatusCallable(myRollout.getId()),
-                conditionRolloutTargetCount, 15000, 500)).as("Rollout status").isNotNull();
+        awaitRunningState(myRolloutId);
 
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        myRollout = getRollout(myRolloutId);
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.RUNNING);
         final Map<TotalTargetCountStatus.Status, Long> expectedTargetCountStatus = createInitStatusMap();
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.RUNNING, 10L);
         expectedTargetCountStatus.put(TotalTargetCountStatus.Status.SCHEDULED, 40L);
-        validateRolloutActionStatus(myRollout.getId(), expectedTargetCountStatus);
+        validateRolloutActionStatus(myRolloutId, expectedTargetCountStatus);
+    }
+
+    private Rollout reloadRollout(final Rollout r) {
+        return getRollout(r.getId());
+    }
+
+    private Rollout getRollout(final Long myRolloutId) {
+        return rolloutManagement.get(myRolloutId).orElseThrow(NoSuchElementException::new);
     }
 
     @Test
     @Description("Verify the creation of a rollout with a groups definition.")
-    public void createRolloutWithGroupDefinition() throws Exception {
+    void createRolloutWithGroupDefinition() throws Exception {
         final String rolloutName = "rolloutTest3";
 
-        final int amountTargetsInGroup1 = 100;
+        final int amountTargetsInGroup1 = 10;
         final int percentTargetsInGroup1 = 100;
 
-        final int amountTargetsInGroup1and2 = 500;
+        final int amountTargetsInGroup1and2 = 20;
         final int percentTargetsInGroup2 = 20;
         final int percentTargetsInGroup3 = 100;
 
@@ -1497,7 +1550,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         rolloutGroups.add(generateRolloutGroup(2, percentTargetsInGroup3, null));
 
         Rollout myRollout = rolloutManagement.create(rolloutcreate, rolloutGroups, conditions);
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        myRollout = getRollout(myRollout.getId());
 
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.CREATING);
         for (final RolloutGroup group : rolloutGroupManagement.findByRollout(PAGE, myRollout.getId()).getContent()) {
@@ -1509,9 +1562,9 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         TimeUnit.SECONDS.sleep(1);
         testdataFactory.createTargets(10, rolloutName + "-notIn-", rolloutName);
 
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        myRollout = getRollout(myRollout.getId());
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.READY);
         assertThat(myRollout.getTotalTargets()).isEqualTo(amountTargetsInGroup1and2 + amountTargetsInGroup1);
 
@@ -1529,8 +1582,119 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
     }
 
     @Test
+    @Description("Verify rollout execution with advanced group definition and confirmation flow active.")
+    void createRolloutWithGroupDefinitionAndConfirmationFlowActive() {
+        final String rolloutName = "rolloutTest4";
+
+        final int amountTargetsInGroup1 = 10;
+        final int amountTargetsInGroup2 = 20;
+
+        final RolloutGroupConditions conditions = new RolloutGroupConditionBuilder().withDefaults().build();
+        // Generate Targets for group 2
+        final RolloutCreate rolloutcreate = generateTargetsAndRollout(rolloutName, amountTargetsInGroup2);
+
+        // Generate Targets for group 1
+        testdataFactory.createTargets(amountTargetsInGroup1, rolloutName + "-gr1-", rolloutName);
+
+        final List<RolloutGroupCreate> rolloutGroups = new ArrayList<>(3);
+        rolloutGroups.add(generateRolloutGroup(0, 100, "id==" + rolloutName + "-gr1-*", true));
+        rolloutGroups.add(generateRolloutGroup(1, 100, null, false));
+
+        // enable confirmation flow
+        enableConfirmationFlow();
+
+        final Long rolloutId = rolloutManagement.create(rolloutcreate, rolloutGroups, conditions).getId();
+
+        assertThat(getRollout(rolloutId)).satisfies(rollout -> {
+            assertThat(rollout.getStatus()).isEqualTo(RolloutStatus.CREATING);
+            for (final RolloutGroup group : rolloutGroupManagement.findByRollout(PAGE, rollout.getId()).getContent()) {
+                assertThat(group.getStatus()).isEqualTo(RolloutGroupStatus.CREATING);
+            }
+        });
+
+        // first handle iteration will put rollout in ready state
+        rolloutHandler.handleAll();
+
+        assertThat(getRollout(rolloutId)).satisfies(rollout -> {
+            assertThat(rollout.getStatus()).isEqualTo(RolloutStatus.READY);
+            assertThat(rollout.getTotalTargets()).isEqualTo(amountTargetsInGroup1 + amountTargetsInGroup2);
+        });
+
+        // verify created rollout groups
+        final List<Long> rolloutGroupIds = rolloutGroupManagement.findByRollout(PAGE, rolloutId).getContent().stream()
+                .map(Identifiable::getId).collect(Collectors.toList());
+        assertThat(rolloutGroupIds).hasSize(2);
+        assertRolloutGroup(rolloutGroupIds.get(0), RolloutGroupStatus.READY, true, amountTargetsInGroup1, null);
+        assertRolloutGroup(rolloutGroupIds.get(1), RolloutGroupStatus.READY, false, amountTargetsInGroup2, null);
+
+        // start rollout
+        rolloutManagement.start(rolloutId);
+        rolloutHandler.handleAll();
+
+        // verify rollout started. Check groups are in right state.
+        // Group 1 should be in WFC state, since confirmation is required here.
+        assertRolloutGroup(rolloutGroupIds.get(0), RolloutGroupStatus.RUNNING, true, amountTargetsInGroup1,
+                Status.WAIT_FOR_CONFIRMATION);
+        assertRolloutGroup(rolloutGroupIds.get(1), RolloutGroupStatus.SCHEDULED, false, amountTargetsInGroup2,
+                Status.SCHEDULED);
+
+        // cancel execution of all action of group 1 to trigger second group
+        forceQuitAllActionsOfRolloutGroup(rolloutGroupIds.get(0));
+
+        rolloutHandler.handleAll();
+        assertRolloutGroup(rolloutGroupIds.get(0), RolloutGroupStatus.FINISHED, true, amountTargetsInGroup1,
+                Status.CANCELED);
+        assertRolloutGroup(rolloutGroupIds.get(1), RolloutGroupStatus.SCHEDULED, false, amountTargetsInGroup2,
+                Status.SCHEDULED);
+
+        // verify actions of second rule are directly in RUNNING state, since
+        // confirmation is not required for this group
+        rolloutHandler.handleAll();
+        assertRolloutGroup(rolloutGroupIds.get(0), RolloutGroupStatus.FINISHED, true, amountTargetsInGroup1,
+                Status.CANCELED);
+        assertRolloutGroup(rolloutGroupIds.get(1), RolloutGroupStatus.RUNNING, false, amountTargetsInGroup2,
+                Status.RUNNING);
+
+    }
+
+    private void assertRolloutGroup(final long rolloutGroupId, final RolloutGroupStatus status,
+            final boolean isConfirmationRequired, final long totalTargets, final Status actionStatusToCheck) {
+        assertThat(rolloutGroupManagement.get(rolloutGroupId)).hasValueSatisfying(rolloutGroup -> {
+            assertThat(rolloutGroup.getStatus()).isEqualTo(status);
+            assertThat(rolloutGroup.isConfirmationRequired()).isEqualTo(isConfirmationRequired);
+            assertThat(rolloutGroup.getTotalTargets()).isEqualTo(totalTargets);
+            if (actionStatusToCheck != null) {
+                assertAllActionOfRolloutGroupHavingStatus(rolloutGroup.getId(), actionStatusToCheck);
+            }
+        });
+    }
+
+    private void assertAllActionOfRolloutGroupHavingStatus(final long rolloutGroupId, final Status status) {
+        final List<Target> targets = rolloutGroupManagement.findTargetsOfRolloutGroup(PAGE, rolloutGroupId)
+              .getContent();
+        targets.forEach(target -> {
+            final List<Action> activeActions = deploymentManagement
+                  .findActionsByTarget(target.getControllerId(), PAGE).getContent();
+            assertThat(activeActions).hasSize(1);
+            assertThat(activeActions.get(0).getStatus()).isEqualTo(status);
+        });
+    }
+
+    private void forceQuitAllActionsOfRolloutGroup(final long rolloutGroupId) {
+        final List<Target> targets = rolloutGroupManagement.findTargetsOfRolloutGroup(PAGE, rolloutGroupId)
+                .getContent();
+        targets.forEach(target -> {
+            deploymentManagement.findActiveActionsByTarget(PAGE, target.getControllerId()).getContent().stream().map(Identifiable::getId)
+                    .forEach(actionId -> {
+                        deploymentManagement.cancelAction(actionId);
+                        deploymentManagement.forceQuitAction(actionId);
+                    });
+        });
+    }
+
+    @Test
     @Description("Verify rollout creation fails if group definition does not address all targets")
-    public void createRolloutWithGroupsNotMatchingTargets() throws Exception {
+    void createRolloutWithGroupsNotMatchingTargets() {
         final String rolloutName = "rolloutTest4";
         final int amountTargetsForRollout = 500;
         final int percentTargetsInGroup1 = 20;
@@ -1551,7 +1715,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify rollout creation fails if group definition specifies illegal target percentage")
-    public void createRolloutWithIllegalPercentage() throws Exception {
+    void createRolloutWithIllegalPercentage() {
         final String rolloutName = "rolloutTest6";
         final int amountTargetsForRollout = 10;
         final int percentTargetsInGroup1 = 101;
@@ -1572,7 +1736,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Verify rollout creation fails if the 'max rollout groups per rollout' quota is violated.")
-    public void createRolloutWithIllegalAmountOfGroups() throws Exception {
+    void createRolloutWithIllegalAmountOfGroups() {
         final String rolloutName = "rolloutTest5";
         final int targets = 10;
         final int maxGroups = quotaManagement.getMaxRolloutGroupsPerRollout();
@@ -1581,33 +1745,30 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         final RolloutCreate rollout = generateTargetsAndRollout(rolloutName, targets);
 
         assertThatExceptionOfType(AssignmentQuotaExceededException.class)
-                .isThrownBy(() -> rolloutManagement.create(rollout, maxGroups + 1, conditions))
+                .isThrownBy(() -> rolloutManagement.create(rollout, maxGroups + 1, false, conditions))
                 .withMessageContaining("not be greater than " + maxGroups);
-
     }
 
     @Test
     @Description("Verify the start of a Rollout does not work during creation phase.")
-    public void createAndStartRolloutDuringCreationFails() throws Exception {
+    void createAndStartRolloutDuringCreationFails() {
         final int amountTargetsForRollout = 3;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
         final String rolloutName = "rolloutTestGC";
-        final String targetPrefixName = rolloutName;
         final DistributionSet distributionSet = testdataFactory.createDistributionSet("dsFor" + rolloutName);
-        testdataFactory.createTargets(amountTargetsForRollout, targetPrefixName + "-", targetPrefixName);
+        testdataFactory.createTargets(amountTargetsForRollout, rolloutName + "-", rolloutName);
 
         final RolloutGroupConditions conditions = new RolloutGroupConditionBuilder().withDefaults()
                 .successCondition(RolloutGroupSuccessCondition.THRESHOLD, successCondition)
                 .errorCondition(RolloutGroupErrorCondition.THRESHOLD, errorCondition)
                 .errorAction(RolloutGroupErrorAction.PAUSE, null).build();
         final RolloutCreate rolloutToCreate = entityFactory.rollout().create().name(rolloutName)
-                .description("some description").targetFilterQuery("id==" + targetPrefixName + "-*")
-                .set(distributionSet);
+                .description("some description").targetFilterQuery("id==" + rolloutName + "-*").set(distributionSet);
 
-        Rollout myRollout = rolloutManagement.create(rolloutToCreate, amountGroups, conditions);
-        myRollout = rolloutManagement.get(myRollout.getId()).get();
+        Rollout myRollout = rolloutManagement.create(rolloutToCreate, amountGroups, false, conditions);
+        myRollout = getRollout(myRollout.getId());
 
         assertThat(myRollout.getStatus()).isEqualTo(RolloutStatus.CREATING);
 
@@ -1615,40 +1776,42 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         assertThatExceptionOfType(RolloutIllegalStateException.class)
                 .isThrownBy(() -> rolloutManagement.start(rolloutId))
                 .withMessageContaining("can only be started in state ready");
-
     }
 
     @Test
     @Description("Creating a rollout with approval role or approval engine disabled results in the rollout being in "
             + "READY state.")
-    public void createdRolloutWithApprovalRoleOrApprovalDisabledTransitionsToReadyState() {
+    void createdRolloutWithApprovalRoleOrApprovalDisabledTransitionsToReadyState() {
         approvalStrategy.setApprovalNeeded(false);
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout rollout = createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 5, successCondition,
+        final Rollout rollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 5,
+                successCondition,
                 errorCondition);
         assertThat(rollout.getStatus()).isEqualTo(Rollout.RolloutStatus.READY);
     }
 
     @Test
-    @Description("Creating a rollout without approver role and approval enabled leads to transition to "
+    @Description("Creating a rollout without approve role and approval enabled leads to transition to "
             + "WAITING_FOR_APPROVAL state.")
-    public void createdRolloutWithoutApprovalRoleTransitionsToWaitingForApprovalState() {
+    void createdRolloutWithoutApprovalRoleTransitionsToWaitingForApprovalState() {
         approvalStrategy.setApprovalNeeded(true);
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout rollout = createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 5, successCondition,
+        final Rollout rollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 5,
+                successCondition,
                 errorCondition);
         assertThat(rollout.getStatus()).isEqualTo(Rollout.RolloutStatus.WAITING_FOR_APPROVAL);
     }
 
     @Test
     @Description("Approving a rollout leads to transition to READY state.")
-    public void approvedRolloutTransitionsToReadyState() {
+    void approvedRolloutTransitionsToReadyState() {
         approvalStrategy.setApprovalNeeded(true);
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout rollout = createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 5, successCondition,
+        final Rollout rollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 5,
+                successCondition,
                 errorCondition);
         assertThat(rollout.getStatus()).isEqualTo(Rollout.RolloutStatus.WAITING_FOR_APPROVAL);
         rolloutManagement.approveOrDeny(rollout.getId(), Rollout.ApprovalDecision.APPROVED);
@@ -1658,11 +1821,12 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
     @Description("Denying approval for a rollout leads to transition to APPROVAL_DENIED state.")
-    public void deniedRolloutTransitionsToApprovalDeniedState() {
+    void deniedRolloutTransitionsToApprovalDeniedState() {
         approvalStrategy.setApprovalNeeded(true);
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout rollout = createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 5, successCondition,
+        final Rollout rollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 5,
+                successCondition,
                 errorCondition);
         assertThat(rollout.getStatus()).isEqualTo(Rollout.RolloutStatus.WAITING_FOR_APPROVAL);
         rolloutManagement.approveOrDeny(rollout.getId(), Rollout.ApprovalDecision.DENIED);
@@ -1679,18 +1843,19 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = SoftwareModuleCreatedEvent.class, count = 3),
             @Expect(type = RolloutGroupUpdatedEvent.class, count = 5),
             @Expect(type = RolloutCreatedEvent.class, count = 1) })
-    public void deleteRolloutWhichHasNeverStartedIsHardDeleted() {
+    void deleteRolloutWhichHasNeverStartedIsHardDeleted() {
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 15;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout,
+        final Rollout createdRollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(
+                amountTargetsForRollout,
                 amountOtherTargets, amountGroups, successCondition, errorCondition);
 
         // test
         rolloutManagement.delete(createdRollout.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // verify
         final Optional<JpaRollout> deletedRollout = rolloutRepository.findById(createdRollout.getId());
@@ -1711,19 +1876,20 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
             @Expect(type = ActionCreatedEvent.class, count = 10), @Expect(type = ActionUpdatedEvent.class, count = 2),
             @Expect(type = RolloutDeletedEvent.class, count = 1),
             @Expect(type = RolloutCreatedEvent.class, count = 1) })
-    public void deleteRolloutWhichHasBeenStartedBeforeIsSoftDeleted() {
+    void deleteRolloutWhichHasBeenStartedBeforeIsSoftDeleted() {
         final int amountTargetsForRollout = 10;
         final int amountOtherTargets = 15;
         final int amountGroups = 5;
         final String successCondition = "50";
         final String errorCondition = "80";
-        final Rollout createdRollout = createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout,
+        final Rollout createdRollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(
+                amountTargetsForRollout,
                 amountOtherTargets, amountGroups, successCondition, errorCondition);
 
         // start the rollout, so it has active running actions and a group which
         // has been started
         rolloutManagement.start(createdRollout.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // verify we have running actions
         assertThat(actionRepository.findByRolloutIdAndStatus(PAGE, createdRollout.getId(), Status.RUNNING)
@@ -1731,49 +1897,96 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
 
         // test
         rolloutManagement.delete(createdRollout.getId());
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
 
         // verify
         final JpaRollout deletedRollout = rolloutRepository.findById(createdRollout.getId()).get();
         assertThat(deletedRollout).isNotNull();
 
         assertThat(deletedRollout.getStatus()).isEqualTo(RolloutStatus.DELETED);
+
+        final RolloutUpdate rolloutUpdate = entityFactory.rollout().update(createdRollout.getId()).description("test");
         assertThatExceptionOfType(EntityReadOnlyException.class)
-                .isThrownBy(() -> rolloutManagement
-                        .update(entityFactory.rollout().update(createdRollout.getId()).description("test")))
+                .isThrownBy(() -> rolloutManagement.update(rolloutUpdate))
                 .withMessageContaining("" + createdRollout.getId());
 
         assertThat(rolloutManagement.findAll(PAGE, true).getContent()).hasSize(1);
-        assertThat(rolloutManagement.findAll(PAGE, false).getContent()).hasSize(0);
+        assertThat(rolloutManagement.findAll(PAGE, false).getContent()).isEmpty();
+        assertThat(rolloutManagement.findByRsql(PAGE, "name==*", true).getContent()).hasSize(1);
+        assertThat(rolloutManagement.findByRsql(PAGE, "name==*", false).getContent()).isEmpty();
+        assertThat(rolloutManagement.count()).isZero();
         assertThat(rolloutGroupManagement.findByRolloutWithDetailedStatus(PAGE, createdRollout.getId()).getContent())
                 .hasSize(amountGroups);
 
         // verify that all scheduled actions are deleted
         assertThat(actionRepository.findByRolloutIdAndStatus(PAGE, deletedRollout.getId(), Status.SCHEDULED)
-                .getNumberOfElements()).isEqualTo(0);
+                .getNumberOfElements()).isZero();
         // verify that all running actions keep running
         assertThat(actionRepository.findByRolloutIdAndStatus(PAGE, deletedRollout.getId(), Status.RUNNING)
                 .getNumberOfElements()).isEqualTo(2);
     }
 
     @Test
+    @Description("Verifies that returned result considers provided sort parameter.")
+    void findAllRolloutsConsidersSorting() {
+        final String randomString = RandomStringUtils.randomAlphanumeric(5);
+        final DistributionSet testDs = testdataFactory.createDistributionSet(randomString + "-testDs");
+        testdataFactory.createTargets(10, randomString + "-testTarget-");
+        final RolloutGroupConditions conditions = new RolloutGroupConditionBuilder().withDefaults().build();
+
+        final String prefixRolloutRunning = randomString + "1";
+        final RolloutCreate rolloutRunningCreate = entityFactory.rollout().create()
+                .name(prefixRolloutRunning + "-testRollout").targetFilterQuery("name==" + randomString + "*")
+                .set(testDs);
+
+        Rollout rolloutRunning = rolloutManagement.create(rolloutRunningCreate, 1, false, conditions);
+        // Let the executor handle created Rollout
+        rolloutHandler.handleAll();
+        // start the rollout, so it has active running actions and a group which
+        // has been started
+        rolloutManagement.start(rolloutRunning.getId());
+        rolloutHandler.handleAll();
+        rolloutRunning = reloadRollout(rolloutRunning);
+
+        final String prefixRolloutReady = randomString + "2";
+        final RolloutCreate rolloutReadyCreate = entityFactory.rollout().create()
+                .name(prefixRolloutReady + "-testRollout").targetFilterQuery("name==" + randomString + "*").set(testDs);
+        Rollout rolloutReady = rolloutManagement.create(rolloutReadyCreate, 1, false, conditions);
+        // Let the executor handle created Rollout
+        rolloutHandler.handleAll();
+        rolloutReady = reloadRollout(rolloutReady);
+
+        final List<Rollout> rolloutsOrderedByStatus = rolloutManagement
+                .findAll(PageRequest.of(0, 500, Sort.by(Direction.ASC, "status")), false).getContent();
+        assertThat(rolloutsOrderedByStatus).containsSubsequence(List.of(rolloutReady, rolloutRunning));
+
+        final List<Rollout> rolloutsOrderedByName = rolloutManagement
+                .findAll(PageRequest.of(0, 500, Sort.by(Direction.ASC, "name")), false).getContent();
+        assertThat(rolloutsOrderedByName).containsSubsequence(List.of(rolloutRunning, rolloutReady));
+    }
+
+    @Test
     @Description("Creating a rollout without weight value when multi assignment in enabled.")
-    public void weightNotRequiredInMultiAssignmentMode() {
+    void weightNotRequiredInMultiAssignmentMode() {
         enableMultiAssignments();
-        createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 2, "50", "80", ActionType.FORCED, null);
+        final Rollout rollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 2, "50",
+                "80",
+                ActionType.FORCED, null);
+        assertThat(rollout).isNotNull();
     }
 
     @Test
     @Description("Creating a rollout with a weight causes an error when multi assignment in disabled.")
-    public void weightNotAllowedWhenMultiAssignmentModeNotEnabled() {
+    void weightNotAllowedWhenMultiAssignmentModeNotEnabled() {
         Assertions.assertThatExceptionOfType(MultiAssignmentIsNotEnabledException.class)
-                .isThrownBy(() -> createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 2, "50", "80",
+                .isThrownBy(() -> testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(10, 10, 2, "50",
+                        "80",
                         ActionType.FORCED, 66));
     }
 
     @Test
     @Description("Weight is validated and saved to the Rollout.")
-    public void weightValidatedAndSaved() {
+    void weightValidatedAndSaved() {
         final String targetPrefix = UUID.randomUUID().toString();
         testdataFactory.createTargets(4, targetPrefix);
         enableMultiAssignments();
@@ -1795,39 +2008,140 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
     }
 
     @Test
-    @Description("A Rollout with weight creats actions with weights")
-    public void actionsWithWeightAreCreated() {
+    @Description("A Rollout with weight creates actions with weights")
+    void actionsWithWeightAreCreated() {
         final int amountOfTargets = 5;
         final int weight = 99;
         enableMultiAssignments();
-        final Long rolloutId = createSimpleTestRolloutWithTargetsAndDistributionSet(amountOfTargets, 2, amountOfTargets,
+        final Long rolloutId = testdataFactory
+                .createSimpleTestRolloutWithTargetsAndDistributionSet(amountOfTargets, 2, amountOfTargets,
                 "80", "50", null, weight).getId();
         rolloutManagement.start(rolloutId);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         final List<Action> actions = deploymentManagement.findActionsAll(PAGE).getContent();
-        assertThat(actions).hasSize(amountOfTargets);
-        assertThat(actions).allMatch(action -> action.getWeight().get() == weight);
+        assertThat(actions) //
+                .hasSize(amountOfTargets) //
+                .allMatch(action -> action.getWeight().get() == weight);
     }
 
     @Test
     @Description("Rollout can be created without weight in single assignment and be started in multi assignment")
-    public void createInSingleStartInMultiassigMode() {
+    void createInSingleStartInMultiassigMode() {
         final int amountOfTargets = 5;
-        final Long rolloutId = createSimpleTestRolloutWithTargetsAndDistributionSet(amountOfTargets, 2, amountOfTargets,
+        final Long rolloutId = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(amountOfTargets, 2,
+                amountOfTargets,
                 "80", "50", null, null).getId();
 
         enableMultiAssignments();
         rolloutManagement.start(rolloutId);
-        rolloutManagement.handleRollouts();
+        rolloutHandler.handleAll();
         final List<Action> actions = deploymentManagement.findActionsAll(PAGE).getContent();
-        assertThat(actions).hasSize(amountOfTargets);
-        assertThat(actions).allMatch(action -> !action.getWeight().isPresent());
+        assertThat(actions).hasSize(amountOfTargets).allMatch(action -> !action.getWeight().isPresent());
+    }
+
+    @Test
+    @Description("Verifies that an exception is thrown when trying to create a rollout with an invalidated distribution set.")
+    void createRolloutWithInvalidDistributionSet() {
+        final DistributionSet distributionSet = testdataFactory.createAndInvalidateDistributionSet();
+
+        assertThatExceptionOfType(InvalidDistributionSetException.class)
+                .as("Invalid distributionSet should throw an exception")
+                .isThrownBy(() -> testdataFactory.createRolloutByVariables("createRolloutWithInvalidDistributionSet",
+                        "desc", 2, "name==*", distributionSet, "50", "80"));
+    }
+
+    @Test
+    @Description("Verifies that an exception is thrown when trying to create a rollout with an incomplete distribution set.")
+    void createRolloutWithIncompleteDistributionSet() {
+        final DistributionSet distributionSet = testdataFactory.createIncompleteDistributionSet();
+
+        assertThatExceptionOfType(IncompleteDistributionSetException.class)
+                .as("Incomplete distributionSet should throw an exception")
+                .isThrownBy(() -> testdataFactory.createRolloutByVariables("createRolloutWithIncompleteDistributionSet",
+                        "desc", 2, "name==*", distributionSet, "50", "80"));
+    }
+
+    @Test
+    @Description("Verifies that an exception is thrown when trying to update a rollout with an invalidated distribution set.")
+    void updateRolloutWithInvalidDistributionSet() {
+        final DistributionSet distributionSet = testdataFactory.createDistributionSet();
+        testdataFactory.createTarget();
+        final Rollout rollout = testdataFactory.createRolloutByVariables("updateRolloutWithInvalidDistributionSet",
+                "desc", 2, "name==*", distributionSet, "50", "80");
+        final DistributionSet invalidDistributionSet = testdataFactory.createAndInvalidateDistributionSet();
+
+        assertThatExceptionOfType(InvalidDistributionSetException.class)
+                .as("Invalid distributionSet should throw an exception").isThrownBy(() -> rolloutManagement
+                        .update(entityFactory.rollout().update(rollout.getId()).set(invalidDistributionSet.getId())));
+    }
+
+    @Test
+    @Description("Verifies that an exception is thrown when trying to update a rollout with an incomplete distribution set.")
+    void updateRolloutWithIncompleteDistributionSet() {
+        final DistributionSet distributionSet = testdataFactory.createDistributionSet();
+        testdataFactory.createTarget();
+        final Rollout rollout = testdataFactory.createRolloutByVariables("updateRolloutWithIncompleteDistributionSet",
+                "desc", 2, "name==*", distributionSet, "50", "80");
+        final DistributionSet incompleteDistributionSet = testdataFactory.createIncompleteDistributionSet();
+
+        assertThatExceptionOfType(IncompleteDistributionSetException.class)
+                .as("Incomplete distributionSet should throw an exception").isThrownBy(() -> rolloutManagement.update(
+                        entityFactory.rollout().update(rollout.getId()).set(incompleteDistributionSet.getId())));
+    }
+
+    @Test
+    @Description("Verify the that only compatible targets are part of a Rollout.")
+    void createAndStartRolloutWithTargetTypes() {
+        final String rolloutName = "rolloutTestCompatibility";
+
+        final DistributionSet testDs = testdataFactory.createDistributionSet("test-ds");
+        final TargetType incompatibleTargetType = testdataFactory.createTargetType("incompatible-type",
+                Collections.emptyList());
+        final TargetType compatibleTargetType = testdataFactory.createTargetType("compatible-type",
+                Collections.singletonList(testDs.getType()));
+
+        final List<Target> incompatibleTargets = testdataFactory.createTargetsWithType(10, "incompatible",
+                incompatibleTargetType);
+        final List<Target> targetsWithoutType = testdataFactory.createTargets(10, "testTarget-");
+        final List<Target> targets = testdataFactory.createTargetsWithType(10, "compatibleTarget-",
+                compatibleTargetType);
+        targets.addAll(targetsWithoutType);
+
+        final RolloutGroupConditions conditions = new RolloutGroupConditionBuilder().withDefaults().build();
+        final RolloutCreate rolloutToCreate = entityFactory.rollout().create().name(rolloutName)
+                .targetFilterQuery("name==*").set(testDs);
+
+        final Rollout createdRollout = rolloutManagement.create(rolloutToCreate, 1, false, conditions);
+
+        // Let the executor handle created Rollout
+        rolloutHandler.handleAll();
+
+        final Rollout testRollout = reloadRollout(createdRollout);
+        final List<RolloutGroup> rolloutGroups = rolloutGroupManagement
+                .findByRollout(Pageable.unpaged(), testRollout.getId()).getContent();
+
+        assertThat(testRollout.getStatus()).isEqualTo(RolloutStatus.READY);
+        assertThat(testRollout.getTotalTargets()).isEqualTo(targets.size());
+        assertThat(rolloutGroups).hasSize(1);
+        assertThat(rolloutGroups.get(0).getTotalTargets()).isEqualTo(targets.size());
+
+        final List<Target> rolloutGroupTargets = rolloutGroupManagement
+                .findTargetsOfRolloutGroup(Pageable.unpaged(), rolloutGroups.get(0).getId()).getContent();
+
+        assertThat(rolloutGroupTargets).hasSize(targets.size()).containsExactlyInAnyOrderElementsOf(targets)
+                .doesNotContainAnyElementsOf(incompatibleTargets);
     }
 
     private RolloutGroupCreate generateRolloutGroup(final int index, final Integer percentage,
             final String targetFilter) {
+        return generateRolloutGroup(index, percentage, targetFilter, false);
+    }
+
+    private RolloutGroupCreate generateRolloutGroup(final int index, final Integer percentage,
+            final String targetFilter, final boolean confirmationRequired) {
         return entityFactory.rolloutGroup().create().name("Group" + index).description("Group" + index + "desc")
-                .targetPercentage(Float.valueOf(percentage)).targetFilterQuery(targetFilter);
+                .targetPercentage(Float.valueOf(percentage)).targetFilterQuery(targetFilter)
+                .confirmationRequired(confirmationRequired);
     }
 
     private RolloutCreate generateTargetsAndRollout(final String rolloutName, final int amountTargetsForRollout) {
@@ -1861,24 +2175,6 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         }
     }
 
-    private Rollout createSimpleTestRolloutWithTargetsAndDistributionSet(final int amountTargetsForRollout,
-            final int amountOtherTargets, final int groupSize, final String successCondition,
-            final String errorCondition) {
-        return createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout, amountOtherTargets,
-                groupSize, successCondition, errorCondition, ActionType.FORCED, null);
-    }
-
-    private Rollout createSimpleTestRolloutWithTargetsAndDistributionSet(final int amountTargetsForRollout,
-            final int amountOtherTargets, final int groupSize, final String successCondition,
-            final String errorCondition, final ActionType actionType, final Integer weight) {
-        final DistributionSet rolloutDS = testdataFactory.createDistributionSet("rolloutDS");
-        testdataFactory.createTargets(amountTargetsForRollout, "rollout-", "rollout");
-        testdataFactory.createTargets(amountOtherTargets, "others-", "rollout");
-        final String filterQuery = "controllerId==rollout-*";
-        return testdataFactory.createRolloutByVariables("test-rollout-name-1", "test-rollout-description-1", groupSize,
-                filterQuery, rolloutDS, successCondition, errorCondition, actionType, weight);
-    }
-
     private Rollout createTestRolloutWithTargetsAndDistributionSet(final int amountTargetsForRollout,
             final int groupSize, final String successCondition, final String errorCondition, final String rolloutName,
             final String targetPrefixName) {
@@ -1893,7 +2189,7 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         testdataFactory.createTargets(amountTargetsForRollout, targetPrefixName + "-", targetPrefixName);
         return testdataFactory.createRolloutByVariables(rolloutName, rolloutName + "description", groupSize,
                 "controllerId==" + targetPrefixName + "-*", dsForRolloutTwo, successCondition, errorCondition,
-                Action.ActionType.FORCED, weight);
+                Action.ActionType.FORCED, weight, false);
     }
 
     private int changeStatusForAllRunningActions(final Rollout rollout, final Status status) {
@@ -1924,35 +2220,101 @@ public class RolloutManagementTest extends AbstractJpaIntegrationTest {
         return map;
     }
 
-    private static class SuccessConditionRolloutStatus implements SuccessCondition<RolloutStatus> {
-
-        private final RolloutStatus rolloutStatus;
-
-        public SuccessConditionRolloutStatus(final RolloutStatus rolloutStatus) {
-            this.rolloutStatus = rolloutStatus;
-        }
-
-        @Override
-        public boolean success(final RolloutStatus result) {
-            return result.equals(rolloutStatus);
-        }
+    private void awaitRunningState(final Long myRolloutId) {
+        Awaitility.await().atMost(Duration.TEN_SECONDS).pollInterval(Duration.FIVE_HUNDRED_MILLISECONDS).with()
+                .until(() -> WithSpringAuthorityRule
+                        .runAsPrivileged(
+                                () -> rolloutManagement.get(myRolloutId).orElseThrow(NoSuchElementException::new))
+                        .getStatus().equals(RolloutStatus.RUNNING));
     }
 
-    private class RolloutStatusCallable implements Callable<RolloutStatus> {
+    @Test
+    @Description("Verifying that next group is started on manual trigger next group.")
+    void checkRunningRolloutsManualTriggerNextGroup() {
 
-        final Long rolloutId;
+        final int amountTargetsForRollout = 15;
+        final int amountOtherTargets = 0;
+        final int amountGroups = 3;
+        final String successCondition = "100";
+        final String errorCondition = "80";
 
-        RolloutStatusCallable(final Long rolloutId) {
-            this.rolloutId = rolloutId;
-        }
+        final Rollout createdRollout = testdataFactory.createAndStartRollout(amountTargetsForRollout, amountOtherTargets, amountGroups,
+                successCondition, errorCondition);
 
-        @Override
-        public RolloutStatus call() throws Exception {
+        // triggers next group
+        rolloutManagement.triggerNextGroup(createdRollout.getId());
 
-            final Rollout myRollout = rolloutManagement.get(rolloutId).get();
-            return myRollout.getStatus();
+        // second group should in running state
+        List<RolloutGroup> rolloutGroups = rolloutGroupManagement
+                .findByRollout(new OffsetBasedPageRequest(0, 10, Sort.by(Direction.ASC, "id")), createdRollout.getId())
+                .getContent();
+        assertThat(rolloutGroups.get(0).getStatus()).isEqualTo(RolloutGroupStatus.RUNNING);
+        assertThat(rolloutGroups.get(1).getStatus()).isEqualTo(RolloutGroupStatus.RUNNING);
+        assertThat(rolloutGroups.get(2).getStatus()).isEqualTo(RolloutGroupStatus.SCHEDULED);
 
-        }
+        // triggers next group
+        rolloutManagement.triggerNextGroup(createdRollout.getId());
+
+        // third group should be in running state
+        rolloutGroups = rolloutGroupManagement
+                .findByRollout(new OffsetBasedPageRequest(0, 10, Sort.by(Direction.ASC, "id")), createdRollout.getId())
+                .getContent();
+        assertThat(rolloutGroups.get(0).getStatus()).isEqualTo(RolloutGroupStatus.RUNNING);
+        assertThat(rolloutGroups.get(1).getStatus()).isEqualTo(RolloutGroupStatus.RUNNING);
+        assertThat(rolloutGroups.get(2).getStatus()).isEqualTo(RolloutGroupStatus.RUNNING);
+
+        // finish action of all groups and verify rollout
+        final Slice<JpaAction> runningActionsSlice = actionRepository.findByRolloutIdAndStatus(PAGE,
+                createdRollout.getId(), Status.RUNNING);
+        runningActionsSlice.getContent().forEach(this::finishAction);
+
+        verifyRolloutAndAllGroupsAreFinished(createdRollout);
     }
 
+    @Test
+    @Description("Trigger next rollout group if rollout is in wrong state")
+    void triggeringNextGroupRolloutWrongState() {
+
+        final int amountTargetsForRollout = 15;
+        final int amountOtherTargets = 0;
+        final int amountGroups = 3;
+        final String successCondition = "100";
+        final String errorCondition = "80";
+
+        final String errorMessage = "Rollout is not in running state";
+
+        final Rollout createdRollout = testdataFactory.createSimpleTestRolloutWithTargetsAndDistributionSet(amountTargetsForRollout,
+                amountOtherTargets, amountGroups, successCondition, errorCondition);
+
+        // check CREATING state
+        assertThatExceptionOfType(RolloutIllegalStateException.class)
+                .isThrownBy(() -> rolloutManagement.triggerNextGroup(createdRollout.getId()))
+                .withMessageContaining(errorMessage);
+
+        rolloutManagement.start(createdRollout.getId());
+        // check STARTING state
+        assertThatExceptionOfType(RolloutIllegalStateException.class)
+                .isThrownBy(() -> rolloutManagement.triggerNextGroup(createdRollout.getId()))
+                .withMessageContaining(errorMessage);
+
+        // Run here, because scheduler is disabled during tests
+        rolloutHandler.handleAll();
+        final Rollout rollout = reloadRollout(createdRollout);
+
+        rolloutManagement.pauseRollout(rollout.getId());
+
+        // check STOPPED state
+        assertThatExceptionOfType(RolloutIllegalStateException.class)
+                .isThrownBy(() -> rolloutManagement.triggerNextGroup(createdRollout.getId()))
+                .withMessageContaining(errorMessage);
+
+        final Slice<JpaAction> runningActionsSlice = actionRepository.findByRolloutIdAndStatus(PAGE,
+                createdRollout.getId(), Status.RUNNING);
+        runningActionsSlice.getContent().forEach(this::finishAction);
+
+        // check FINISHED state
+        assertThatExceptionOfType(RolloutIllegalStateException.class)
+                .isThrownBy(() -> rolloutManagement.triggerNextGroup(createdRollout.getId()))
+                .withMessageContaining(errorMessage);
+    }
 }

@@ -1,4 +1,4 @@
-/** 
+/**
  * Copyright (c) 2020 Bosch.IO GmbH and others.
  *
  * All rights reserved. This program and the accompanying materials
@@ -26,6 +26,7 @@ import org.eclipse.hawkbit.ui.common.data.proxies.ProxyAction;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyAction.IsActiveDecoration;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyIdentifiableEntity;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTarget;
+import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyUploadProgress.ProgressSatus;
 import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
 import org.eclipse.hawkbit.ui.rollout.ProxyFontIcon;
@@ -42,7 +43,7 @@ import com.vaadin.server.FontIcon;
 import com.vaadin.ui.Label;
 
 /**
- * 
+ *
  * Generate labels with icons according to entities' states
  *
  */
@@ -63,7 +64,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param getEntityStatus
@@ -83,8 +84,11 @@ public final class StatusIconBuilder {
             addMapping(Status.DOWNLOAD, VaadinIcons.CLOUD_DOWNLOAD, SPUIStyleDefinitions.STATUS_ICON_PENDING);
             addMapping(Status.DOWNLOADED, VaadinIcons.CLOUD_DOWNLOAD, SPUIStyleDefinitions.STATUS_ICON_GREEN);
             addMapping(Status.CANCELING, VaadinIcons.CLOSE_CIRCLE, SPUIStyleDefinitions.STATUS_ICON_PENDING);
+            addMapping(Status.CANCEL_REJECTED, VaadinIcons.EXCLAMATION_CIRCLE, SPUIStyleDefinitions.STATUS_ICON_ORANGE);
             addMapping(Status.CANCELED, VaadinIcons.CLOSE_CIRCLE, SPUIStyleDefinitions.STATUS_ICON_GREEN);
             addMapping(Status.ERROR, VaadinIcons.EXCLAMATION_CIRCLE, SPUIStyleDefinitions.STATUS_ICON_RED);
+            addMapping(Status.WAIT_FOR_CONFIRMATION, VaadinIcons.USER_CLOCK, SPUIStyleDefinitions.STATUS_ICON_PENDING);
+
         }
     }
 
@@ -100,7 +104,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param getEntityStatus
@@ -139,7 +143,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param getEntityStatus
@@ -176,7 +180,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param getEntityStatus
@@ -207,7 +211,7 @@ public final class StatusIconBuilder {
             if (optionalIcon.isPresent()) {
                 icon = getFontIconFromStatusMap(optionalIcon.get(), getEntityStatus.apply(entity), group.orElse(null));
             } else {
-                icon = buildDefaultStatusIcon(group.orElse(null));
+                icon = buildStatusIcon(group.orElse(null));
             }
 
             return getLabel(entity, icon);
@@ -232,7 +236,7 @@ public final class StatusIconBuilder {
         // Actions are not created for targets when rollout's status is
         // READY and when duplicate assignment is done. In these cases
         // display a appropriate status with description
-        private ProxyFontIcon buildDefaultStatusIcon(final RolloutGroup rolloutGroup) {
+        private ProxyFontIcon buildStatusIcon(final RolloutGroup rolloutGroup) {
             if (rolloutGroup != null && rolloutGroup.getStatus() == RolloutGroupStatus.READY) {
                 return new ProxyFontIcon(VaadinIcons.BULLSEYE, SPUIStyleDefinitions.STATUS_ICON_LIGHT_BLUE,
                         i18n.getMessage(UIMessageIdProvider.TOOLTIP_ROLLOUT_GROUP_STATUS_PREFIX
@@ -240,9 +244,15 @@ public final class StatusIconBuilder {
             } else if (rolloutGroup != null && rolloutGroup.getStatus() == RolloutGroupStatus.FINISHED) {
                 final DistributionSet dist = rolloutGroup.getRollout().getDistributionSet();
                 final String ds = HawkbitCommonUtil.getFormattedNameVersion(dist.getName(), dist.getVersion());
-
-                return new ProxyFontIcon(VaadinIcons.MINUS_CIRCLE, SPUIStyleDefinitions.STATUS_ICON_BLUE,
-                        i18n.getMessage("message.dist.already.assigned", ds));
+                if (dist.isValid()) {
+                    return new ProxyFontIcon(VaadinIcons.MINUS_CIRCLE, SPUIStyleDefinitions.STATUS_ICON_BLUE,
+                            i18n.getMessage(UIMessageIdProvider.MESSAGE_DISTRIBUTION_ASSIGNED, ds));
+                } else {
+                    // invalidated ds, finished rollout but ds wasn't assigned
+                    // to target
+                    return new ProxyFontIcon(VaadinIcons.BAN, SPUIStyleDefinitions.STATUS_ICON_BLUE,
+                            i18n.getMessage(UIMessageIdProvider.MESSAGE_DISTRIBUTION_NOT_ASSIGNED, ds));
+                }
             } else {
                 return generateUnknwonStateIcon();
             }
@@ -263,7 +273,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param getEntityStatus
@@ -297,7 +307,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param getEntityStatus
@@ -320,6 +330,43 @@ public final class StatusIconBuilder {
     }
 
     /**
+     * Generate labels with confirmation icons according to entity' {@link ProxyTargetFilterQuery}
+     */
+    public static class ConfirmationIconSupplier extends AbstractEntityStatusIconBuilder<ProxyTargetFilterQuery> {
+
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * constructor
+         *
+         * @param i18n
+         *            message source for internationalization
+         * @param labelIdPrefix
+         *            to generate the label ID
+         */
+        public ConfirmationIconSupplier(final VaadinMessageSource i18n, final String labelIdPrefix) {
+            super(i18n, labelIdPrefix);
+        }
+
+        @Override
+        public Label getLabel(final ProxyTargetFilterQuery entity) {
+            final ProxyFontIcon icon;
+            if (entity.isAutoAssignmentEnabled() && entity.getDistributionSetInfo() != null) {
+                icon = entity.isConfirmationRequired()
+                        ? new ProxyFontIcon(VaadinIcons.USER_CLOCK, SPUIStyleDefinitions.STATUS_ICON_GREEN,
+                                i18n.getMessage(UIMessageIdProvider.TOOLTIP_TARGET_FILTER_CONFIRMATION_REQUIRED))
+                        : new ProxyFontIcon(VaadinIcons.USER_CHECK, SPUIStyleDefinitions.STATUS_ICON_RED,
+                                i18n.getMessage(UIMessageIdProvider.TOOLTIP_TARGET_FILTER_CONFIRMATION_NOT_REQUIRED));
+            } else {
+                icon = new ProxyFontIcon(VaadinIcons.MINUS_CIRCLE_O, SPUIStyleDefinitions.STATUS_ICON_NEUTRAL,
+                        i18n.getMessage(UIMessageIdProvider.TOOLTIP_TARGET_FILTER_CONFIRMATION_NOT_CONFIGURED));
+            }
+
+            return getLabel(entity, icon);
+        }
+    }
+
+    /**
      * Generate labels with icons according to entities'
      * {@link TargetUpdateStatus}
      *
@@ -332,7 +379,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param getEntityStatus
@@ -365,7 +412,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param getEntityStatus
@@ -392,7 +439,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param labelIdPrefix
@@ -423,7 +470,7 @@ public final class StatusIconBuilder {
 
         /**
          * constructor
-         * 
+         *
          * @param i18n
          *            message source for internationalization
          * @param labelIdPrefix
@@ -540,7 +587,7 @@ public final class StatusIconBuilder {
 
         /**
          * Generate a label from the entity according to its state
-         * 
+         *
          * @param entity
          *            to read the state from
          * @return the label

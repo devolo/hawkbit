@@ -255,6 +255,15 @@ public class UiProperties implements Serializable {
             private String maintenanceWindowView = "";
 
             /**
+             * Link to documentation of the user consent and confirmation flow.
+             */
+            private String userConsentAndConfirmationGuide = "";
+
+            public String getAutoConfirmationView() {
+                return autoConfirmationView;
+            }
+
+            /**
              * Link to documentation of system configuration view.
              */
             private String systemConfigurationView = "";
@@ -279,7 +288,20 @@ public class UiProperties implements Serializable {
              */
             private String rolloutView = "";
 
+            /**
+             * Link to documentation of auto confirmation view.
+             */
+            private String autoConfirmationView = "";
+
+            /**
+             * Link to documentation of state machine
+             */
             private String provisioningStateMachine = "";
+
+            /**
+             * Link to documentation of distribution set invalidation
+             */
+            private String distributionSetInvalidation = "";
 
             /**
              * @return Link to documentation of deployment view
@@ -346,10 +368,24 @@ public class UiProperties implements Serializable {
             }
 
             /**
+             * @return Link to documentation of the user consent and confirmation flow.
+             */
+            public String getUserConsentAndConfirmationGuide() {
+                return userConsentAndConfirmationGuide;
+            }
+
+            /**
              * @return Link to documentation of provisioning state machine
              */
             public String getProvisioningStateMachine() {
                 return provisioningStateMachine;
+            }
+
+            /**
+             * @return Link to documentation of distribution set invalidation
+             */
+            public String getDistributionSetInvalidation() {
+                return distributionSetInvalidation;
             }
 
             public void setDeploymentView(final String deploymentView) {
@@ -410,10 +446,23 @@ public class UiProperties implements Serializable {
                 this.maintenanceWindowView = maintenanceWindowView;
             }
 
+            public void setUserConsentAndConfirmationGuide(final String userConsentAndConfirmationGuide) {
+                this.userConsentAndConfirmationGuide = userConsentAndConfirmationGuide;
+            }
+
             public void setProvisioningStateMachine(final String provisioningStateMachine) {
                 this.provisioningStateMachine = provisioningStateMachine;
             }
 
+            /**
+             * Sets the link to the distribution set invalidation documentation
+             * 
+             * @param distributionSetInvalidation
+             *            Link
+             */
+            public void setDistributionSetInvalidation(String distributionSetInvalidation) {
+                this.distributionSetInvalidation = distributionSetInvalidation;
+            }
         }
 
         private final Documentation documentation = new Documentation();

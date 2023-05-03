@@ -25,14 +25,13 @@ import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.model.JpaTargetTag;
 import org.eclipse.hawkbit.repository.jpa.rsql.RSQLUtility;
 import org.eclipse.hawkbit.repository.jpa.specifications.TagSpecification;
+import org.eclipse.hawkbit.repository.jpa.specifications.TargetSpecifications;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetTag;
 import org.eclipse.hawkbit.repository.rsql.VirtualPropertyReplacer;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.orm.jpa.vendor.Database;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -105,14 +104,8 @@ public class JpaTargetTagManagement implements TargetTagManagement {
 
     @Override
     public Page<TargetTag> findByRsql(final Pageable pageable, final String rsqlParam) {
-
-        final Specification<JpaTargetTag> spec = RSQLUtility.parse(rsqlParam, TagFields.class, virtualPropertyReplacer,
-                database);
-        return convertTPage(targetTagRepository.findAll(spec, pageable), pageable);
-    }
-
-    private static Page<TargetTag> convertTPage(final Page<JpaTargetTag> findAll, final Pageable pageable) {
-        return new PageImpl<>(Collections.unmodifiableList(findAll.getContent()), pageable, findAll.getTotalElements());
+        return JpaManagementHelper.findAllWithCountBySpec(targetTagRepository, pageable, Collections.singletonList(
+                RSQLUtility.buildRsqlSpecification(rsqlParam, TagFields.class, virtualPropertyReplacer, database)));
     }
 
     @Override
@@ -139,7 +132,7 @@ public class JpaTargetTagManagement implements TargetTagManagement {
 
     @Override
     public Optional<TargetTag> get(final long id) {
-        return targetTagRepository.findById(id).map(tt -> (TargetTag) tt);
+        return targetTagRepository.findById(id).map(TargetTag.class::cast);
     }
 
     @Override
@@ -149,15 +142,16 @@ public class JpaTargetTagManagement implements TargetTagManagement {
 
     @Override
     public Page<TargetTag> findAll(final Pageable pageable) {
-        return convertTPage(targetTagRepository.findAll(pageable), pageable);
+        return JpaManagementHelper.findAllWithCountBySpec(targetTagRepository, pageable, null);
     }
 
     @Override
     public Page<TargetTag> findByTarget(final Pageable pageable, final String controllerId) {
-        if (!targetRepository.existsByControllerId(controllerId)) {
+        if (!targetRepository.exists(TargetSpecifications.hasControllerId(controllerId))) {
             throw new EntityNotFoundException(Target.class, controllerId);
         }
 
-        return convertTPage(targetTagRepository.findAll(TagSpecification.ofTarget(controllerId), pageable), pageable);
+        return JpaManagementHelper.findAllWithCountBySpec(targetTagRepository, pageable,
+                Collections.singletonList(TagSpecification.ofTarget(controllerId)));
     }
 }

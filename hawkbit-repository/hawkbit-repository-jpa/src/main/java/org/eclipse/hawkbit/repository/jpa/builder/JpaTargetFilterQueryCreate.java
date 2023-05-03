@@ -11,11 +11,9 @@ package org.eclipse.hawkbit.repository.jpa.builder;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.builder.AbstractTargetFilterQueryUpdateCreate;
 import org.eclipse.hawkbit.repository.builder.TargetFilterQueryCreate;
-import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.exception.InvalidAutoAssignActionTypeException;
 import org.eclipse.hawkbit.repository.jpa.model.JpaTargetFilterQuery;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 
 /**
@@ -33,16 +31,10 @@ public class JpaTargetFilterQueryCreate extends AbstractTargetFilterQueryUpdateC
 
     @Override
     public JpaTargetFilterQuery build() {
-
         return new JpaTargetFilterQuery(name, query,
-                getAutoAssignDistributionSetId().map(this::findDistributionSetAndThrowExceptionIfNotFound).orElse(null),
+                getAutoAssignDistributionSetId().map(distributionSetManagement::getValidAndComplete).orElse(null),
                 getAutoAssignActionType().filter(JpaTargetFilterQueryCreate::isAutoAssignActionTypeValid).orElse(null),
-                weight);
-    }
-
-    private DistributionSet findDistributionSetAndThrowExceptionIfNotFound(final Long setId) {
-        return distributionSetManagement.get(setId)
-                .orElseThrow(() -> new EntityNotFoundException(DistributionSet.class, setId));
+                weight, getConfirmationRequired().orElse(false));
     }
 
     private static boolean isAutoAssignActionTypeValid(final ActionType actionType) {

@@ -20,8 +20,10 @@ import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.SoftwareModule;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.report.model.TenantUsage;
+import org.eclipse.hawkbit.repository.test.util.DisposableSqlTestDatabaseExtension;
 import org.eclipse.hawkbit.repository.test.util.WithSpringAuthorityRule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
@@ -29,6 +31,7 @@ import io.qameta.allure.Story;
 
 @Feature("Component Tests - Repository")
 @Story("System Management")
+@ExtendWith(DisposableSqlTestDatabaseExtension.class)
 public class SystemManagementTest extends AbstractJpaIntegrationTest {
 
     @Test
@@ -39,6 +42,16 @@ public class SystemManagementTest extends AbstractJpaIntegrationTest {
         createTestTenantsForSystemStatistics(2, 0, 0, 0);
 
         assertThat(systemManagement.findTenants(PAGE).getContent()).hasSize(3);
+    }
+
+    @Test
+    @Description("Ensures that getSystemUsageStatisticsWithTenants returns the usage of all tenants and not only the first 1000 (max page size).")
+    public void systemUsageReportCollectsStatisticsOfManyTenants() throws Exception {
+        // Prepare tenants
+        createTestTenantsForSystemStatistics(1050, 0, 0, 0);
+
+        final List<TenantUsage> tenants = systemManagement.getSystemUsageStatisticsWithTenants().getTenants();
+        assertThat(tenants).hasSize(1051); // +1 from the setup
     }
 
     @Test
@@ -81,17 +94,17 @@ public class SystemManagementTest extends AbstractJpaIntegrationTest {
     @Description("Checks that the system report calculates correctly the actions size of all tenants in the system")
     public void systemUsageReportCollectsActionsOfAllTenants() throws Exception {
         // Prepare tenants
-        createTestTenantsForSystemStatistics(2, 0, 100, 2);
+        createTestTenantsForSystemStatistics(2, 0, 20, 2);
 
         // 2 tenants, 100 targets each, 2 deployments per target => 400
-        assertThat(systemManagement.getSystemUsageStatistics().getOverallActions()).isEqualTo(400);
+        assertThat(systemManagement.getSystemUsageStatistics().getOverallActions()).isEqualTo(80);
 
         // per tenant data
         final List<TenantUsage> tenants = systemManagement.getSystemUsageStatisticsWithTenants().getTenants();
         assertThat(tenants).hasSize(3);
         assertThat(tenants).containsOnly(new TenantUsage("default"),
-                new TenantUsage("tenant0").setTargets(100).setActions(200),
-                new TenantUsage("tenant1").setTargets(100).setActions(200));
+                new TenantUsage("tenant0").setTargets(20).setActions(40),
+                new TenantUsage("tenant1").setTargets(20).setActions(40));
     }
 
     private byte[] createTestTenantsForSystemStatistics(final int tenants, final int artifactSize, final int targets,
@@ -102,7 +115,7 @@ public class SystemManagementTest extends AbstractJpaIntegrationTest {
 
         for (int i = 0; i < tenants; i++) {
             final String tenantname = "tenant" + i;
-            securityRule.runAs(WithSpringAuthorityRule.withUserAndTenant("bumlux", tenantname, true, true, false,
+            WithSpringAuthorityRule.runAs(WithSpringAuthorityRule.withUserAndTenant("bumlux", tenantname, true, true, false,
                     SpringEvalExpressions.SYSTEM_ROLE), () -> {
                         systemManagement.getTenantMetadata(tenantname);
                         if (artifactSize > 0) {

@@ -32,8 +32,8 @@ import org.eclipse.hawkbit.rest.documentation.ApiModelPropertiesGeneric;
 import org.eclipse.hawkbit.rest.documentation.DocumenationResponseFieldsSnippet;
 import org.eclipse.hawkbit.rest.documentation.MgmtApiModelProperties;
 import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
@@ -57,10 +57,12 @@ public class DistributionSetTagResourceDocumentationTest extends AbstractApiRest
     private DistributionSet distributionSet;
 
     @Override
-    @Before
+    public String getResourceName() {
+        return "distributionsettag";
+    }
+
+    @BeforeEach
     public void setUp() {
-        resourceName = "distributionsettag";
-        super.setUp();
         distributionSet = createDistributionSet();
     }
 
@@ -74,7 +76,7 @@ public class DistributionSetTagResourceDocumentationTest extends AbstractApiRest
                 .andDo(this.document.document(getResponseFieldsTag(true,
                         fieldWithPath("size").type(JsonFieldType.NUMBER).description(ApiModelPropertiesGeneric.SIZE),
                         fieldWithPath("total").description(ApiModelPropertiesGeneric.TOTAL_ELEMENTS),
-                        fieldWithPath("content").description(MgmtApiModelProperties.TARGET_LIST))));
+                        fieldWithPath("content").description(MgmtApiModelProperties.DS_TAG_LIST))));
     }
 
     @Test
@@ -171,7 +173,7 @@ public class DistributionSetTagResourceDocumentationTest extends AbstractApiRest
                                 fieldWithPath("size").type(JsonFieldType.NUMBER)
                                         .description(ApiModelPropertiesGeneric.SIZE),
                                 fieldWithPath("total").description(ApiModelPropertiesGeneric.TOTAL_ELEMENTS),
-                                fieldWithPath("content").description(MgmtApiModelProperties.TARGET_LIST))));
+                                fieldWithPath("content").description(MgmtApiModelProperties.DS_TAG_LIST))));
     }
 
     @Test

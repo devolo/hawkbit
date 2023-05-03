@@ -15,6 +15,7 @@ import org.eclipse.hawkbit.repository.DeploymentManagement;
 import org.eclipse.hawkbit.repository.DistributionSetManagement;
 import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
 import org.eclipse.hawkbit.repository.TargetManagement;
+import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.eclipse.hawkbit.ui.common.CommonUiDependencies;
 import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.event.EventView;
@@ -25,6 +26,7 @@ import org.eclipse.hawkbit.ui.common.layout.listener.EntityModifiedListener.Enti
 import org.eclipse.hawkbit.ui.common.layout.listener.FilterChangedListener;
 import org.eclipse.hawkbit.ui.common.layout.listener.support.EntityModifiedGridRefreshAwareSupport;
 import org.eclipse.hawkbit.ui.filtermanagement.state.FilterManagementUIState;
+import org.eclipse.hawkbit.utils.TenantConfigHelper;
 
 /**
  * TargetFilter table layout.
@@ -55,24 +57,24 @@ public class TargetFilterGridLayout extends AbstractGridComponentLayout {
     public TargetFilterGridLayout(final CommonUiDependencies uiDependencies,
             final TargetFilterQueryManagement targetFilterQueryManagement, final TargetManagement targetManagement,
             final DistributionSetManagement distributionSetManagement, final DeploymentManagement deploymentManagement,
-            final FilterManagementUIState filterManagementUIState) {
-                    
+            final FilterManagementUIState filterManagementUIState, final TenantConfigHelper tenantConfigHelper,
+            final TenantAware tenantAware) {
         this.targetFilterGridHeader = new TargetFilterGridHeader(uiDependencies,
                 filterManagementUIState.getGridLayoutUiState());
 
         final AutoAssignmentWindowBuilder autoAssignmentWindowBuilder = new AutoAssignmentWindowBuilder(uiDependencies,
-                targetManagement, targetFilterQueryManagement, distributionSetManagement, deploymentManagement);
-
+                targetManagement, targetFilterQueryManagement, distributionSetManagement, deploymentManagement, tenantConfigHelper,
+                tenantAware);
 
         this.targetFilterGrid = new TargetFilterGrid(uiDependencies, filterManagementUIState.getGridLayoutUiState(),
-                targetFilterQueryManagement, autoAssignmentWindowBuilder);
+                targetFilterQueryManagement, autoAssignmentWindowBuilder, tenantConfigHelper);
 
+        final EventViewAware viewAware = new EventViewAware(EventView.TARGET_FILTER);
         this.targetQueryFilterListener = new FilterChangedListener<>(uiDependencies.getEventBus(),
-                ProxyTargetFilterQuery.class, new EventViewAware(EventView.TARGET_FILTER),
-                targetFilterGrid.getFilterSupport());
+                ProxyTargetFilterQuery.class, viewAware, targetFilterGrid.getFilterSupport());
         this.filterQueryModifiedListener = new EntityModifiedListener.Builder<>(uiDependencies.getEventBus(),
-                ProxyTargetFilterQuery.class).entityModifiedAwareSupports(getFilterQueryModifiedAwareSupports())
-                        .build();
+                ProxyTargetFilterQuery.class).viewAware(viewAware)
+                        .entityModifiedAwareSupports(getFilterQueryModifiedAwareSupports()).build();
 
         buildLayout(targetFilterGridHeader, targetFilterGrid);
     }
@@ -81,18 +83,20 @@ public class TargetFilterGridLayout extends AbstractGridComponentLayout {
         return Collections.singletonList(EntityModifiedGridRefreshAwareSupport.of(targetFilterGrid::refreshAll));
     }
 
-    /**
-     * restore the saved state
-     */
+    @Override
     public void restoreState() {
         targetFilterGridHeader.restoreState();
         targetFilterGrid.restoreState();
     }
 
-    /**
-     * unsubscribe all listener
-     */
-    public void unsubscribeListener() {
+    @Override
+    public void subscribeListeners() {
+        targetQueryFilterListener.subscribe();
+        filterQueryModifiedListener.subscribe();
+    }
+
+    @Override
+    public void unsubscribeListeners() {
         targetQueryFilterListener.unsubscribe();
         filterQueryModifiedListener.unsubscribe();
     }

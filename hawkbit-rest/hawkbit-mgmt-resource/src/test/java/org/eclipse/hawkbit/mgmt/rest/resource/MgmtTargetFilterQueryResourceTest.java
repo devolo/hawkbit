@@ -21,13 +21,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.eclipse.hawkbit.exception.SpServerError;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtActionType;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
-import org.eclipse.hawkbit.repository.exception.InvalidAutoAssignActionTypeException;
-import org.eclipse.hawkbit.repository.exception.InvalidAutoAssignDistributionSetException;
 import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
+import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
+import org.eclipse.hawkbit.repository.exception.IncompleteDistributionSetException;
+import org.eclipse.hawkbit.repository.exception.InvalidAutoAssignActionTypeException;
 import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
@@ -35,7 +37,11 @@ import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.eclipse.hawkbit.rest.exception.MessageNotReadableException;
 import org.eclipse.hawkbit.rest.json.model.ExceptionInfo;
 import org.json.JSONObject;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -58,6 +64,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     private static final String JSON_PATH_FIELD_ID = ".id";
     private static final String JSON_PATH_FIELD_NAME = ".name";
     private static final String JSON_PATH_FIELD_QUERY = ".query";
+    private static final String JSON_PATH_FIELD_CONFIRMATION_REQUIRED = ".confirmationRequired";
     private static final String JSON_PATH_FIELD_CONTENT = ".content";
     private static final String JSON_PATH_FIELD_SIZE = ".size";
     private static final String JSON_PATH_FIELD_TOTAL = ".total";
@@ -75,6 +82,8 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     private static final String JSON_PATH_NAME = JSON_PATH_ROOT + JSON_PATH_FIELD_NAME;
     private static final String JSON_PATH_ID = JSON_PATH_ROOT + JSON_PATH_FIELD_ID;
     private static final String JSON_PATH_QUERY = JSON_PATH_ROOT + JSON_PATH_FIELD_QUERY;
+    private static final String JSON_PATH_CONFIRMATION_REQUIRED = JSON_PATH_ROOT
+            + JSON_PATH_FIELD_CONFIRMATION_REQUIRED;
     private static final String JSON_PATH_AUTO_ASSIGN_DS = JSON_PATH_ROOT + JSON_PATH_FIELD_AUTO_ASSIGN_DS;
     private static final String JSON_PATH_AUTO_ASSIGN_ACTION_TYPE = JSON_PATH_ROOT
             + JSON_PATH_FIELD_AUTO_ASSIGN_ACTION_TYPE;
@@ -85,7 +94,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     @Description("Ensures that deletion is executed if permitted.")
     public void deleteTargetFilterQueryReturnsOK() throws Exception {
         final String filterName = "filter_01";
-        final TargetFilterQuery filterQuery = createSingleTargetFilterQuery(filterName, "name=test_01");
+        final TargetFilterQuery filterQuery = createSingleTargetFilterQuery(filterName, "name==test_01");
 
         mvc.perform(delete(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + filterQuery.getId()))
                 .andExpect(status().isOk());
@@ -114,8 +123,8 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     @Description("Ensures that update request is reflected by repository.")
     public void updateTargetFilterQueryQuery() throws Exception {
         final String filterName = "filter_02";
-        final String filterQuery = "name=test_02";
-        final String filterQuery2 = "name=test_02_changed";
+        final String filterQuery = "name==test_02";
+        final String filterQuery2 = "name==test_02_changed";
         final String body = new JSONObject().put("query", filterQuery2).toString();
 
         // prepare
@@ -125,7 +134,8 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
                 .contentType(MediaType.APPLICATION_JSON)).andDo(print()).andExpect(status().isOk())
                 .andExpect(jsonPath(JSON_PATH_ID, equalTo(tfq.getId().intValue())))
                 .andExpect(jsonPath(JSON_PATH_QUERY, equalTo(filterQuery2)))
-                .andExpect(jsonPath(JSON_PATH_NAME, equalTo(filterName)));
+                .andExpect(jsonPath(JSON_PATH_NAME, equalTo(filterName)))
+                .andExpect(jsonPath(JSON_PATH_CONFIRMATION_REQUIRED).doesNotExist());
 
         final TargetFilterQuery tfqCheck = targetFilterQueryManagement.get(tfq.getId()).get();
         assertThat(tfqCheck.getQuery()).isEqualTo(filterQuery2);
@@ -137,7 +147,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     public void updateTargetFilterQueryName() throws Exception {
         final String filterName = "filter_03";
         final String filterName2 = "filter_03_changed";
-        final String filterQuery = "name=test_03";
+        final String filterQuery = "name==test_03";
         final String body = new JSONObject().put("name", filterName2).toString();
 
         // prepare
@@ -148,7 +158,9 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
                 .contentType(MediaType.APPLICATION_JSON)).andDo(print()).andExpect(status().isOk())
                 .andExpect(jsonPath(JSON_PATH_ID, equalTo(tfq.getId().intValue())))
                 .andExpect(jsonPath(JSON_PATH_QUERY, equalTo(filterQuery)))
-                .andExpect(jsonPath(JSON_PATH_NAME, equalTo(filterName2)));
+                .andExpect(jsonPath(JSON_PATH_NAME, equalTo(filterName2)))
+                .andExpect(jsonPath(JSON_PATH_CONFIRMATION_REQUIRED).doesNotExist());
+        ;
 
         final TargetFilterQuery tfqCheck = targetFilterQueryManagement.get(tfq.getId()).get();
         assertThat(tfqCheck.getQuery()).isEqualTo(filterQuery);
@@ -162,7 +174,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
         final String idA = "a";
         final String idB = "b";
         final String idC = "c";
-        final String testQuery = "name=test";
+        final String testQuery = "name==test";
 
         createSingleTargetFilterQuery(idA, testQuery);
         createSingleTargetFilterQuery(idB, testQuery);
@@ -191,7 +203,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
         final String idA = "a";
         final String idB = "b";
         final String idC = "c";
-        final String testQuery = "name=test";
+        final String testQuery = "name==test";
 
         createSingleTargetFilterQuery(idA, testQuery);
         createSingleTargetFilterQuery(idB, testQuery);
@@ -217,7 +229,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
         final String idC = "c";
         final String idD = "d";
         final String idE = "e";
-        final String testQuery = "name=test";
+        final String testQuery = "name==test";
 
         createSingleTargetFilterQuery("a", testQuery);
         createSingleTargetFilterQuery("b", testQuery);
@@ -247,7 +259,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     @Description("Ensures that a single target filter query can be retrieved via its id.")
     public void getSingleTarget() throws Exception {
         // create first a target which can be retrieved by rest interface
-        final String knownQuery = "name=test01";
+        final String knownQuery = "name==test01";
         final String knownName = "someName";
         final TargetFilterQuery tfq = createSingleTargetFilterQuery(knownName, knownQuery);
         final String hrefPrefix = "http://localhost" + MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/"
@@ -256,6 +268,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
         mvc.perform(get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + tfq.getId())).andDo(print())
                 .andExpect(status().isOk()).andExpect(jsonPath(JSON_PATH_NAME, equalTo(knownName)))
                 .andExpect(jsonPath(JSON_PATH_QUERY, equalTo(knownQuery)))
+                .andExpect(jsonPath(JSON_PATH_CONFIRMATION_REQUIRED).doesNotExist())
                 .andExpect(jsonPath("$._links.self.href", equalTo(hrefPrefix)))
                 .andExpect(jsonPath("$._links.autoAssignDS.href", equalTo(hrefPrefix + "/autoAssignDS")));
     }
@@ -264,9 +277,13 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     @Description("Ensures that results for a single target filter query can be retrieved via its id.")
     public void getSingleResults() throws Exception {
         final String knownTarget = "test1";
-        final TargetFilterQuery tfq = createSingleTargetFilterQuery("results", "controllerId==" + knownTarget);
+        final String knownQuery = "controllerId==test1";
+
+        final TargetFilterQuery tfq = createSingleTargetFilterQuery("results", knownQuery);
+
         testdataFactory.createTarget(knownTarget);
         testdataFactory.createTarget("test2");
+
         mvc.perform(get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + tfq.getId() + "/results"))
                 .andDo(print()).andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -309,6 +326,18 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     }
 
     @Test
+    @Description("Ensures that the creation of a target filter query based on an invalid RSQL query results in a HTTP Bad Request error (400).")
+    public void createTargetFilterWithInvalidQuery() throws Exception {
+        final String invalidQuery = "name=abc";
+        final String body = new JSONObject().put("query", invalidQuery).put("name", "invalidFilter").toString();
+
+        mvc.perform(post(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING).content(body)
+                .contentType(MediaType.APPLICATION_JSON)).andDo(print()).andExpect(status().isBadRequest()).andReturn();
+
+        assertThat(targetFilterQueryManagement.count()).isEqualTo(0);
+    }
+
+    @Test
     @Description("Ensures that the assignment of an auto-assign distribution set results in a HTTP Forbidden error (403) "
             + "if the (existing) query addresses too many targets.")
     public void setAutoAssignDistributionSetOnFilterQueryThatExceedsQuota() throws Exception {
@@ -325,7 +354,8 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
                 post(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + filterQuery.getId() + "/autoAssignDS")
                         .content("{\"id\":" + set.getId() + "}").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print()).andExpect(status().isForbidden())
-                .andExpect(jsonPath(JSON_PATH_EXCEPTION_CLASS, equalTo(AssignmentQuotaExceededException.class.getName())))
+                .andExpect(
+                        jsonPath(JSON_PATH_EXCEPTION_CLASS, equalTo(AssignmentQuotaExceededException.class.getName())))
                 .andExpect(jsonPath(JSON_PATH_ERROR_CODE, equalTo(SpServerError.SP_QUOTA_EXCEEDED.getKey())));
     }
 
@@ -357,29 +387,36 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
         mvc.perform(put(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + filterQuery.getId())
                 .content("{\"query\":\"controllerId==target*\"}").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print()).andExpect(status().isForbidden())
-                .andExpect(jsonPath(JSON_PATH_EXCEPTION_CLASS, equalTo(AssignmentQuotaExceededException.class.getName())))
+                .andExpect(
+                        jsonPath(JSON_PATH_EXCEPTION_CLASS, equalTo(AssignmentQuotaExceededException.class.getName())))
                 .andExpect(jsonPath(JSON_PATH_ERROR_CODE, equalTo(SpServerError.SP_QUOTA_EXCEEDED.getKey())));
 
     }
 
-    @Test
-    @Description("Ensures that the distribution set auto-assignment works as intended with distribution set and action type validation")
-    public void setAutoAssignDistributionSetToTargetFilterQuery() throws Exception {
+    @ParameterizedTest
+    @MethodSource("confirmationOptions")
+    @Description("Ensures that the distribution set auto-assignment works as intended with distribution set, action type and confirmation validation")
+    public void setAutoAssignDistributionSetToTargetFilterQuery(final boolean confirmationFlowActive,
+            final Boolean confirmationRequired) throws Exception {
         final String knownQuery = "name==test05";
         final String knownName = "filter05";
+
+        if (confirmationFlowActive) {
+            enableConfirmationFlow();
+        }
 
         final DistributionSet set = testdataFactory.createDistributionSet();
         final TargetFilterQuery tfq = createSingleTargetFilterQuery(knownName, knownQuery);
 
-        verifyAutoAssignmentWithoutActionType(tfq, set);
+        verifyAutoAssignmentWithoutActionType(tfq, set, confirmationRequired);
 
-        verifyAutoAssignmentWithForcedActionType(tfq, set);
+        verifyAutoAssignmentWithForcedActionType(tfq, set, confirmationRequired);
 
-        verifyAutoAssignmentWithSoftActionType(tfq, set);
+        verifyAutoAssignmentWithSoftActionType(tfq, set, confirmationRequired);
 
         verifyAutoAssignmentWithTimeForcedActionType(tfq, set);
 
-        verifyAutoAssignmentWithDownloadOnlyActionType(tfq, set);
+        verifyAutoAssignmentWithDownloadOnlyActionType(tfq, set, confirmationRequired);
 
         verifyAutoAssignmentWithUnknownActionType(tfq, set);
 
@@ -388,34 +425,68 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
         verifyAutoAssignmentWithSoftDeletedDs(tfq);
     }
 
-    @Step
-    private void verifyAutoAssignmentWithoutActionType(final TargetFilterQuery tfq, final DistributionSet set)
-            throws Exception {
-        verifyAutoAssignmentByActionType(tfq, set, null);
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false })
+    @Description("Verify the confirmation required flag will be set based on the feature state")
+    void verifyConfirmationStateIfNotProvided(final boolean confirmationFlowActive) throws Exception {
+        final String knownQuery = "name==test05";
+        final String knownName = "filter05";
+
+        if (confirmationFlowActive) {
+            enableConfirmationFlow();
+        }
+
+        final DistributionSet set = testdataFactory.createDistributionSet();
+        final TargetFilterQuery tfq = createSingleTargetFilterQuery(knownName, knownQuery);
+
+        // do not provide something about the confirmation
+        verifyAutoAssignmentByActionType(tfq, set, null, null);
+
+        assertThat(targetFilterQueryManagement.get(tfq.getId())).hasValueSatisfying(filter -> {
+            assertThat(filter.isConfirmationRequired()).isEqualTo(confirmationFlowActive);
+        });
+    }
+
+    private static Stream<Arguments> confirmationOptions() {
+        return Stream.of(Arguments.of(true, false), Arguments.of(true, true), Arguments.of(false, true),
+                Arguments.of(true, null), Arguments.of(false, null));
     }
 
     @Step
-    private void verifyAutoAssignmentWithForcedActionType(final TargetFilterQuery tfq, final DistributionSet set)
-            throws Exception {
-        verifyAutoAssignmentByActionType(tfq, set, MgmtActionType.FORCED);
+    private void verifyAutoAssignmentWithoutActionType(final TargetFilterQuery tfq, final DistributionSet set,
+            final Boolean confirmationRequired) throws Exception {
+        verifyAutoAssignmentByActionType(tfq, set, null, confirmationRequired);
     }
 
     @Step
-    private void verifyAutoAssignmentWithSoftActionType(final TargetFilterQuery tfq, final DistributionSet set)
-            throws Exception {
-        verifyAutoAssignmentByActionType(tfq, set, MgmtActionType.SOFT);
+    private void verifyAutoAssignmentWithForcedActionType(final TargetFilterQuery tfq, final DistributionSet set,
+            final Boolean confirmationRequired) throws Exception {
+        verifyAutoAssignmentByActionType(tfq, set, MgmtActionType.FORCED, confirmationRequired);
+    }
+
+    @Step
+    private void verifyAutoAssignmentWithSoftActionType(final TargetFilterQuery tfq, final DistributionSet set,
+            final Boolean confirmationRequired) throws Exception {
+        verifyAutoAssignmentByActionType(tfq, set, MgmtActionType.SOFT, confirmationRequired);
     }
 
     private void verifyAutoAssignmentByActionType(final TargetFilterQuery tfq, final DistributionSet set,
-            final MgmtActionType actionType) throws Exception {
+            final MgmtActionType actionType, final Boolean confirmationRequired) throws Exception {
         final String hrefPrefix = "http://localhost" + MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/"
                 + tfq.getId();
 
-        final String payload = actionType != null
-                ? "{\"id\":" + set.getId() + ", \"type\":\"" + actionType.getName() + "\"}"
-                : "{\"id\":" + set.getId() + "}";
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("id", set.getId());
+        if (actionType != null) {
+            jsonObject.put("type", actionType.getName());
+        }
+        if (confirmationRequired != null) {
+            jsonObject.put("confirmationRequired", confirmationRequired);
+        }
+
         mvc.perform(post(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + tfq.getId() + "/autoAssignDS")
-                .content(payload).contentType(MediaType.APPLICATION_JSON)).andDo(print()).andExpect(status().isOk());
+                .content(jsonObject.toString()).contentType(MediaType.APPLICATION_JSON)).andDo(print())
+                .andExpect(status().isOk());
 
         final TargetFilterQuery updatedFilterQuery = targetFilterQueryManagement.get(tfq.getId()).get();
         final MgmtActionType expectedActionType = actionType != null ? actionType : MgmtActionType.FORCED;
@@ -427,6 +498,10 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
         mvc.perform(get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + tfq.getId())).andDo(print())
                 .andExpect(status().isOk()).andExpect(jsonPath(JSON_PATH_NAME, equalTo(tfq.getName())))
                 .andExpect(jsonPath(JSON_PATH_QUERY, equalTo(tfq.getQuery())))
+                .andExpect(isConfirmationFlowEnabled()
+                        ? jsonPath(JSON_PATH_CONFIRMATION_REQUIRED,
+                                equalTo(confirmationRequired == null || confirmationRequired))
+                        : jsonPath(JSON_PATH_CONFIRMATION_REQUIRED).doesNotExist())
                 .andExpect(jsonPath(JSON_PATH_AUTO_ASSIGN_DS, equalTo(set.getId().intValue())))
                 .andExpect(jsonPath(JSON_PATH_AUTO_ASSIGN_ACTION_TYPE, equalTo(expectedActionType.getName())))
                 .andExpect(jsonPath("$._links.self.href", equalTo(hrefPrefix)))
@@ -446,9 +521,9 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     }
 
     @Step
-    private void verifyAutoAssignmentWithDownloadOnlyActionType(final TargetFilterQuery tfq, final DistributionSet set)
-            throws Exception {
-        verifyAutoAssignmentByActionType(tfq, set, MgmtActionType.DOWNLOAD_ONLY);
+    private void verifyAutoAssignmentWithDownloadOnlyActionType(final TargetFilterQuery tfq, final DistributionSet set,
+            final Boolean confirmationRequired) throws Exception {
+        verifyAutoAssignmentByActionType(tfq, set, MgmtActionType.DOWNLOAD_ONLY, confirmationRequired);
     }
 
     @Step
@@ -471,9 +546,8 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
                 .content("{\"id\":" + incompleteDistributionSet.getId() + "}").contentType(MediaType.APPLICATION_JSON))
                 .andDo(print()).andExpect(status().isBadRequest())
                 .andExpect(jsonPath(JSON_PATH_EXCEPTION_CLASS,
-                        equalTo(InvalidAutoAssignDistributionSetException.class.getName())))
-                .andExpect(jsonPath(JSON_PATH_ERROR_CODE,
-                        equalTo(SpServerError.SP_AUTO_ASSIGN_DISTRIBUTION_SET_INVALID.getKey())));
+                        equalTo(IncompleteDistributionSetException.class.getName())))
+                .andExpect(jsonPath(JSON_PATH_ERROR_CODE, equalTo(SpServerError.SP_DS_INCOMPLETE.getKey())));
     }
 
     @Step
@@ -484,11 +558,9 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
 
         mvc.perform(post(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + tfq.getId() + "/autoAssignDS")
                 .content("{\"id\":" + softDeletedDs.getId() + "}").contentType(MediaType.APPLICATION_JSON))
-                .andDo(print()).andExpect(status().isBadRequest())
-                .andExpect(jsonPath(JSON_PATH_EXCEPTION_CLASS,
-                        equalTo(InvalidAutoAssignDistributionSetException.class.getName())))
-                .andExpect(jsonPath(JSON_PATH_ERROR_CODE,
-                        equalTo(SpServerError.SP_AUTO_ASSIGN_DISTRIBUTION_SET_INVALID.getKey())));
+                .andDo(print()).andExpect(status().isNotFound())
+                .andExpect(jsonPath(JSON_PATH_EXCEPTION_CLASS, equalTo(EntityNotFoundException.class.getName())))
+                .andExpect(jsonPath(JSON_PATH_ERROR_CODE, equalTo(SpServerError.SP_REPO_ENTITY_NOT_EXISTS.getKey())));
     }
 
     @Test

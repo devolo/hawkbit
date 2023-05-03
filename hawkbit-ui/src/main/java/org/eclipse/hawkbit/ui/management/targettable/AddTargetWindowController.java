@@ -19,7 +19,6 @@ import org.eclipse.hawkbit.ui.common.event.EventLayout;
 import org.eclipse.hawkbit.ui.common.event.EventView;
 import org.eclipse.hawkbit.ui.common.event.SelectionChangedEventPayload;
 import org.eclipse.hawkbit.ui.common.event.SelectionChangedEventPayload.SelectionChangedEventType;
-import org.springframework.util.StringUtils;
 
 /**
  * Controller for add target window
@@ -75,7 +74,8 @@ public class AddTargetWindowController
     @Override
     protected Target persistEntityInRepository(final ProxyTarget entity) {
         return targetManagement.create(getEntityFactory().target().create().controllerId(entity.getControllerId())
-                .name(entity.getName()).description(entity.getDescription()));
+                .name(entity.getName()).description(entity.getDescription())
+                .targetType(entity.getTypeInfo() != null ? entity.getTypeInfo().getId() : null));
     }
 
     @Override
@@ -102,9 +102,8 @@ public class AddTargetWindowController
 
     @Override
     protected boolean isEntityValid(final ProxyTarget entity) {
-        final String trimmedControllerId = StringUtils.trimWhitespace(entity.getControllerId());
         return proxyTargetValidator.isEntityValid(entity,
-                () -> targetManagement.getByControllerID(trimmedControllerId).isPresent());
+                () -> targetManagement.getByControllerID(entity.getControllerId()).isPresent());
     }
 
 }

@@ -14,6 +14,7 @@ import javax.persistence.PersistenceException;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.support.SQLStateSQLExceptionTranslator;
+import org.springframework.lang.NonNull;
 import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.orm.jpa.vendor.EclipseLinkJpaDialect;
 
@@ -43,7 +44,7 @@ import org.springframework.orm.jpa.vendor.EclipseLinkJpaDialect;
  * 3.a) here a cause might be an {@link SQLException} which might be mappable by
  * {@link SQLStateSQLExceptionTranslator} or
  * <p>
- * 3.b.) the the cause is not an {@link SQLException} and as a result cannot be
+ * 3.b.) the cause is not an {@link SQLException} and as a result cannot be
  * mapped.
  *
  */
@@ -53,13 +54,12 @@ public class HawkBitEclipseLinkJpaDialect extends EclipseLinkJpaDialect {
     private static final SQLStateSQLExceptionTranslator SQLSTATE_EXCEPTION_TRANSLATOR = new SQLStateSQLExceptionTranslator();
 
     @Override
-    public DataAccessException translateExceptionIfPossible(final RuntimeException ex) {
+    public DataAccessException translateExceptionIfPossible(@NonNull final RuntimeException ex) {
         final DataAccessException dataAccessException = super.translateExceptionIfPossible(ex);
 
         if (dataAccessException == null) {
             return searchAndTranslateSqlException(ex);
         }
-
         return translateJpaSystemExceptionIfPossible(dataAccessException);
     }
 
@@ -69,22 +69,19 @@ public class HawkBitEclipseLinkJpaDialect extends EclipseLinkJpaDialect {
             return accessException;
         }
 
-        final DataAccessException sql = searchAndTranslateSqlException(accessException);
-        if (sql == null) {
+        final DataAccessException sqlException = searchAndTranslateSqlException(accessException);
+        if (sqlException == null) {
             return accessException;
         }
-
-        return sql;
+        return sqlException;
     }
 
     private static DataAccessException searchAndTranslateSqlException(final RuntimeException ex) {
         final SQLException sqlException = findSqlException(ex);
-
         if (sqlException == null) {
             return null;
         }
-
-        return SQLSTATE_EXCEPTION_TRANSLATOR.translate(null, null, sqlException);
+        return SQLSTATE_EXCEPTION_TRANSLATOR.translate("", null, sqlException);
     }
 
     private static SQLException findSqlException(final RuntimeException jpaSystemException) {

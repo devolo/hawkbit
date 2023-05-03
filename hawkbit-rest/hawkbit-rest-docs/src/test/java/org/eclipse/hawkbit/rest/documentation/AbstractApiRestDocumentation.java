@@ -19,6 +19,7 @@ import static org.springframework.restdocs.snippet.Attributes.key;
 
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,18 +34,21 @@ import org.eclipse.hawkbit.repository.model.Action.Status;
 import org.eclipse.hawkbit.repository.model.ArtifactUpload;
 import org.eclipse.hawkbit.repository.model.DeploymentRequestBuilder;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
+import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.Target;
+import org.eclipse.hawkbit.repository.model.TargetType;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.test.TestConfiguration;
 import org.eclipse.hawkbit.rest.AbstractRestIntegrationTest;
 import org.eclipse.hawkbit.rest.RestConfiguration;
 import org.eclipse.hawkbit.rest.util.FilterHttpResponse;
 import org.eclipse.hawkbit.tenancy.configuration.TenantConfigurationProperties.TenantConfigurationKey;
-import org.junit.Before;
-import org.junit.Rule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.test.binder.TestSupportBinderAutoConfiguration;
-import org.springframework.restdocs.JUnitRestDocumentation;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation;
 import org.springframework.restdocs.mockmvc.RestDocumentationResultHandler;
 import org.springframework.restdocs.payload.FieldDescriptor;
@@ -64,14 +68,12 @@ import io.qameta.allure.Feature;
  * Parent class for all Management API rest documentation classes.
  *
  */
-@Feature("Documentation Verfication - API")
+@Feature("Documentation Verification - API")
+@ExtendWith(RestDocumentationExtension.class)
 @ContextConfiguration(classes = { DdiApiConfiguration.class, MgmtApiConfiguration.class, RestConfiguration.class,
         RepositoryApplicationConfiguration.class, TestConfiguration.class, TestSupportBinderAutoConfiguration.class })
 @TestPropertySource(locations = { "classpath:/updateserver-restdocumentation-test.properties" })
 public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrationTest {
-
-    @Rule
-    public final JUnitRestDocumentation restDocumentation = new JUnitRestDocumentation("target/generated-snippets");
 
     @Autowired
     protected ObjectMapper objectMapper;
@@ -81,21 +83,28 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
 
     protected MockMvc mockMvc;
 
-    protected String resourceName = "output";
-
     protected RestDocumentationResultHandler document;
 
     protected String arrayPrefix;
 
     protected String host = "management-api.host";
 
-    @Before
-    protected void setUp() {
-        this.document = document(resourceName + "/{method-name}", preprocessRequest(prettyPrint()),
+    /**
+     * The generated REST docs snippets will be outputted to an own resource
+     * folder. The child class has to specify the name of that output folder
+     * where to put its corresponding snippets.
+     *
+     * @return the name of the resource folder
+     */
+    public abstract String getResourceName();
+
+    @BeforeEach
+    protected void setupMvc(final RestDocumentationContextProvider restDocContext) {
+        this.document = document(getResourceName() + "/{method-name}", preprocessRequest(prettyPrint()),
                 preprocessResponse(prettyPrint()));
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
-                .apply(MockMvcRestDocumentation.documentationConfiguration(this.restDocumentation).uris()
-                        .withScheme("https").withHost(host + ".com").withPort(443))
+                .apply(MockMvcRestDocumentation.documentationConfiguration(restDocContext).uris().withScheme("https")
+                        .withHost(host + ".com").withPort(443))
                 .alwaysDo(this.document).addFilter(filterHttpResponse).build();
         arrayPrefix = "[]";
     }
@@ -156,27 +165,57 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
 
     protected Target createTargetByGivenNameWithAttributes(final String name, final boolean inSync,
             final boolean timeforced, final DistributionSet distributionSet) {
-        return createTargetByGivenNameWithAttributes(name, inSync, timeforced, distributionSet, null, null, null);
+        return createTargetByGivenNameWithAttributes(name, inSync, timeforced, distributionSet, null, null, null,
+                false);
+    }
+
+    protected Target createTargetByGivenNameWithAttributes(final String name, final boolean inSync,
+            final boolean timeforced, final DistributionSet distributionSet, final boolean createRollout) {
+        return createTargetByGivenNameWithAttributes(name, inSync, timeforced, distributionSet, null, null, null,
+                createRollout);
     }
 
     protected Target createTargetByGivenNameWithAttributes(final String name, final boolean inSync,
             final boolean timeforced, final DistributionSet distributionSet, final String maintenanceWindowSchedule,
-            final String maintenanceWindowDuration, final String maintenanceWindowTimeZone) {
+            final String maintenanceWindowDuration, final String maintenanceWindowTimeZone,
+            final boolean createRollout) {
 
+        final TargetType targetType = testdataFactory.findOrCreateTargetType("defaultType");
+        targetTypeManagement.assignCompatibleDistributionSetTypes(targetType.getId(),
+                Collections.singletonList(distributionSet.getType().getId()));
         final Target savedTarget = targetManagement.create(entityFactory.target().create().controllerId(name)
                 .status(TargetUpdateStatus.UNKNOWN).address("http://192.168.0.1").description("My name is " + name)
-                .lastTargetQuery(System.currentTimeMillis()));
-        final DeploymentRequestBuilder deploymentRequestBuilder = DeploymentManagement
-                .deploymentRequest(savedTarget.getControllerId(), distributionSet.getId())
-                .setMaintenance(maintenanceWindowSchedule, maintenanceWindowDuration, maintenanceWindowTimeZone);
-        if (timeforced) {
-            deploymentRequestBuilder.setActionType(ActionType.TIMEFORCED);
+                .targetType(targetType.getId()).lastTargetQuery(System.currentTimeMillis()));
+
+        final List<Target> updatedTargets;
+        if (createRollout) {
+
+            final Rollout rollout = testdataFactory.createRolloutByVariables("rollout", "rollout desc", 1,
+                    "name==" + name, distributionSet, "50", "5", timeforced ? ActionType.TIMEFORCED : ActionType.FORCED,
+                    isMultiAssignmentsEnabled() ? 600 : null, isConfirmationFlowActive());
+
+            // start the rollout and handle it
+            rolloutManagement.start(rollout.getId());
+            rolloutHandler.handleAll();
+
+            updatedTargets = Collections.singletonList(savedTarget);
+
+        } else {
+            final DeploymentRequestBuilder deploymentRequestBuilder = DeploymentManagement
+                    .deploymentRequest(savedTarget.getControllerId(), distributionSet.getId())
+                    .setMaintenance(maintenanceWindowSchedule, maintenanceWindowDuration, maintenanceWindowTimeZone);
+
+            if (timeforced) {
+                deploymentRequestBuilder.setActionType(ActionType.TIMEFORCED);
+            }
+
+            if (isMultiAssignmentsEnabled()) {
+                deploymentRequestBuilder.setWeight(600);
+            }
+
+            updatedTargets = makeAssignment(deploymentRequestBuilder.build()).getAssignedEntity().stream()
+                    .map(Action::getTarget).collect(Collectors.toList());
         }
-        if (isMultiAssignmentsEnabled()) {
-            deploymentRequestBuilder.setWeight(600);
-        }
-        final List<Target> updatedTargets = makeAssignment(deploymentRequestBuilder.build()).getAssignedEntity()
-                .stream().map(Action::getTarget).collect(Collectors.toList());
 
         if (inSync) {
             feedbackToByInSync(distributionSet);
@@ -212,6 +251,11 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
                 .addUpdateActionStatus(entityFactory.actionStatus().create(action.getId()).status(Status.FINISHED));
     }
 
+    protected void provideCodeFeedback(final Action action, final int code) {
+        controllerManagement.addUpdateActionStatus(
+                entityFactory.actionStatus().create(action.getId()).code(code).status(Status.RUNNING));
+    }
+
     protected Target createTargetByGivenNameWithAttributes(final String name, final DistributionSet distributionSet) {
         return createTargetByGivenNameWithAttributes(name, true, false, distributionSet);
     }
@@ -236,6 +280,8 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
                 fieldWithPath(fieldArrayPrefix + "securityToken").description(MgmtApiModelProperties.SECURITY_TOKEN),
                 fieldWithPath(fieldArrayPrefix + "requestAttributes")
                         .description(MgmtApiModelProperties.REQUEST_ATTRIBUTES),
+                fieldWithPath(fieldArrayPrefix + "autoConfirmActive")
+                        .description(MgmtApiModelProperties.AUTO_CONFIRM_ACTIVE),
                 fieldWithPath(fieldArrayPrefix + "installedAt").description(MgmtApiModelProperties.INSTALLED_AT),
                 fieldWithPath(fieldArrayPrefix + "lastModifiedAt")
                         .description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT).type("Number"),
@@ -249,6 +295,10 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
                         .description(MgmtApiModelProperties.IS_CLEANED_UP),
                 fieldWithPath(fieldArrayPrefix + "isCleanedUp")
                         .description(MgmtApiModelProperties.IS_CLEANED_UP),
+                fieldWithPath(fieldArrayPrefix + "targetType").description(MgmtApiModelProperties.TARGETTYPE_ID)
+                        .type("Number"),
+                fieldWithPath(fieldArrayPrefix + "targetTypeName").description(MgmtApiModelProperties.TARGETTYPE_NAME)
+                        .type("String"),
                 fieldWithPath(fieldArrayPrefix + "_links.self").ignored());
 
         if (!isArray) {
@@ -268,7 +318,11 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
                             .description(MgmtApiModelProperties.LINKS_ATTRIBUTES),
                     fieldWithPath(fieldArrayPrefix + "_links.actions")
                             .description(MgmtApiModelProperties.LINKS_ACTIONS),
-                    fieldWithPath(fieldArrayPrefix + "_links.metadata").description(MgmtApiModelProperties.META_DATA)));
+                    fieldWithPath(fieldArrayPrefix + "_links.metadata").description(MgmtApiModelProperties.META_DATA),
+                    fieldWithPath(fieldArrayPrefix + "_links.targetType")
+                            .description(MgmtApiModelProperties.LINK_TO_TARGET_TYPE),
+                    fieldWithPath(fieldArrayPrefix + "_links.autoConfirm")
+                            .description(MgmtApiModelProperties.LINK_TO_AUTO_CONFIRM)));
 
         }
         fields.addAll(Arrays.asList(descriptors));
@@ -287,10 +341,12 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
                 fieldWithPath(arrayPrefix + "lastModifiedBy").description(ApiModelPropertiesGeneric.LAST_MODIFIED_BY),
                 fieldWithPath(arrayPrefix + "lastModifiedAt").description(ApiModelPropertiesGeneric.LAST_MODIFIED_AT),
                 fieldWithPath(arrayPrefix + "type").description(MgmtApiModelProperties.DS_TYPE),
+                fieldWithPath(arrayPrefix + "typeName").description(MgmtApiModelProperties.DS_TYPE_NAME),
                 fieldWithPath(arrayPrefix + "requiredMigrationStep")
                         .description(MgmtApiModelProperties.DS_REQUIRED_STEP),
                 fieldWithPath(arrayPrefix + "complete").description(MgmtApiModelProperties.DS_COMPLETE),
                 fieldWithPath(arrayPrefix + "deleted").description(ApiModelPropertiesGeneric.DELETED),
+                fieldWithPath(arrayPrefix + "valid").description(MgmtApiModelProperties.DS_VALID),
                 fieldWithPath(arrayPrefix + "version").description(MgmtApiModelProperties.VERSION),
                 fieldWithPath(arrayPrefix + "_links.self").ignored(), fieldWithPath(arrayPrefix + "modules").ignored());
 
@@ -316,7 +372,12 @@ public abstract class AbstractApiRestDocumentation extends AbstractRestIntegrati
 
     protected boolean isMultiAssignmentsEnabled() {
         return Boolean.TRUE.equals(tenantConfigurationManagement
-                .getConfigurationValue(TenantConfigurationKey.MULTI_ASSIGNMENTS_ENABLED, Boolean.class).getValue());
+              .getConfigurationValue(TenantConfigurationKey.MULTI_ASSIGNMENTS_ENABLED, Boolean.class).getValue());
+    }
+
+    protected boolean isConfirmationFlowActive() {
+        return Boolean.TRUE.equals(tenantConfigurationManagement
+              .getConfigurationValue(TenantConfigurationKey.USER_CONFIRMATION_ENABLED, Boolean.class).getValue());
     }
 
 }

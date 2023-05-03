@@ -22,14 +22,13 @@ import com.vaadin.ui.TextArea;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.themes.ValoTheme;
 
+import static org.eclipse.hawkbit.ui.utils.SPUIStyleDefinitions.DIST_CHECKBOX_STYLE;
+
 /**
  * Builder for Distribution set window layout component
  */
 public class DsWindowLayoutComponentBuilder {
 
-    public static final String TEXTFIELD_NAME = "textfield.name";
-    public static final String TEXTFIELD_VERSION = "textfield.version";
-    public static final String TEXTFIELD_DESCRIPTION = "textfield.description";
     public static final String MIGRATION_STEP = "label.dist.required.migration.step";
 
     private final VaadinMessageSource i18n;
@@ -59,7 +58,7 @@ public class DsWindowLayoutComponentBuilder {
      */
     public ComboBox<ProxyTypeInfo> createDistributionSetTypeCombo(final Binder<ProxyDistributionSet> binder) {
         return FormComponentBuilder
-                .createTypeCombo(binder, dsTypeDataProvider, i18n, UIComponentIdProvider.DIST_ADD_DISTSETTYPE)
+                .createTypeCombo(binder, dsTypeDataProvider, i18n, UIComponentIdProvider.DIST_ADD_DISTSETTYPE, true)
                 .getComponent();
     }
 
@@ -107,12 +106,12 @@ public class DsWindowLayoutComponentBuilder {
      * @return Migration step required checkbox
      */
     public CheckBox createMigrationStepField(final Binder<ProxyDistributionSet> binder) {
-        final CheckBox migrationRequired = FormComponentBuilder.getCheckBox(i18n.getMessage(MIGRATION_STEP),
+        final CheckBox migrationRequired = FormComponentBuilder.createCheckBox(i18n.getMessage(MIGRATION_STEP),
                 UIComponentIdProvider.DIST_ADD_MIGRATION_CHECK, binder, ProxyDistributionSet::isRequiredMigrationStep,
                 ProxyDistributionSet::setRequiredMigrationStep);
 
         migrationRequired.setDescription(i18n.getMessage(MIGRATION_STEP));
-        migrationRequired.addStyleName("dist-checkbox-style");
+        migrationRequired.addStyleName(DIST_CHECKBOX_STYLE);
         migrationRequired.addStyleName(ValoTheme.CHECKBOX_SMALL);
 
         return migrationRequired;

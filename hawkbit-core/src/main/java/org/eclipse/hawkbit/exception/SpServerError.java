@@ -20,10 +20,23 @@ public enum SpServerError {
     SP_REPO_GENERIC_ERROR("hawkbit.server.error.repo.genericError", "unknown error occurred"),
 
     /**
-    *
-    */
+     *
+     */
     SP_REPO_ENTITY_ALREADY_EXISTS("hawkbit.server.error.repo.entitiyAlreayExists",
-            "The given entity already exists in database"),
+          "The given entity already exists in database"),
+
+    /**
+     *
+     */
+    SP_REPO_AUTO_CONFIRMATION_ALREADY_ACTIVE("hawkbit.server.error.repo.autoConfAlreadyActive",
+          "Auto confirmation is already active"),
+
+
+    /**
+     *
+     */
+    SP_CONFIRMATION_FEEDBACK_INVALID("hawkbit.server.confirmation.feedback.invalid",
+          "Confirmation feedback is not valid"),
 
     /**
     *
@@ -32,7 +45,7 @@ public enum SpServerError {
             "The given entity cannot be saved due to Constraint Violation"),
 
     /**
-     * 
+     *
      */
     SP_REPO_INVALID_TARGET_ADDRESS("hawkbit.server.error.repo.invalidTargetAddress",
             "The target address is not well formed"),
@@ -100,6 +113,18 @@ public enum SpServerError {
     /**
     *
     */
+    SP_ARTIFACT_ENCRYPTION_NOT_SUPPORTED("hawkbit.server.error.artifact.encryptionNotSupported",
+            "Artifact encryption is not supported."),
+
+    /**
+    *
+    */
+    SP_ARTIFACT_ENCRYPTION_FAILED("hawkbit.server.error.artifact.encryptionFailed",
+            "Artifact encryption operation failed."),
+
+    /**
+    *
+    */
     SP_ARTIFACT_UPLOAD_FAILED_MD5_MATCH("hawkbit.server.error.artifact.uploadFailed.checksum.md5.match",
             "Upload of artifact failed as the provided MD5 checksum did not match with the provided artifact."),
 
@@ -139,6 +164,12 @@ public enum SpServerError {
             "Load of artifact failed with internal server error."),
 
     /**
+    *
+    */
+    SP_ARTIFACT_BINARY_DELETED("hawkbit.server.error.artifact.binaryDeleted",
+            "The artifact binary does not exist anymore."),
+
+    /**
      *
      */
     SP_QUOTA_EXCEEDED("hawkbit.server.error.quota.tooManyEntries", "Too many entries have been inserted."),
@@ -175,6 +206,11 @@ public enum SpServerError {
             "Distribution set is assigned to a target that is incomplete (i.e. mandatory modules are missing)"),
 
     /**
+    *
+    */
+    SP_DS_INVALID("hawkbit.server.error.distributionset.invalid", "Invalid distribution set is assigned to a target"),
+
+    /**
      *
      */
     SP_DS_TYPE_UNDEFINED("hawkbit.server.error.distributionset.type.undefined",
@@ -204,18 +240,18 @@ public enum SpServerError {
             "The given entity is read only and the change cannot be completed."),
 
     /**
-     * 
+     *
      */
     SP_CONFIGURATION_VALUE_INVALID("hawkbit.server.error.configValueInvalid",
             "The given configuration value is invalid."),
 
     /**
-     * 
+     *
      */
     SP_CONFIGURATION_KEY_INVALID("hawkbit.server.error.configKeyInvalid", "The given configuration key is invalid."),
 
     /**
-     * 
+     *
      */
     SP_ROLLOUT_ILLEGAL_STATE("hawkbit.server.error.rollout.illegalstate",
             "The rollout is in the wrong state for the requested operation"),
@@ -246,13 +282,6 @@ public enum SpServerError {
             "The given action type for auto-assignment is invalid: allowed values are ['forced', 'soft', 'downloadonly']"),
 
     /**
-     * Error message informing that the distribution set for auto-assignment is
-     * invalid.
-     */
-    SP_AUTO_ASSIGN_DISTRIBUTION_SET_INVALID("hawkbit.server.error.repo.invalidAutoAssignDistributionSet",
-            "The given distribution set for auto-assignment is invalid: it is either incomplete (i.e. mandatory modules are missing) or soft deleted"),
-
-    /**
      * Error message informing the user that the requested tenant configuration
      * change is not allowed.
      */
@@ -269,7 +298,14 @@ public enum SpServerError {
     *
     */
     SP_NO_WEIGHT_PROVIDED_IN_MULTIASSIGNMENT_MODE("hawkbit.server.error.noWeightProvidedInMultiAssignmentMode",
-            "The requested operation requires a weight to be specified when multi assignments is enabled.");
+            "The requested operation requires a weight to be specified when multi assignments is enabled."),
+
+    SP_TARGET_TYPE_IN_USE("hawkbit.server.error.target.type.used", "Target type is still in use by a target."),
+
+    SP_TARGET_TYPE_INCOMPATIBLE("hawkbit.server.error.target.type.incompatible",
+            "Target type of target is not compatible with distribution set."),
+
+    SP_STOP_ROLLOUT_FAILED("hawkbit.server.error.stopRolloutFailed", "Stopping the rollout failed");
 
     private final String key;
     private final String message;
@@ -284,7 +320,7 @@ public enum SpServerError {
 
     /**
      * Gets the key of the error
-     * 
+     *
      * @return the key of the error
      */
     public String getKey() {
@@ -293,7 +329,7 @@ public enum SpServerError {
 
     /**
      * Gets the message of the error
-     * 
+     *
      * @return message of the error
      */
     public String getMessage() {

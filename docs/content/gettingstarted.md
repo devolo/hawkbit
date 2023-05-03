@@ -5,9 +5,9 @@ weight: 20
 
 ## On Sandbox
 
-We offer a sandbox installation that is free for everyone to try out hawkBit's [Management UI](/hawkbit/ui/), 
+We offer a sandbox installation that is free for everyone to try out hawkBit's [Management UI](/hawkbit/ui/),
 [Management API](/hawkbit/apis/management_api/), and [Direct Device Integration API](/hawkbit/apis/ddi_api/): &nbsp;
-**[<i class="fas fa-desktop">&nbsp;</i> https://hawkbit.eclipse.org](https://hawkbit.eclipse.org)**
+**[<i class="fas fa-desktop">&nbsp;</i> https://hawkbit.eclipseprojects.io](https://hawkbit.eclipseprojects.io)**
 
 {{% warning %}}
 The sandbox is a shared installation that will be reset from time to time. Therefore, it is not allowed to upload
@@ -16,7 +16,7 @@ any personal data.
 
 In addition, the following vendors offer free trial accounts for their Eclipse hawkBit compatible products:
 
-* [Bosch IoT Rollouts](https://www.bosch-iot-suite.com/rollouts/#plans) (by [Bosch.IO GmbH](https://bosch.io/))
+* [Bosch IoT Rollouts](https://bosch-iot-suite.com/service/rollouts/) (by [Bosch Digital](https://www.bosch-digital.com))
 * [Kynetics Update Factory](https://www.kynetics.com/update-factory) (by [Kynetics LLC](https://www.kynetics.com/))
 
 
@@ -26,10 +26,12 @@ In addition, the following vendors offer free trial accounts for their Eclipse h
 
 | Service / Container | A | B | C |
 |---|---|---|---|
-| hawkBit Update Server |  &#10003; | &#10003; | &#10003; | 
-| hawkBit Device Simulator |   |  | &#10003; | 
-| MySQL |  | &#10003; | &#10003; | 
-| RabbitMQ |  | &#10003; | &#10003; | 
+| hawkBit Update Server |  &#10003; | &#10003; | &#10003; |
+| hawkBit Device Simulator |   |  | &#10003; |
+| MySQL |  | &#10003; | &#10003; |
+| RabbitMQ |  | &#10003; | &#10003; |
+
+HawkBit Update Server uses username=admin and password=admin as default login credentials. They can be overridden by the environment variables spring.security.user.name and spring.security.user.password which are defined in the corresponding default [application.properties](hawkbit-runtime/hawkbit-update-server/src/main/resources/application.properties).
 
 ### A: Run hawkBit Update Server as Docker Container
 

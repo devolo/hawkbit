@@ -38,7 +38,7 @@ import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
 import org.eclipse.hawkbit.rest.util.JsonBuilder;
 import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
 import org.json.JSONException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -86,7 +86,7 @@ public class MgmtDistributionSetTagResourceTest extends AbstractManagementApiInt
                 .andExpect(applyTagMatcherOnSingleResult(assigned))
                 .andExpect(applySelfLinkMatcherOnSingleResult(DISTRIBUTIONSETTAGS_ROOT + assigned.getId()))
                 .andExpect(jsonPath("_links.assignedDistributionSets.href",
-                        equalTo(DISTRIBUTIONSETTAGS_ROOT + assigned.getId() + "/assigned?offset=0&limit=50{&sort,q}")));
+                        equalTo(DISTRIBUTIONSETTAGS_ROOT + assigned.getId() + "/assigned?offset=0&limit=50")));
     }
 
     @Test

@@ -71,10 +71,8 @@ public class TargetFieldExtractorTest extends AbstractJpaIntegrationTest {
         controllerManagement.updateControllerAttributes(targetId, attributes, UpdateMode.REPLACE);
 
 
-        createTargetMetadata(targetId, Arrays.asList(
-                entityFactory.generateDsMetadata("metakey_1", "metavalue_1"),
-                entityFactory.generateDsMetadata("metakey_2", "metavalue_2")
-        ));
+        createTargetMetadata(targetId, entityFactory.generateDsMetadata("metakey_1", "metavalue_1"));
+        createTargetMetadata(targetId, entityFactory.generateDsMetadata("metakey_2", "metavalue_2"));
 
         controllerManagement.findOrRegisterTargetIfItDoesNotExist(targetId, LOCALHOST);
 

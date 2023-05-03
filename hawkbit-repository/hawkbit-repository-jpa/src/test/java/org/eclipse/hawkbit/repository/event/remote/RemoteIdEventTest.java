@@ -9,16 +9,19 @@
 package org.eclipse.hawkbit.repository.event.remote;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
 
-import org.junit.Test;
-
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
+
+import org.eclipse.hawkbit.repository.jpa.model.JpaAction;
+import org.eclipse.hawkbit.repository.model.TenantAwareBaseEntity;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test the remote entity events.
@@ -31,7 +34,7 @@ public class RemoteIdEventTest extends AbstractRemoteEventTest {
 
     private static String TENANT = "tenant";
 
-    private static String ENTIY_CLASS = "EntityClass";
+    private static Class<? extends TenantAwareBaseEntity> ENTITY_CLASS = JpaAction.class;
 
     private static String NODE = "Node";
 
@@ -55,7 +58,7 @@ public class RemoteIdEventTest extends AbstractRemoteEventTest {
     @Description("Verifies that the target id is correct reloaded")
     public void testTargetDeletedEvent() {
         final TargetDeletedEvent deletedEvent = new TargetDeletedEvent(TENANT, ENTITY_ID, CONTROLLER_ID, ADDRESS,
-                ENTIY_CLASS, NODE);
+                ENTITY_CLASS, NODE);
         assertEntity(deletedEvent);
     }
 
@@ -84,7 +87,7 @@ public class RemoteIdEventTest extends AbstractRemoteEventTest {
                 .orElseThrow(() -> new IllegalArgumentException("Given event is not RemoteIdEvent compatible"));
 
         try {
-            final RemoteIdEvent event = (RemoteIdEvent) constructor.newInstance(TENANT, ENTITY_ID, ENTIY_CLASS, NODE);
+            final RemoteIdEvent event = (RemoteIdEvent) constructor.newInstance(TENANT, ENTITY_ID, ENTITY_CLASS, NODE);
             assertEntity(event);
         } catch (final ReflectiveOperationException e) {
             fail("Exception should not happen " + e.getMessage());
