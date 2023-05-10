@@ -35,18 +35,29 @@ import org.eclipse.hawkbit.repository.model.SoftwareModuleMetadata;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.rest.data.ResponseList;
 import org.eclipse.hawkbit.tenancy.TenantAware;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpRequest;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Utility class for the DDI API.
  */
+@RestController
 public final class DataConversionHelper {
+    @Value("${hawkbit.ddi.ignoreInstalledBaseLink:false}")
+    private boolean ignoreInstalledBaseLink;
+
+    private static boolean IGNORE_INSTALLED_BASE_LINK_STATIC;
     // utility class, private constructor.
     private DataConversionHelper() {
 
+    }
+    @Value("${hawkbit.ddi.ignoreInstalledBaseLink:false}")
+    public void setIgnoreInstalledBaseLinkStatic(boolean ignoreInstalledBaseLink) {
+        DataConversionHelper.IGNORE_INSTALLED_BASE_LINK_STATIC = ignoreInstalledBaseLink;
     }
 
     static List<DdiChunk> createChunks(final Target target, final Action uAction,
@@ -169,7 +180,7 @@ public final class DataConversionHelper {
             }
         }
 
-        if (installedAction != null && !installedAction.isActive()) {
+        if (installedAction != null && !installedAction.isActive() && !DataConversionHelper.IGNORE_INSTALLED_BASE_LINK_STATIC) {
             result.add(
                     WebMvcLinkBuilder
                             .linkTo(WebMvcLinkBuilder.methodOn(DdiRootController.class, tenantAware.getCurrentTenant())
