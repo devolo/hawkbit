@@ -497,8 +497,7 @@ public class JpaTargetManagement implements TargetManagement {
         }
         if (!StringUtils.isEmpty(filterParams.getFilterBySearchText())) {
             if(isAttributeSearchEnabled()){
-                specList.add(TargetSpecifications
-                        .likeControllerIdOrName(filterParams.getFilterBySearchText()));
+                specList.add(TargetSpecifications.likeIdOrNameOrDescriptionOrAttributeValue(filterParams.getFilterBySearchText()));
             } else {
                 specList.add(TargetSpecifications.likeControllerIdOrName(filterParams.getFilterBySearchText()));
             }
