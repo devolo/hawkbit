@@ -49,13 +49,7 @@ import org.eclipse.hawkbit.repository.exception.InvalidTargetAttributeException;
 import org.eclipse.hawkbit.repository.jpa.builder.JpaActionStatusCreate;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.executor.AfterTransactionCommitExecutor;
-import org.eclipse.hawkbit.repository.jpa.model.JpaAction;
-import org.eclipse.hawkbit.repository.jpa.model.JpaActionStatus;
-import org.eclipse.hawkbit.repository.jpa.model.JpaActionStatus_;
-import org.eclipse.hawkbit.repository.jpa.model.JpaAction_;
-import org.eclipse.hawkbit.repository.jpa.model.JpaDistributionSet;
-import org.eclipse.hawkbit.repository.jpa.model.JpaTarget;
-import org.eclipse.hawkbit.repository.jpa.model.JpaTarget_;
+import org.eclipse.hawkbit.repository.jpa.model.*;
 import org.eclipse.hawkbit.repository.jpa.rsql.RsqlMatcher;
 import org.eclipse.hawkbit.repository.jpa.specifications.ActionSpecifications;
 import org.eclipse.hawkbit.repository.jpa.specifications.TargetSpecifications;
@@ -162,6 +156,9 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     @Autowired
     private TargetFieldExtractor fieldExtractor;
+
+    @Autowired
+    private TargetTypeRepository targetTypeRepository;
 
 
     public JpaControllerManagement(final ScheduledExecutorService executorService,
@@ -740,6 +737,23 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
         LOG.debug("Updating attributes for controller {} with new attributes: {}; and same attributes: {} and targetStatus: {}", controllerId, data.toString(), controllerAttributes.equals(data), targetStatus);
 
+        LOG.debug("targetType for {}:\n Before: {}\n After: {}", controllerId, getTargetTypeFromAttributes(controllerAttributes), getTargetTypeFromAttributes(data));
+
+        // The target type has now changed, update target_type as needed
+        if (!getTargetTypeFromAttributes(controllerAttributes).equals(getTargetTypeFromAttributes((data)))) {
+            // Find if the new target type exists in the database
+            Optional<JpaTargetType> targetType = targetTypeRepository.findByName(getTargetTypeFromAttributes(data));
+            if (targetType.isEmpty()) {
+                // If false, set the target type of the current controller to null
+                LOG.debug("TargetType does not exist in the database, setting target's TargetType to null");
+                target.setTargetType(null);
+            } else {
+                // If true, set the target type of the current controller to this target type
+                LOG.debug("TargetType exists in the database, changing target's TargetType accordingly");
+                target.setTargetType(targetType.get());
+            }
+        }
+
         final UpdateMode updateMode = mode != null ? mode : UpdateMode.MERGE;
         switch (updateMode) {
         case REMOVE:
@@ -770,6 +784,26 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         triggerDistributionSetAssignmentCheck(controllerId, controllerAttributes);
 
         return target;
+    }
+
+    private String getTargetTypeFromAttributes(final Map<String, String> targetAttributes) {
+        String deviceType = "unknown";
+        String oemVariant = "retail";
+
+        if (targetAttributes == null) {
+            return deviceType;
+        }
+
+        for(Map.Entry<String,String> targetAttribute: targetAttributes.entrySet()) {
+            if (Objects.equals(targetAttribute.getKey(), "device_type")) {
+                deviceType = targetAttribute.getValue();
+            }
+            if (Objects.equals(targetAttribute.getKey(), "oem_variant") && !Objects.equals(targetAttribute.getValue(), "")) {
+                oemVariant = targetAttribute.getValue();
+            }
+        }
+
+        return deviceType + "." + oemVariant;
     }
 
 

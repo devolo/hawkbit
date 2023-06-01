@@ -43,38 +43,22 @@ import org.assertj.core.api.Assertions;
 import org.eclipse.hawkbit.repository.RepositoryProperties;
 import org.eclipse.hawkbit.repository.UpdateMode;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
+import org.eclipse.hawkbit.repository.builder.TargetTypeCreate;
 import org.eclipse.hawkbit.repository.event.remote.CancelTargetAssignmentEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetAssignDistributionSetEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetAttributesRequestedEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetDeletedEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetPollEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.ActionCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.ActionUpdatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.DistributionSetCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.SoftwareModuleCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.SoftwareModuleUpdatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.TargetCreatedEvent;
-import org.eclipse.hawkbit.repository.event.remote.entity.TargetUpdatedEvent;
+import org.eclipse.hawkbit.repository.event.remote.entity.*;
 import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.exception.CancelActionNotAllowedException;
 import org.eclipse.hawkbit.repository.exception.EntityAlreadyExistsException;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.exception.InvalidTargetAttributeException;
-import org.eclipse.hawkbit.repository.exception.AssignmentQuotaExceededException;
 import org.eclipse.hawkbit.repository.jpa.model.JpaAction;
 import org.eclipse.hawkbit.repository.jpa.model.JpaTarget;
-import org.eclipse.hawkbit.repository.model.Action;
+import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.repository.model.Action.Status;
-import org.eclipse.hawkbit.repository.model.ActionStatus;
-import org.eclipse.hawkbit.repository.model.Artifact;
-import org.eclipse.hawkbit.repository.model.ArtifactUpload;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.DistributionSetAssignmentResult;
-import org.eclipse.hawkbit.repository.model.SoftwareModule;
-import org.eclipse.hawkbit.repository.model.SoftwareModuleMetadata;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
-import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.test.matcher.Expect;
 import org.eclipse.hawkbit.repository.test.matcher.ExpectEvents;
 import org.eclipse.hawkbit.repository.test.util.TargetTestData;
@@ -1709,6 +1693,59 @@ class ControllerManagementTest extends AbstractJpaIntegrationTest {
         long t2_numberOfRunningActions = t2_actions.stream().filter(action -> action.getStatus().equals(Status.RUNNING)).count();
 
         assertThat(t2_numberOfRunningActions).isEqualTo(1);
+    }
+
+    @Test
+    @Description("When target attributes change, change the target type of the target accordingly")
+    @ExpectEvents({ @Expect(type = TargetCreatedEvent.class, count = 1),
+            @Expect(type = TargetUpdatedEvent.class, count = 1),
+            @Expect(type = TargetTypeCreatedEvent.class, count = 1)})
+    void setTargetTypeWhenTargetAttributesChange() throws Exception {
+        final String controllerId = "test123";
+        final Target target = testdataFactory.createTarget(controllerId);
+
+        WithSpringAuthorityRule.runAs(WithSpringAuthorityRule.withController("controller", CONTROLLER_ROLE_ANONYMOUS), () -> {
+           setUnknownTargetTypeToTargetAndVerify(controllerId);
+           setKnownTargetTypeToTargetAndVerify(target, controllerId);
+           return null;
+        });
+    }
+
+    @Step
+    private void setUnknownTargetTypeToTargetAndVerify(final String controllerId) {
+        Optional<Target> target = targetRepository.findByControllerId(controllerId);
+        assertThat(target).isNotNull();
+        assertThat(target.get().getTargetType()).isNull();
+
+        final Map<String, String> targetAttributes = Maps.newHashMapWithExpectedSize(2);
+        targetAttributes.put("target_type", "zuse");
+
+        controllerManagement.updateControllerAttributes(controllerId, targetAttributes, null);
+        target = targetRepository.findByControllerId(controllerId);
+        assertThat(target).isNotNull();
+        assertThat(target.get().getTargetType()).isNull();
+    }
+
+    @Step
+    private void setKnownTargetTypeToTargetAndVerify(final Target target, final String controllerId) {
+        assertThat(target).isNotNull();
+        assertThat(target.getTargetType()).isNull();
+
+        targetTypeManagement.create(entityFactory.targetType().create().name("zuse.retail")
+                .description("").colour("#FFFFFF"));
+
+        assertThat(targetTypeManagement.count()).isEqualTo(1);
+        assertThat(targetTypeRepository.count()).isEqualTo(1);
+
+        final Map<String, String> targetAttributes = Maps.newHashMapWithExpectedSize(2);
+        targetAttributes.put("target_type", "zuse");
+
+        controllerManagement.updateControllerAttributes(controllerId, targetAttributes, null);
+
+        final Optional<JpaTarget> updatedTarget = targetRepository.findById(target.getId());
+
+        assertThat(updatedTarget).isPresent();
+        assertThat(targetTypeRepository.findByName("zuse.retail")).isNotEmpty();
     }
 
     @Test
