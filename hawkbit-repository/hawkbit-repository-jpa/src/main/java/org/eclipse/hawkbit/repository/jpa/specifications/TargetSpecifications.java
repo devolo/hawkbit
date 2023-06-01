@@ -282,6 +282,18 @@ public final class TargetSpecifications {
 
     /**
      * {@link Specification} for retrieving {@link Target}s by "like
+     * controllerId or like name or like description or like attribute value".
+     *
+     * @param searchText
+     *            to be filtered on
+     * @return the {@link Target} {@link Specification}
+     */
+    public static Specification<JpaTarget> likeIdOrNameOrDescriptionOrAttributeValue(final String searchText) {
+        return Specification.where(likeIdOrNameOrDescription(searchText)).or(likeAttributeValue(searchText));
+    }
+
+    /**
+     * {@link Specification} for retrieving {@link Target}s by "like
      * controllerId".
      *
      * @param distributionId
