@@ -2,17 +2,14 @@ package org.eclipse.hawkbit.app;
 
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.eclipse.hawkbit.repository.DistributionSetManagement;
-import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
-import org.eclipse.hawkbit.repository.RolloutManagement;
-import org.eclipse.hawkbit.repository.TargetManagement;
+import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.info.Info;
 import org.springframework.boot.actuate.info.InfoContributor;
-import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
@@ -51,25 +48,24 @@ public class CustomInfoContributor implements InfoContributor {
         timer.record(() -> {
             List<Long> targetCountByUpdateStatus = targetManagement.countByUpdateStatus();
             final long pendingTargetsCount = targetCountByUpdateStatus.get(2);
-            /*final long pendingOfflineTargetsCount = targetManagement.countByFilters(
-                    Collections.singletonList(TargetUpdateStatus.PENDING),
+            final long pendingOfflineTargetsCount = targetManagement.countByFilters(
+                    new FilterParams(Collections.singletonList(TargetUpdateStatus.PENDING),
                     Boolean.TRUE,
                     null,
                     null,
-                    Boolean.FALSE
-                );*/
+                    Boolean.FALSE));
 
             targetsByState.put("pending", pendingTargetsCount);
             targetsByState.put("unknown", targetCountByUpdateStatus.get(0));
             targetsByState.put("error", targetCountByUpdateStatus.get(3));
             targetsByState.put("in_sync", targetCountByUpdateStatus.get(1));
             targetsByState.put("registered", targetCountByUpdateStatus.get(4));
-//            targetsByState.put("ready_for_update", pendingTargetsCount - pendingOfflineTargetsCount);
+            targetsByState.put("ready_for_update", pendingTargetsCount - pendingOfflineTargetsCount);
 
-//            final Page<Rollout> rolloutPage = rolloutManagement.findAllWithDetailedStatus(new OffsetBasedPageRequest(0, 100, Sort.by(Sort.Direction.ASC, "name")), false);
-//            final List<Rollout> rolloutList = rolloutPage.getContent();
+            final Slice<Rollout> rolloutPage = rolloutManagement.findAllWithDetailedStatus(new OffsetBasedPageRequest(0, 100, Sort.by(Sort.Direction.ASC, "name")), false);
+            final List<Rollout> rolloutList = rolloutPage.getContent();
 
-            /*rolloutsByState.put("creating", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.CREATING.equals(rollout.getStatus())).count());
+            rolloutsByState.put("creating", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.CREATING.equals(rollout.getStatus())).count());
             rolloutsByState.put("approval_denied", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.APPROVAL_DENIED.equals(rollout.getStatus())).count());
             rolloutsByState.put("deleted", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.DELETED.equals(rollout.getStatus())).count());
             rolloutsByState.put("deleting", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.DELETING.equals(rollout.getStatus())).count());
@@ -79,7 +75,7 @@ public class CustomInfoContributor implements InfoContributor {
             rolloutsByState.put("running", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.RUNNING.equals(rollout.getStatus())).count());
             rolloutsByState.put("starting", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.STARTING.equals(rollout.getStatus())).count());
             rolloutsByState.put("stopped", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.STOPPED.equals(rollout.getStatus())).count());
-            rolloutsByState.put("waiting_for_approval", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.WAITING_FOR_APPROVAL.equals(rollout.getStatus())).count());*/
+            rolloutsByState.put("waiting_for_approval", rolloutList.stream().filter(rollout -> Rollout.RolloutStatus.WAITING_FOR_APPROVAL.equals(rollout.getStatus())).count());
 
             rolloutCleanupState.put("deleted_in_ui", rolloutManagement.countRolloutsMarkedAsDeleted());
             rolloutCleanupState.put("cleaned_up", rolloutManagement.countByIsCleanUp());
@@ -95,7 +91,7 @@ public class CustomInfoContributor implements InfoContributor {
             builder.withDetail("rollouts_by_cleanup_state", rolloutCleanupState);
             builder.withDetail("targets_by_cleanup_state", actionStatusCleanupState);
             builder.withDetail("total_targets", targetManagement.count());
-//            builder.withDetail("offline_targets", targetManagement.countByFilters(null, Boolean.TRUE, null, null, Boolean.FALSE));
+            builder.withDetail("offline_targets", targetManagement.countByFilters(new FilterParams(null, Boolean.TRUE, null, null, Boolean.FALSE)));
             builder.withDetail("total_distribution_sets", distributionSetManagement.count());
             builder.withDetail("total_rollouts", rolloutManagement.count());
         });
