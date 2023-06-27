@@ -522,7 +522,7 @@ public class SecurityManagedConfiguration {
         @Override
         protected void configure(final HttpSecurity http) throws Exception {
 
-            HttpSecurity httpSec = http.requestMatchers().antMatchers("/rest/**", "/system/admin/**").and().csrf()
+            HttpSecurity httpSec = http.requestMatchers().antMatchers("/rest/**", "/system/admin/**", "/info/**", "/httptrace/**").and().csrf()
                     .disable();
 
             if (securityProperties.getCors().isEnabled()) {
