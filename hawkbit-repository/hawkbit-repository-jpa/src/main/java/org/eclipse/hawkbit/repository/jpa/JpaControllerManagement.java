@@ -711,6 +711,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
         final JpaTarget target = targetRepository.findOne(TargetSpecifications.hasControllerId(controllerId))
                 .orElseThrow(() -> new EntityNotFoundException(Target.class, controllerId));
+        String targetType = "";
 
         // get the modifiable attribute map
         final Map<String, String> controllerAttributes = target.getControllerAttributes();
@@ -736,21 +737,22 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         }
 
         LOG.debug("Updating attributes for controller {} with new attributes: {}; and same attributes: {} and targetStatus: {}", controllerId, data.toString(), controllerAttributes.equals(data), targetStatus);
-
         LOG.debug("targetType for {}:\n Before: {}\n After: {}", controllerId, getTargetTypeFromAttributes(controllerAttributes), getTargetTypeFromAttributes(data));
 
         // The target type has now changed, update target_type as needed
         if (!getTargetTypeFromAttributes(controllerAttributes).equals(getTargetTypeFromAttributes((data)))) {
             // Find if the new target type exists in the database
-            Optional<JpaTargetType> targetType = targetTypeRepository.findByName(getTargetTypeFromAttributes(data));
-            if (targetType.isEmpty()) {
+            Optional<JpaTargetType> targetTypeEntity = targetTypeRepository.findByName(getTargetTypeFromAttributes(data));
+            if (targetTypeEntity.isEmpty()) {
                 // If false, set the target type of the current controller to null
                 LOG.debug("TargetType does not exist in the database, setting target's TargetType to null");
                 target.setTargetType(null);
             } else {
                 // If true, set the target type of the current controller to this target type
                 LOG.debug("TargetType exists in the database, changing target's TargetType accordingly");
-                target.setTargetType(targetType.get());
+                target.setTargetType(targetTypeEntity.get());
+                LOG.debug("TargetType for {} is {}", target.getControllerId(), target.getTargetType().getName());
+                targetType = target.getTargetType().getName();
             }
         }
 
@@ -781,7 +783,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         assertTargetAttributesQuota(target);
 	
 	    targetRepository.save(target);
-        triggerDistributionSetAssignmentCheck(controllerId, controllerAttributes);
+        triggerDistributionSetAssignmentCheck(controllerId, controllerAttributes, targetType);
 
         return target;
     }
@@ -808,12 +810,12 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
 
     @Override
-    public void triggerDistributionSetAssignmentCheck(String controllerId, final Map<String, String> controllerAttributes){
+    public void triggerDistributionSetAssignmentCheck(String controllerId, final Map<String, String> controllerAttributes, final String targetType){
         LOG.debug("Auto assign check with ID: {} triggered...", controllerId);
-        systemSecurityContext.runAsSystem(() -> executeAutoAssignCheck(controllerId, controllerAttributes));
+        systemSecurityContext.runAsSystem(() -> executeAutoAssignCheck(controllerId, controllerAttributes, targetType));
     }
 
-    private Object executeAutoAssignCheck(String controllerId, final Map<String, String> controllerAttributes) {
+    private Object executeAutoAssignCheck(String controllerId, final Map<String, String> controllerAttributes, final String targetType) {
 
         final int PAGE_SIZE = 1000;
         final PageRequest pageRequest = PageRequest.of(0, PAGE_SIZE);
@@ -833,7 +835,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         LOG.debug("Obtained lock with key: autoassign for controller {}", controllerId);
 
         try {
-            systemManagement.forEachTenant(tenant -> checkForAutoAssignDS(controllerId, filterQueries, controllerAttributes));
+            systemManagement.forEachTenant(tenant -> checkForAutoAssignDS(controllerId, filterQueries, controllerAttributes, targetType));
         } finally {
             lock.unlock();
             LOG.debug("Unlocked lock with key: autoassign for controller {}", controllerId);
@@ -842,12 +844,12 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         return null;
     }
 
-    private void checkForAutoAssignDS(String controllerId, Slice<TargetFilterQuery> filterQueries, final Map<String, String> controllerAttributes){
+    private void checkForAutoAssignDS(String controllerId, Slice<TargetFilterQuery> filterQueries, final Map<String, String> controllerAttributes, final String targetType){
 
         final JpaTarget target = (JpaTarget) targetRepository.findByControllerId(controllerId)
                 .orElseThrow(() -> new EntityNotFoundException(Target.class, controllerId));
 
-        TargetFieldData fieldData = fieldExtractor.extractData(target, controllerAttributes);
+        TargetFieldData fieldData = fieldExtractor.extractData(target, controllerAttributes, targetType);
 
         TargetFilterQuery matchedQuery = null;
 
