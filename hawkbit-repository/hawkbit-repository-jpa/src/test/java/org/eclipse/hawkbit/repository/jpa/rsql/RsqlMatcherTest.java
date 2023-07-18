@@ -9,8 +9,9 @@
 package org.eclipse.hawkbit.repository.jpa.rsql;
 
 import org.eclipse.hawkbit.repository.jpa.TargetFieldData;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.util.GregorianCalendar;
@@ -33,8 +34,8 @@ import static org.eclipse.hawkbit.repository.TargetFields.UPDATESTATUS;
 import static org.eclipse.hawkbit.repository.jpa.rsql.RsqlMatcher.matches;
 import static org.eclipse.hawkbit.repository.model.TargetUpdateStatus.PENDING;
 import static org.eclipse.hawkbit.repository.model.TargetUpdateStatus.UNKNOWN;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class RsqlMatcherTest {
     final static String LOCALHOST = URI.create("http://127.0.0.1").toString();
@@ -242,7 +243,7 @@ public class RsqlMatcherTest {
     private TargetFieldData fieldData;
     private TargetFieldData fieldData2;
 
-    @Before
+    @BeforeEach
     public void setUp() {
 
         fieldData = new TargetFieldData();

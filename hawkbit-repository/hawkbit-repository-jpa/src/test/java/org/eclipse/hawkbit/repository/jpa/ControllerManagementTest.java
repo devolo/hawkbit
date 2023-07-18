@@ -1619,16 +1619,19 @@ class ControllerManagementTest extends AbstractJpaIntegrationTest {
         DistributionSet set1 = testdataFactory.createDistributionSet("TestSet1");
         DistributionSet set2 = testdataFactory.createDistributionSet("TestSet2");
 
+        TargetType targetType = targetTypeManagement.create(entityFactory.targetType().create().description("").name("type").colour("#FFF"));
+
         targetManagement.create(entityFactory.target().create()
                 .controllerId("0123")
                 .name("Test target 0123")
-                .description("Description0123"));
-
+                .description("Description0123")
+                .targetType(targetType.getId()));
 
         targetManagement.create(entityFactory.target().create()
                 .controllerId("9999")
                 .name("Test target 9999")
-                .description("Description 9999"));
+                .description("Description 9999")
+                .targetType(targetType.getId()));
 
         TargetFilterQuery query1 = targetFilterQueryManagement.create(entityFactory.targetFilterQuery().create()
                 .autoAssignActionType(FORCED)
@@ -1642,8 +1645,8 @@ class ControllerManagementTest extends AbstractJpaIntegrationTest {
                 .name("Test query 2")
                 .query(TEST_QUERY_2));
 
-        controllerManagement.triggerDistributionSetAssignmentCheck("0123", targetManagement.getControllerAttributes("0123"));
-        controllerManagement.triggerDistributionSetAssignmentCheck("9999", targetManagement.getControllerAttributes("9999"));
+        controllerManagement.triggerDistributionSetAssignmentCheck("0123", targetManagement.getControllerAttributes("0123"), targetType.getName());
+        controllerManagement.triggerDistributionSetAssignmentCheck("9999", targetManagement.getControllerAttributes("9999"), targetType.getName());
 
         Target target1 = targetManagement.getByControllerID("0123").get();
         Target target2 = targetManagement.getByControllerID("9999").get();
@@ -1661,7 +1664,7 @@ class ControllerManagementTest extends AbstractJpaIntegrationTest {
         updatedAttributes.put("device_type", "dev_test_type");
 
         controllerManagement.updateControllerAttributes("0123", updatedAttributes, UpdateMode.REPLACE);
-        controllerManagement.triggerDistributionSetAssignmentCheck("0123", targetManagement.getControllerAttributes("0123"));
+        controllerManagement.triggerDistributionSetAssignmentCheck("0123", targetManagement.getControllerAttributes("0123"), targetType.getName());
 
         target1 = targetManagement.getByControllerID("0123").get();
 
@@ -1669,7 +1672,7 @@ class ControllerManagementTest extends AbstractJpaIntegrationTest {
         assertThat(target1.getAssignedDistributionSet().getName()).isEqualTo("TestSet2");
 
         controllerManagement.updateControllerAttributes("9999", updatedAttributes, UpdateMode.REPLACE);
-        controllerManagement.triggerDistributionSetAssignmentCheck("9999", targetManagement.getControllerAttributes("9999"));
+        controllerManagement.triggerDistributionSetAssignmentCheck("9999", targetManagement.getControllerAttributes("9999"), targetType.getName());
 
         target2 = targetManagement.getByControllerID("9999").get();
 

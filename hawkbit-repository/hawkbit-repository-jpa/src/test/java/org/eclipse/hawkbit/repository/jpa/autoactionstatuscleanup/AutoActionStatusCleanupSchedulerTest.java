@@ -14,8 +14,9 @@ import io.qameta.allure.Story;
 import org.eclipse.hawkbit.repository.jpa.AbstractJpaIntegrationTest;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoCleanupScheduler;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.CleanupTask;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.integration.support.locks.LockRegistry;
 
@@ -32,7 +33,7 @@ public class AutoActionStatusCleanupSchedulerTest extends AbstractJpaIntegration
     @Autowired
     private LockRegistry lockRegistry;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         counter.set(0);
     }
