@@ -8,15 +8,20 @@
  */
 package org.eclipse.hawkbit.repository.jpa.autorolloutcleanup;
 
+import com.google.common.collect.Lists;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
+import org.eclipse.hawkbit.repository.QuotaManagement;
 import org.eclipse.hawkbit.repository.jpa.AbstractJpaIntegrationTest;
 import org.eclipse.hawkbit.repository.jpa.autocleanup.AutoActionCleanup;
 import org.eclipse.hawkbit.repository.jpa.model.JpaRollout;
 import org.eclipse.hawkbit.repository.model.*;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,16 +42,22 @@ public class AutoRolloutCleanupTest extends AbstractJpaIntegrationTest {
         testdataFactory.createTargets(20, "test");
         testdataFactory.createTargets(20, "controller");
 
-        final DistributionSet ds = distributionSetManagement.create(entityFactory.distributionSet().create().name("test-ds").version("1").type("os"));
+        final SoftwareModule module = softwareModuleManagement.create(
+                entityFactory.softwareModule().create().name("swm").version("2").description("desc").type("os"));
+        final DistributionSet ds = distributionSetManagement
+                .create(entityFactory.distributionSet().create().name("complete").version("2").description("complete")
+                        .type("os").modules(Collections.singletonList(module.getId())));
 
-        final Rollout rollout1 = rolloutManagement.create(entityFactory.rollout().create().name("exampleRollout").targetFilterQuery("name==test*").set(ds), 10, false, new RolloutGroupConditionBuilder().withDefaults()
+        assertThat(ds.isComplete()).isTrue();
+
+        final Rollout rollout1 = rolloutManagement.create(entityFactory.rollout().create().name("exampleRollout").targetFilterQuery("name==test*").set(ds), quotaManagement.getMaxRolloutGroupsPerRollout(), false, new RolloutGroupConditionBuilder().withDefaults()
                 .successCondition(RolloutGroup.RolloutGroupSuccessCondition.THRESHOLD, "10").build());
 
-        final Rollout rollout2 = rolloutManagement.create(entityFactory.rollout().create().name("exampleRollout2").targetFilterQuery("name==controller*").set(ds), 15, false, new RolloutGroupConditionBuilder().withDefaults()
+        final Rollout rollout2 = rolloutManagement.create(entityFactory.rollout().create().name("exampleRollout2").targetFilterQuery("name==controller*").set(ds), quotaManagement.getMaxRolloutGroupsPerRollout(), false, new RolloutGroupConditionBuilder().withDefaults()
                 .successCondition(RolloutGroup.RolloutGroupSuccessCondition.THRESHOLD, "10").build());
 
         assertThat(rolloutRepository.count()).isEqualTo(2);
-        assertThat(rolloutGroupRepository.count()).isEqualTo(25);
+        assertThat(rolloutGroupRepository.count()).isEqualTo(quotaManagement.getMaxRolloutGroupsPerRollout()* 2L);
 
         // Mark rollout 1 as deleted
         final JpaRollout rolloutToDelete = rolloutRepository.findById(rollout1.getId()).get();
@@ -63,6 +74,6 @@ public class AutoRolloutCleanupTest extends AbstractJpaIntegrationTest {
         // Check that rollout groups are deleted
         assertThat(rolloutRepository.count()).isEqualTo(2);
         assertThat(rolloutGroupManagement.countByRollout(rollout1.getId())).isEqualTo(0);
-        assertThat(rolloutGroupManagement.countByRollout(rollout2.getId())).isEqualTo(15);
+        assertThat(rolloutGroupManagement.countByRollout(rollout2.getId())).isEqualTo(quotaManagement.getMaxRolloutGroupsPerRollout());
     }
 }

@@ -398,7 +398,7 @@ public interface ControllerManagement {
      *
      */
     @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
-    void triggerDistributionSetAssignmentCheck(String controllerId, @NotNull Map<String, String> attributes);
+    void triggerDistributionSetAssignmentCheck(String controllerId, @NotNull Map<String, String> attributes, String targetType);
 
     /**
      * Finds {@link Target} based on given controller ID returns found Target

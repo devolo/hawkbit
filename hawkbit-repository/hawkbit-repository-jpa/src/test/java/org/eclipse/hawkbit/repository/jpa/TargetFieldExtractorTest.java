@@ -9,40 +9,25 @@
 package org.eclipse.hawkbit.repository.jpa;
 
 import org.eclipse.hawkbit.repository.UpdateMode;
+import org.eclipse.hawkbit.repository.builder.TargetTypeCreate;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
-import org.eclipse.hawkbit.repository.model.Action;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.DistributionSetAssignmentResult;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetTag;
-import org.junit.Before;
-import org.junit.Test;
+import org.eclipse.hawkbit.repository.jpa.builder.JpaTargetTypeCreate;
+import org.eclipse.hawkbit.repository.jpa.model.JpaTargetType;
+import org.eclipse.hawkbit.repository.model.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
-import static org.eclipse.hawkbit.repository.TargetFields.ASSIGNEDDS;
-import static org.eclipse.hawkbit.repository.TargetFields.ATTRIBUTE;
-import static org.eclipse.hawkbit.repository.TargetFields.CONTROLLERID;
-import static org.eclipse.hawkbit.repository.TargetFields.CREATEDAT;
-import static org.eclipse.hawkbit.repository.TargetFields.DESCRIPTION;
-import static org.eclipse.hawkbit.repository.TargetFields.ID;
-import static org.eclipse.hawkbit.repository.TargetFields.INSTALLEDDS;
-import static org.eclipse.hawkbit.repository.TargetFields.IPADDRESS;
-import static org.eclipse.hawkbit.repository.TargetFields.LASTCONTROLLERREQUESTAT;
-import static org.eclipse.hawkbit.repository.TargetFields.LASTMODIFIEDAT;
-import static org.eclipse.hawkbit.repository.TargetFields.METADATA;
-import static org.eclipse.hawkbit.repository.TargetFields.NAME;
-import static org.eclipse.hawkbit.repository.TargetFields.TAG;
-import static org.eclipse.hawkbit.repository.TargetFields.UPDATESTATUS;
+import static org.eclipse.hawkbit.repository.TargetFields.*;
 import static org.eclipse.hawkbit.repository.model.TargetUpdateStatus.IN_SYNC;
 import static org.eclipse.hawkbit.repository.model.TargetUpdateStatus.PENDING;
 import static org.eclipse.hawkbit.repository.test.util.TestdataFactory.DEFAULT_VERSION;
 
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TargetFieldExtractorTest extends AbstractJpaIntegrationTest {
 
@@ -52,24 +37,27 @@ public class TargetFieldExtractorTest extends AbstractJpaIntegrationTest {
     @Autowired
     protected TargetFieldExtractor extractorService;
 
-    @Before
+    @BeforeEach
     public void setUp() {
+        final DistributionSet assignedDs = testdataFactory.createDistributionSet("AssignedDs");
+        TargetType targetType = targetTypeManagement.create(entityFactory.targetType().create().name("dev_test.retail").description("").colour("#FFFFFF").compatible(assignedDs.getType().getId()));
+
+        assertEquals(1, targetTypeManagement.count());
+        assertEquals(1, targetTypeRepository.count());
 
         Target target = targetManagement.create(entityFactory.target().create()
                 .controllerId("targetId123")
                 .name("targetName123")
-                .description("targetDescription123"));
+                .description("targetDescription123")
+                .targetType(targetType.getId()));
 
         targetId = target.getControllerId();
-
-        final DistributionSet assignedDs = testdataFactory.createDistributionSet("AssignedDs");
         assignDistributionSet(assignedDs.getId(), target.getControllerId(), Action.ActionType.SOFT);
 
         final Map<String, String> attributes = new HashMap<>();
         attributes.put("revision", "1.11");
         attributes.put("device_type", "dev_test");
         controllerManagement.updateControllerAttributes(targetId, attributes, UpdateMode.REPLACE);
-
 
         createTargetMetadata(targetId, entityFactory.generateDsMetadata("metakey_1", "metavalue_1"));
         createTargetMetadata(targetId, entityFactory.generateDsMetadata("metakey_2", "metavalue_2"));
@@ -84,7 +72,8 @@ public class TargetFieldExtractorTest extends AbstractJpaIntegrationTest {
         Target target2 = targetManagement.create(entityFactory.target().create()
                 .controllerId("targetId123_2")
                 .name("targetName123_2")
-                .description("targetDescription123_2"));
+                .description("targetDescription123_2")
+                .targetType(targetType.getId()));
 
         targetId2 = target2.getControllerId();
 
@@ -103,10 +92,10 @@ public class TargetFieldExtractorTest extends AbstractJpaIntegrationTest {
     public void extractFieldsTest() {
 
         Target testTarget = targetManagement.getByControllerID(targetId).orElseThrow(EntityNotFoundException::new);
-        TargetFieldData fieldData = extractorService.extractData(testTarget, testTarget.getControllerAttributes());
+        TargetFieldData fieldData = extractorService.extractData(testTarget, testTarget.getControllerAttributes(), testTarget.getTargetType().getName());
 
         Target testTarget2 = targetManagement.getByControllerID(targetId2).orElseThrow(EntityNotFoundException::new);
-        TargetFieldData fieldData2 = extractorService.extractData(testTarget2, testTarget2.getControllerAttributes());
+        TargetFieldData fieldData2 = extractorService.extractData(testTarget2, testTarget2.getControllerAttributes(), testTarget2.getTargetType().getName());
 
         assertTrue(fieldData.hasEntry(ID.name(), "targetId123"));
 
@@ -131,5 +120,6 @@ public class TargetFieldExtractorTest extends AbstractJpaIntegrationTest {
         assertTrue(fieldData.hasEntry(CREATEDAT.name(), Long.toString(testTarget.getCreatedAt())));
         assertTrue(fieldData.hasEntry(LASTMODIFIEDAT.name(),  Long.toString(testTarget.getLastModifiedAt())));
         assertTrue(fieldData.hasEntry(LASTCONTROLLERREQUESTAT.name(),  Long.toString(testTarget.getLastTargetQuery())));
+        assertTrue(fieldData.hasEntry(TARGETTYPE.name() + ".name", testTarget.getTargetType().getName()));
     }
 }

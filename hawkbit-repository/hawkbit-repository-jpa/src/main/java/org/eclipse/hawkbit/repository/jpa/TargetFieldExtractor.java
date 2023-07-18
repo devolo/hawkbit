@@ -19,24 +19,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.eclipse.hawkbit.repository.TargetFields.ASSIGNEDDS;
-import static org.eclipse.hawkbit.repository.TargetFields.ATTRIBUTE;
-import static org.eclipse.hawkbit.repository.TargetFields.CONTROLLERID;
-import static org.eclipse.hawkbit.repository.TargetFields.CREATEDAT;
-import static org.eclipse.hawkbit.repository.TargetFields.DESCRIPTION;
-import static org.eclipse.hawkbit.repository.TargetFields.ID;
-import static org.eclipse.hawkbit.repository.TargetFields.INSTALLEDDS;
-import static org.eclipse.hawkbit.repository.TargetFields.IPADDRESS;
-import static org.eclipse.hawkbit.repository.TargetFields.LASTCONTROLLERREQUESTAT;
-import static org.eclipse.hawkbit.repository.TargetFields.LASTMODIFIEDAT;
-import static org.eclipse.hawkbit.repository.TargetFields.METADATA;
-import static org.eclipse.hawkbit.repository.TargetFields.NAME;
-import static org.eclipse.hawkbit.repository.TargetFields.TAG;
-import static org.eclipse.hawkbit.repository.TargetFields.UPDATESTATUS;
+import static org.eclipse.hawkbit.repository.TargetFields.*;
 
 @Service
 public class TargetFieldExtractor {
-
     private String controllerId;
     private String name;
     private String description;
@@ -49,12 +35,13 @@ public class TargetFieldExtractor {
     private DistributionSet installedDs;
     private String createdAt;
     private String lastModifiedAt;
+    private String targetType;
 
     private final static String EMPTY_STRING = "";
 
     private TargetFieldData fieldData;
 
-    public TargetFieldData extractData(Target target, final Map<String, String> controllerAttributes){
+    public TargetFieldData extractData(Target target, final Map<String, String> controllerAttributes, final String targetType){
 
         fieldData = new TargetFieldData();
 
@@ -69,6 +56,7 @@ public class TargetFieldExtractor {
         fieldData.add(UPDATESTATUS, updateStatus);
         fieldData.add(IPADDRESS, address);
         fieldData.add(LASTCONTROLLERREQUESTAT, lastQuery);
+        fieldData.add(TARGETTYPE, NAME.getFieldName(), targetType);
 
         addMetadata();
         addAttributes(controllerAttributes);
