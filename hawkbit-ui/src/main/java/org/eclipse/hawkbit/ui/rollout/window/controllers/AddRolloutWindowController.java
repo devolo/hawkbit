@@ -109,7 +109,8 @@ public class AddRolloutWindowController
                 .targetFilterQuery(entity.getTargetFilterQuery()).actionType(entity.getActionType())
                 .forcedTime(entity.getActionType() == ActionType.TIMEFORCED ? entity.getForcedTime()
                         : RepositoryModelConstants.NO_FORCE_TIME)
-                .startAt(entity.getStartAtByOption());
+                .startAt(entity.getStartAtByOption())
+                .isSortedByAddress(entity.getIsSortedByAddress());
 
         final Rollout rolloutToCreate;
         if (GroupDefinitionMode.SIMPLE == entity.getGroupDefinitionMode()) {

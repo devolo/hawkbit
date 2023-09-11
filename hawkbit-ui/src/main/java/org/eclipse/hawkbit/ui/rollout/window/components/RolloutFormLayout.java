@@ -11,7 +11,7 @@ package org.eclipse.hawkbit.ui.rollout.window.components;
 import java.util.function.Consumer;
 
 import com.vaadin.server.Sizeable;
-import org.eclipse.hawkbit.repository.jpa.autorolloutcleanup.AutoRolloutCleanupScheduler;
+import com.vaadin.ui.*;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.eclipse.hawkbit.ui.common.builder.BoundComponent;
@@ -19,9 +19,7 @@ import org.eclipse.hawkbit.ui.common.builder.FormComponentBuilder;
 import org.eclipse.hawkbit.ui.common.builder.TextAreaBuilder;
 import org.eclipse.hawkbit.ui.common.data.providers.DistributionSetStatelessDataProvider;
 import org.eclipse.hawkbit.ui.common.data.providers.TargetFilterQueryDataProvider;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyDistributionSet;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyRolloutForm;
-import org.eclipse.hawkbit.ui.common.data.proxies.ProxyTargetFilterQuery;
+import org.eclipse.hawkbit.ui.common.data.proxies.*;
 import org.eclipse.hawkbit.ui.components.SPUIComponentProvider;
 import org.eclipse.hawkbit.ui.management.miscs.ActionTypeOptionGroupAssignmentLayout;
 import org.eclipse.hawkbit.ui.rollout.window.components.AutoStartOptionGroupLayout.AutoStartOption;
@@ -34,17 +32,11 @@ import com.vaadin.data.HasValue;
 import com.vaadin.data.ValidationException;
 import com.vaadin.data.Validator;
 import com.vaadin.data.validator.LongRangeValidator;
-import com.vaadin.ui.ComboBox;
-import com.vaadin.ui.Component;
-import com.vaadin.ui.GridLayout;
-import com.vaadin.ui.TextArea;
-import com.vaadin.ui.TextField;
 
 /**
  * Rollout form layout
  */
 public class RolloutFormLayout extends ValidatableLayout {
-
     private static final String PROMPT_TARGET_FILTER = "prompt.target.filter";
     private static final String MESSAGE_ROLLOUT_FILTER_TARGET_EXISTS = "message.rollout.filter.target.exists";
     private static final String TEXTFIELD_DESCRIPTION = "textfield.description";
@@ -52,6 +44,7 @@ public class RolloutFormLayout extends ValidatableLayout {
     private static final String TEXTFIELD_NAME = "textfield.name";
     private static final String CAPTION_ROLLOUT_START_TYPE = "caption.rollout.start.type";
     private static final String CAPTION_ROLLOUT_ACTION_TYPE = "caption.rollout.action.type";
+    private static final String CAPTION_ROLLOUT_SORT_OPTION = "caption.rollout.sort_option";
 
     private static final int CAPTION_COLUMN = 0;
     private static final int FIELD_COLUMN = 1;
@@ -72,6 +65,7 @@ public class RolloutFormLayout extends ValidatableLayout {
     private final TextArea descriptionField;
     private final BoundComponent<ActionTypeOptionGroupAssignmentLayout> actionTypeLayout;
     private final BoundComponent<AutoStartOptionGroupLayout> autoStartOptionGroupLayout;
+    private final CheckBox sortOptionsCheckBox;
 
     private Long rolloutId;
     private Long totalTargets;
@@ -107,9 +101,19 @@ public class RolloutFormLayout extends ValidatableLayout {
         this.descriptionField = createDescription();
         this.actionTypeLayout = createActionTypeOptionGroupLayout();
         this.autoStartOptionGroupLayout = createAutoStartOptionGroupLayout();
+        this.sortOptionsCheckBox = createSortOptionsCheckBox();
 
         addValueChangeListeners();
         setValidationStatusByBinder(binder);
+    }
+
+    /**
+     * Create checkbox for sorting targets in rollout group
+     *
+     * @return input component
+     */
+    private CheckBox createSortOptionsCheckBox() {
+        return FormComponentBuilder.createCheckBox(UIComponentIdProvider.ROLLOUT_SORT_ENABLED_CHECKBOX, binder, ProxyRolloutForm::getIsSortedByAddress, ProxyRolloutForm::setIsSortedByAddress);
     }
 
     /**
@@ -267,11 +271,15 @@ public class RolloutFormLayout extends ValidatableLayout {
         layout.addComponent(descriptionField, FIELD_COLUMN, 3);
 
         final int lastColumn = layout.getColumns() - 1;
+
         layout.addComponent(SPUIComponentProvider.generateLabel(i18n, CAPTION_ROLLOUT_ACTION_TYPE), CAPTION_COLUMN, 4);
         layout.addComponent(actionTypeLayout.getComponent(), FIELD_COLUMN, 4, lastColumn, 4);
 
         layout.addComponent(SPUIComponentProvider.generateLabel(i18n, CAPTION_ROLLOUT_START_TYPE), CAPTION_COLUMN, 5);
         layout.addComponent(autoStartOptionGroupLayout.getComponent(), FIELD_COLUMN, 5, lastColumn, 5);
+
+        layout.addComponent(SPUIComponentProvider.generateLabel(i18n, CAPTION_ROLLOUT_SORT_OPTION), CAPTION_COLUMN, 6);
+        layout.addComponent(sortOptionsCheckBox, FIELD_COLUMN, 6, lastColumn, 6);
     }
 
     /**

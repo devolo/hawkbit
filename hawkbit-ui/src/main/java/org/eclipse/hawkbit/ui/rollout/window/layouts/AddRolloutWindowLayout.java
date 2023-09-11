@@ -79,7 +79,7 @@ public class AddRolloutWindowLayout extends AbstractRolloutWindowLayout {
 
     @Override
     protected void addComponents(final GridLayout rootLayout) {
-        rootLayout.setRows(7);
+        rootLayout.setRows(8);
 
         final int lastRowIdx = rootLayout.getRows() - 1;
         final int lastColumnIdx = rootLayout.getColumns() - 1;

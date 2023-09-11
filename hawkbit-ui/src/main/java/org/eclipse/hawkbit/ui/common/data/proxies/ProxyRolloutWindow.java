@@ -55,6 +55,7 @@ public class ProxyRolloutWindow implements Serializable {
         setTargetFilterQuery(rollout.getTargetFilterQuery());
         setDistributionSetInfo(rollout.getDsInfo());
         setNumberOfGroups(rollout.getNumberOfGroups());
+        setIsSortedByAddress(rollout.getIsSortedByAddress());
     }
 
     /**
@@ -469,5 +470,24 @@ public class ProxyRolloutWindow implements Serializable {
      */
     public enum GroupDefinitionMode {
         SIMPLE, ADVANCED;
+    }
+
+    /**
+     * Sets the form isSortedByAddress
+     *
+     * @param isSortedByAddress
+     *            rollout form isSortedByAddress
+     */
+    public void setIsSortedByAddress(final boolean isSortedByAddress) {
+        rolloutForm.setIsSortedByAddress(isSortedByAddress);
+    }
+
+    /**
+     * Gets the rollout form isSortedByAddress
+     *
+     * @return form isSortedByAddress
+     */
+    public boolean getIsSortedByAddress() {
+        return rolloutForm.getIsSortedByAddress();
     }
 }

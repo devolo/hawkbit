@@ -112,6 +112,15 @@ public interface RolloutCreate {
     RolloutCreate startAt(Long startAt);
 
     /**
+     * set isSortedByAddress
+     *
+     * @param isSortedByAddress
+     *            for {@link Rollout#getIsSortedByAddress()} ()}
+     * @return updated builder instance
+     */
+    RolloutCreate isSortedByAddress(boolean isSortedByAddress);
+
+    /**
      * @return peek on current state of {@link Rollout} in the builder
      */
     Rollout build();
