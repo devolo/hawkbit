@@ -10,6 +10,7 @@ package org.eclipse.hawkbit.repository.jpa;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -573,11 +574,19 @@ public class JpaRolloutExecutor implements RolloutExecutor {
             final PageRequest pageRequest = PageRequest.of(0, Math.toIntExact(limit));
             final List<Long> readyGroups = RolloutHelper.getGroupsByStatusIncludingGroup(rollout.getRolloutGroups(),
                     RolloutGroupStatus.READY, group);
+            final boolean useAddressForSorting = true;
+
+            final Comparator<Target> addressStringComparator = Comparator.comparing(o -> o.getAddress().toString());
             final Slice<Target> targets = targetManagement.findByTargetFilterQueryAndNotInRolloutGroupsAndCompatible(
                     pageRequest, readyGroups, targetFilter, rollout.getDistributionSet().getType());
+            List<Target> targetList = targets.stream().collect(Collectors.toList());
 
-            createAssignmentOfTargetsToGroup(targets, group);
+            if (useAddressForSorting) {
+                targetList = targetList.stream().sorted(addressStringComparator).collect(Collectors.toList());
+            }
 
+            LOGGER.info("Assigning {} targets to rollout with Id {}", targets.getNumberOfElements(), rollout.getId());
+            createAssignmentOfTargetsToGroup(targetList, group);
             return Long.valueOf(targets.getNumberOfElements());
         });
     }
@@ -641,7 +650,7 @@ public class JpaRolloutExecutor implements RolloutExecutor {
         });
     }
 
-    private void createAssignmentOfTargetsToGroup(final Slice<Target> targets, final RolloutGroup group) {
+    private void createAssignmentOfTargetsToGroup(final List<Target> targets, final RolloutGroup group) {
         targets.forEach(target -> rolloutTargetGroupRepository.save(new RolloutTargetGroup(group, target)));
     }
 
