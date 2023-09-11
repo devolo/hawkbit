@@ -574,7 +574,7 @@ public class JpaRolloutExecutor implements RolloutExecutor {
             final PageRequest pageRequest = PageRequest.of(0, Math.toIntExact(limit));
             final List<Long> readyGroups = RolloutHelper.getGroupsByStatusIncludingGroup(rollout.getRolloutGroups(),
                     RolloutGroupStatus.READY, group);
-            final boolean useAddressForSorting = true;
+            final boolean useAddressForSorting = rollout.getIsSortedByAddress();
 
             final Comparator<Target> addressStringComparator = Comparator.comparing(o -> o.getAddress().toString());
             final Slice<Target> targets = targetManagement.findByTargetFilterQueryAndNotInRolloutGroupsAndCompatible(
