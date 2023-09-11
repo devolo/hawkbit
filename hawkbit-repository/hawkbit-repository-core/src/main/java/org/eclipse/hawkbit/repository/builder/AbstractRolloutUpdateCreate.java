@@ -34,6 +34,7 @@ public abstract class AbstractRolloutUpdateCreate<T> extends AbstractNamedEntity
     protected ActionType actionType;
     protected Long forcedTime;
     protected Long startAt;
+    protected boolean isSortedByAddress;
 
     @Min(Action.WEIGHT_MIN)
     @Max(Action.WEIGHT_MAX)
@@ -111,6 +112,18 @@ public abstract class AbstractRolloutUpdateCreate<T> extends AbstractNamedEntity
         return (T) this;
     }
 
+    /**
+     * Set start of the Rollout
+     *
+     * @param isSortedByAddress
+     *            start time point
+     * @return this builder
+     */
+    public T isSortedByAddress(final boolean isSortedByAddress) {
+        this.isSortedByAddress = isSortedByAddress;
+        return (T) this;
+    }
+
     public Optional<Long> getSet() {
         return Optional.ofNullable(set);
     }
@@ -129,5 +142,9 @@ public abstract class AbstractRolloutUpdateCreate<T> extends AbstractNamedEntity
 
     public Optional<Long> getStartAt() {
         return Optional.ofNullable(startAt);
+    }
+
+    public boolean getIsSortedByAddress() {
+        return isSortedByAddress;
     }
 }

@@ -122,6 +122,11 @@ public class TenantConfigurationProperties {
         public static final String ROLLOUT_APPROVAL_ENABLED = "rollout.approval.enabled";
 
         /**
+         * Represents setting if targets within a rollout group should be sorted by address
+         */
+        public static final String ROLLOUT_SORT_OPTION_ENALBED = "rollout.sort.enabled";
+
+        /**
          * Option setting for text search in target attributes
          */
         public static final String TARGET_SEARCH_ATTRIBUTES_ENABLED = "target.search.attributes.enabled";

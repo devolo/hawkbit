@@ -38,6 +38,7 @@ public class RolloutToProxyRolloutMapper extends AbstractNamedEntityToProxyNamed
         proxyRollout.setActionType(rollout.getActionType());
         proxyRollout.setTargetFilterQuery(rollout.getTargetFilterQuery());
         proxyRollout.setStartAt(rollout.getStartAt());
+        proxyRollout.setIsSortedByAddress(rollout.getIsSortedByAddress());
 
         return proxyRollout;
     }

@@ -44,6 +44,8 @@ public class ProxyRollout extends ProxyNamedEntity {
 
     private ActionType actionType;
 
+    private boolean isSortedByAddress;
+
     /**
      * Constructor
      */
@@ -241,6 +243,25 @@ public class ProxyRollout extends ProxyNamedEntity {
      */
     public void setStartAt(final Long startAt) {
         this.startAt = startAt;
+    }
+
+    /**
+     * Gets the boolean isSortedByAddress
+     *
+     * @return isSortedByAddress
+     */
+    public boolean getIsSortedByAddress() {
+        return isSortedByAddress;
+    }
+
+    /**
+     * Sets the boolean isSortedByAddress
+     *
+     * @param isSortedByAddress
+     *            A boolean that indicates if targets within a rollout group should be sorted by IP address
+     */
+    public void setIsSortedByAddress(final boolean isSortedByAddress) {
+        this.isSortedByAddress = isSortedByAddress;
     }
 
     /**
