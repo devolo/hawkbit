@@ -585,7 +585,9 @@ public class JpaRolloutExecutor implements RolloutExecutor {
                 targetList = targetList.stream().sorted(addressStringComparator).collect(Collectors.toList());
             }
 
-            LOGGER.info("Assigning {} targets to rollout with Id {}", targets.getNumberOfElements(), rollout.getId());
+            LOGGER.debug("Assigning {} targets to rollout with Id {}", targets.getNumberOfElements(), rollout.getId());
+            LOGGER.debug("Targets in the rollout group are \n{}", targetList.stream().map(target -> target.getId() + ":" + target.getAddress()).collect(Collectors.joining(", ", "{", "}")));
+
             createAssignmentOfTargetsToGroup(targetList, group);
             return Long.valueOf(targets.getNumberOfElements());
         });
