@@ -143,9 +143,6 @@ public class JpaRollout extends AbstractJpaNamedEntity implements Rollout, Event
     @Column(name = "is_cleaned_up", nullable = false)
     private boolean isCleanedUp = false;
 
-    @Column(name = "is_sorted_by_address", nullable = false)
-    private boolean isSortedByAddress = false;
-
     @Transient
     private transient TotalTargetCountStatus totalTargetCountStatus;
 
@@ -231,10 +228,6 @@ public class JpaRollout extends AbstractJpaNamedEntity implements Rollout, Event
     public boolean getIsCleanedUp() { return isCleanedUp; }
 
     public void setIsCleanedUp(final boolean isCleanedUp) { this.isCleanedUp = isCleanedUp; }
-
-    public boolean getIsSortedByAddress() { return isSortedByAddress; }
-
-    public void setIsSortedByAddress(final boolean isSortedByAddress) { this.isSortedByAddress = isSortedByAddress; }
 
     @Override
     public long getTotalTargets() {

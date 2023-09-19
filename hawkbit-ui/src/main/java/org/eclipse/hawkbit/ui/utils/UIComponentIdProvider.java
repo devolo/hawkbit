@@ -1576,12 +1576,6 @@ public final class UIComponentIdProvider {
 
     /**
      * Configuration checkbox for
-     * {@link TenantConfigurationKey#ROLLOUT_SORT_OPTION_ENALBED}
-     */
-    public static final String ROLLOUT_SORT_ENABLED_CHECKBOX = "rollout.sort.enabled.checkbox";
-
-    /**
-     * Configuration checkbox for
      * {@link TenantConfigurationKey#TARGET_SEARCH_ATTRIBUTES_ENABLED}
      */
     public static final String TARGET_SEARCH_ATTRIBUTES = "target.search.attributes.checkbox";

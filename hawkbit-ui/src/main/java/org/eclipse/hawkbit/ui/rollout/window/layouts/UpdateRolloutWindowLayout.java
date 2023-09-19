@@ -42,7 +42,7 @@ public class UpdateRolloutWindowLayout extends AbstractRolloutWindowLayout {
 
     @Override
     protected void addComponents(final GridLayout rootLayout) {
-        rootLayout.setRows(7);
+        rootLayout.setRows(6);
 
         final int lastColumnIdx = rootLayout.getColumns() - 1;
 

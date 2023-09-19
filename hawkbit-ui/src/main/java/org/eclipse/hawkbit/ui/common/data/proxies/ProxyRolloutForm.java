@@ -35,7 +35,6 @@ public class ProxyRolloutForm implements Serializable, NameAware, DsIdAware, Tar
     private Long forcedTime;
     private AutoStartOption autoStartOption;
     private Long startAt;
-    private boolean isSortedByAddress;
 
     /**
      * Gets the rollout form id
@@ -147,8 +146,4 @@ public class ProxyRolloutForm implements Serializable, NameAware, DsIdAware, Tar
     public void setStartAt(final Long startAt) {
         this.startAt = startAt;
     }
-    public boolean getIsSortedByAddress() {
-        return isSortedByAddress;
-    }
-    public void setIsSortedByAddress(final boolean sortedByAddress) { this.isSortedByAddress = sortedByAddress; }
 }

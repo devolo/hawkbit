@@ -574,21 +574,10 @@ public class JpaRolloutExecutor implements RolloutExecutor {
             final PageRequest pageRequest = PageRequest.of(0, Math.toIntExact(limit));
             final List<Long> readyGroups = RolloutHelper.getGroupsByStatusIncludingGroup(rollout.getRolloutGroups(),
                     RolloutGroupStatus.READY, group);
-            final boolean useAddressForSorting = rollout.getIsSortedByAddress();
-
-            final Comparator<Target> addressStringComparator = Comparator.comparing(o -> o.getAddress().toString());
             final Slice<Target> targets = targetManagement.findByTargetFilterQueryAndNotInRolloutGroupsAndCompatible(
                     pageRequest, readyGroups, targetFilter, rollout.getDistributionSet().getType());
-            List<Target> targetList = targets.stream().collect(Collectors.toList());
 
-            if (useAddressForSorting) {
-                targetList = targetList.stream().sorted(addressStringComparator).collect(Collectors.toList());
-            }
-
-            LOGGER.debug("Assigning {} targets to rollout with Id {}", targets.getNumberOfElements(), rollout.getId());
-            LOGGER.debug("Targets in the rollout group are \n{}", targetList.stream().map(target -> target.getId() + ":" + target.getAddress()).collect(Collectors.joining(", ", "{", "}")));
-
-            createAssignmentOfTargetsToGroup(targetList, group);
+            createAssignmentOfTargetsToGroup(targets, group);
             return Long.valueOf(targets.getNumberOfElements());
         });
     }
@@ -652,7 +641,7 @@ public class JpaRolloutExecutor implements RolloutExecutor {
         });
     }
 
-    private void createAssignmentOfTargetsToGroup(final List<Target> targets, final RolloutGroup group) {
+    private void createAssignmentOfTargetsToGroup(final Slice<Target> targets, final RolloutGroup group) {
         targets.forEach(target -> rolloutTargetGroupRepository.save(new RolloutTargetGroup(group, target)));
     }
 
