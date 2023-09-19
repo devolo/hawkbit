@@ -742,12 +742,23 @@ public class JpaTargetManagement implements TargetManagement {
 
     @Override
     public Slice<Target> findByTargetFilterQueryAndNotInRolloutGroupsAndCompatible(final Pageable pageRequest,
-            final Collection<Long> groups, final String targetFilterQuery, final DistributionSetType dsType) {
-        final List<Specification<JpaTarget>> specList = Arrays.asList(
-                RSQLUtility.buildRsqlSpecification(targetFilterQuery, TargetFields.class, virtualPropertyReplacer,
-                        database),
-                TargetSpecifications.isNotInRolloutGroups(groups),
-                TargetSpecifications.isCompatibleWithDistributionSetType(dsType.getId()));
+            final Collection<Long> groups, final String targetFilterQuery, final DistributionSetType dsType, final boolean shouldOrderByAddress) {
+        List<Specification<JpaTarget>> specList;
+
+        if (shouldOrderByAddress) {
+            specList = Arrays.asList(
+                    RSQLUtility.buildRsqlSpecification(targetFilterQuery, TargetFields.class, virtualPropertyReplacer,
+                            database),
+                    TargetSpecifications.isNotInRolloutGroups(groups),
+                    TargetSpecifications.isCompatibleWithDistributionSetType(dsType.getId()),
+                    TargetSpecifications.orderedByAddresses());
+        } else {
+            specList = Arrays.asList(
+                    RSQLUtility.buildRsqlSpecification(targetFilterQuery, TargetFields.class, virtualPropertyReplacer,
+                            database),
+                    TargetSpecifications.isNotInRolloutGroups(groups),
+                    TargetSpecifications.isCompatibleWithDistributionSetType(dsType.getId()));
+        }
 
         return JpaManagementHelper.findAllWithoutCountBySpec(targetRepository, pageRequest, specList);
     }

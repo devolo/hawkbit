@@ -667,4 +667,25 @@ public final class TargetSpecifications {
         };
     }
 
+    /**
+     * Can be added to specification chain to order result by address
+     *
+     * NOTE: Other specs, pageables and sort objects may alter the queries
+     * orderBy entry too, possibly invalidating the applied order, keep in mind
+     * when using this
+     *
+     * @return specification that applies order by ds, may be overwritten
+     */
+    public static Specification<JpaTarget> orderedByAddresses() {
+        return (targetRoot, query, cb) -> {
+            final List<Order> orders = new ArrayList<>();
+            orders.add(cb.desc(targetRoot.get(JpaTarget_.ADDRESS)));
+
+            query.orderBy(orders);
+
+            // Spec only provides order, so no further filtering
+            return query.getRestriction();
+        };
+    }
+
 }

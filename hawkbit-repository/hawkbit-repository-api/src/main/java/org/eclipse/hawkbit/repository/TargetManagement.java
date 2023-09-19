@@ -293,7 +293,7 @@ public interface TargetManagement {
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
     Slice<Target> findByTargetFilterQueryAndNotInRolloutGroupsAndCompatible(@NotNull Pageable pageRequest,
             @NotEmpty Collection<Long> groups, @NotNull String rsqlParam,
-            @NotNull DistributionSetType distributionSetType);
+            @NotNull DistributionSetType distributionSetType, @NotNull boolean shouldOrderByAddress);
 
     /**
      * Counts all targets for all the given parameter {@link TargetFilterQuery}
