@@ -536,7 +536,6 @@ public class JpaRolloutManagement implements RolloutManagement {
         update.getActionType().ifPresent(rollout::setActionType);
         update.getForcedTime().ifPresent(rollout::setForcedTime);
         update.getWeight().ifPresent(rollout::setWeight);
-        rollout.setIsSortedByAddress(update.getIsSortedByAddress());
 
         // reseting back to manual start is done by setting start at time to
         // null

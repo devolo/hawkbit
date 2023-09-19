@@ -30,7 +30,6 @@ public class JpaRolloutCreate extends AbstractRolloutUpdateCreate<RolloutCreate>
         rollout.setTargetFilterQuery(targetFilterQuery);
         rollout.setStartAt(startAt);
         rollout.setWeight(weight);
-        rollout.setIsSortedByAddress(isSortedByAddress);
 
         if (actionType != null) {
             rollout.setActionType(actionType);

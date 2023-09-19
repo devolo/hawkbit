@@ -44,8 +44,6 @@ public class RolloutFormLayout extends ValidatableLayout {
     private static final String TEXTFIELD_NAME = "textfield.name";
     private static final String CAPTION_ROLLOUT_START_TYPE = "caption.rollout.start.type";
     private static final String CAPTION_ROLLOUT_ACTION_TYPE = "caption.rollout.action.type";
-    private static final String CAPTION_ROLLOUT_SORT_OPTION = "caption.rollout.sort_option";
-
     private static final int CAPTION_COLUMN = 0;
     private static final int FIELD_COLUMN = 1;
 
@@ -65,8 +63,6 @@ public class RolloutFormLayout extends ValidatableLayout {
     private final TextArea descriptionField;
     private final BoundComponent<ActionTypeOptionGroupAssignmentLayout> actionTypeLayout;
     private final BoundComponent<AutoStartOptionGroupLayout> autoStartOptionGroupLayout;
-    private final CheckBox sortOptionsCheckBox;
-
     private Long rolloutId;
     private Long totalTargets;
 
@@ -101,19 +97,9 @@ public class RolloutFormLayout extends ValidatableLayout {
         this.descriptionField = createDescription();
         this.actionTypeLayout = createActionTypeOptionGroupLayout();
         this.autoStartOptionGroupLayout = createAutoStartOptionGroupLayout();
-        this.sortOptionsCheckBox = createSortOptionsCheckBox();
 
         addValueChangeListeners();
         setValidationStatusByBinder(binder);
-    }
-
-    /**
-     * Create checkbox for sorting targets in rollout group
-     *
-     * @return input component
-     */
-    private CheckBox createSortOptionsCheckBox() {
-        return FormComponentBuilder.createCheckBox(UIComponentIdProvider.ROLLOUT_SORT_ENABLED_CHECKBOX, binder, ProxyRolloutForm::getIsSortedByAddress, ProxyRolloutForm::setIsSortedByAddress);
     }
 
     /**
@@ -277,9 +263,6 @@ public class RolloutFormLayout extends ValidatableLayout {
 
         layout.addComponent(SPUIComponentProvider.generateLabel(i18n, CAPTION_ROLLOUT_START_TYPE), CAPTION_COLUMN, 5);
         layout.addComponent(autoStartOptionGroupLayout.getComponent(), FIELD_COLUMN, 5, lastColumn, 5);
-
-        layout.addComponent(SPUIComponentProvider.generateLabel(i18n, CAPTION_ROLLOUT_SORT_OPTION), CAPTION_COLUMN, 6);
-        layout.addComponent(sortOptionsCheckBox, FIELD_COLUMN, 6, lastColumn, 6);
     }
 
     /**
