@@ -16,7 +16,7 @@
    <parent>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-parent</artifactId>
-      <version>2.7.10</version>
+      <version>2.7.14</version>
    </parent>
 
    <groupId>org.eclipse.hawkbit</groupId>
@@ -127,18 +127,18 @@
    </repositories>
 
    <properties>
-
-      <java.version>11</java.version>
-
-      <spring.boot.version>2.7.10</spring.boot.version>
-      <spring-framework.version>5.3.26</spring-framework.version>
-      <spring.cloud.version>2021.0.5</spring.cloud.version>
-      <spring.plugin.core.version>2.0.0.RELEASE</spring.plugin.core.version>
-
       <snapshotDependencyAllowed>true</snapshotDependencyAllowed>
 
-      <!-- Spring boot version overrides (should be reviewed with every boot
-         upgrade) - START -->
+      <java.version>17</java.version>
+      <test.jvm.args/>
+
+      <spring.boot.version>2.7.14</spring.boot.version>
+      <spring.cloud.version>2021.0.5</spring.cloud.version>
+      <spring.plugin.core.version>2.0.0.RELEASE</spring.plugin.core.version>
+      <!-- CVE-2022-31690 Remove after Spring 3.0.0 migration-->
+      <spring.security.oauth2.client.version>5.7.10</spring.security.oauth2.client.version>
+
+      <!-- Spring boot version overrides (should be reviewed with every boot upgrade) - START -->
       <!-- Newer versions needed than defined in Boot -->
       <!-- Fixed dependencies -->
       <!-- CVE-2022-25857 -->
@@ -151,8 +151,17 @@
 
       <!-- CVE-2022-31690 -->
       <spring-security-oauth2-client.version>5.7.7</spring-security-oauth2-client.version>
+      <!-- Spring boot version overrides - END -->
 
-      <rabbitmq.http-client.version>3.12.1</rabbitmq.http-client.version>
+      <!-- CVE-2022-45868 -->
+      <h2.version>2.2.220</h2.version>
+
+      <rabbitmq.http-client.version>5.0.0</rabbitmq.http-client.version>
+
+      <!-- Eclipselink - START -->
+      <eclipselink.version>2.7.12</eclipselink.version>
+      <eclipselink.maven.plugin.version>2.7.9.1</eclipselink.maven.plugin.version>
+      <!-- Eclipselink - END -->
 
       <!-- Vaadin versions - START -->
       <!-- Vaadin version 8.14.3 is the last version running under an Apache 2.0 license -->
@@ -179,37 +188,44 @@
       <docker.jvm.args>${docker.memory.size} ${docker.gc.settings} -XX:+HeapDumpOnOutOfMemoryError
          -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom
       </docker.jvm.args>
-      <docker.jre.version>11.0.15_10-jre-alpine</docker.jre.version>
+
+      <docker.jre.version>17.0.8_7-jre-alpine</docker.jre.version>
       <!-- Docker image build - END -->
-      <maven.processor.plugin.version>3.3.3</maven.processor.plugin.version>
-      <maven.scm.plugin.version>1.11.1</maven.scm.plugin.version>
-      <maven.site.plugin.version>3.9.1</maven.site.plugin.version>
-      <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
-      <maven.failsafe.plugin.version>3.0.0-M7</maven.failsafe.plugin.version>
-      <maven.enforcer.plugin.version>3.1.0</maven.enforcer.plugin.version>
+
+      <maven.scm.plugin.version>2.0.1</maven.scm.plugin.version>
+      <maven.site.plugin.version>3.12.1</maven.site.plugin.version>
+      <maven.surefire.plugin.version>3.1.2</maven.surefire.plugin.version>
+      <maven.failsafe.plugin.version>3.1.2</maven.failsafe.plugin.version>
+      <maven.enforcer.plugin.version>3.3.0</maven.enforcer.plugin.version>
       <!-- ************************ -->
       <!-- Maven Surefire settings -->
       <!-- ************************ -->
       <surefire.forkcount>1</surefire.forkcount>
 
       <!-- Misc libraries versions - START -->
-      <cron-utils.version>9.1.6</cron-utils.version>
-      <jsoup.version>1.15.3</jsoup.version>
       <allure.version>2.13.10</allure.version>
       <eclipselink.version>2.7.11</eclipselink.version>
       <eclipselink.maven.plugin.version>2.7.9.1</eclipselink.maven.plugin.version>
-      <jaxb-api.version>2.3.1</jaxb-api.version>
       <gwtmockito.version>1.1.8</gwtmockito.version>
       <guava.version>30.1.1-jre</guava.version>
-      <javax.el-api.version>2.2.4</javax.el-api.version>
       <corn-cps.version>1.1.7</corn-cps.version>
-      <commons-io.version>2.11.0</commons-io.version>
-      <rsql-parser.version>2.1.0</rsql-parser.version>
       <awaitility.version>3.1.2</awaitility.version>
-      <io-protostuff.version>1.5.6</io-protostuff.version>
+      <cron-utils.version>9.2.1</cron-utils.version>
+      <jsoup.version>1.16.1</jsoup.version>
+      <jaxb-api.version>2.3.1</jaxb-api.version>
+      <guava.version>32.1.1-jre</guava.version>
+      <javax.el-api.version>3.0.0</javax.el-api.version>
+      <commons-io.version>2.13.0</commons-io.version>
+      <rsql-parser.version>2.1.0</rsql-parser.version>
+      <io-protostuff.version>1.8.0</io-protostuff.version>
 
-      <!-- SONATYPE-2021-1175 -->
-      <logback.version>1.2.9</logback.version>
+      <!-- test -->
+      <allure.version>2.23.0</allure.version>
+      <awaitility.version>4.2.0</awaitility.version>
+
+       <!-- SONATYPE-2021-1175 -->
+       <logback.version>1.2.9</logback.version>
+
       <!-- Misc libraries versions - END -->
 
       <!-- Release - START -->
@@ -514,7 +530,7 @@
                   <useSystemClassLoader>false</useSystemClassLoader>
                   <reuseForks>true</reuseForks>
                   <forkCount>${surefire.forkcount}</forkCount>
-                  <argLine>${jacoco.agent.ut.arg}</argLine>
+                  <argLine>${jacoco.agent.ut.arg} ${test.jvm.args}</argLine>
                   <properties>
                      <property>
                         <name>listener</name>
@@ -605,7 +621,7 @@
                      individually as part of building the module. -->
                   <groupId>org.sonatype.plugins</groupId>
                   <artifactId>nexus-staging-maven-plugin</artifactId>
-                  <version>1.6.7</version>
+                  <version>1.6.13</version>
                   <extensions>true</extensions>
                   <configuration>
                      <serverId>ossrh</serverId>
@@ -780,10 +796,6 @@
             <version>${spring.boot.version}</version>
             <exclusions>
                <exclusion>
-                  <groupId>org.springframework.boot</groupId>
-                  <artifactId>spring-boot-starter-tomcat</artifactId>
-               </exclusion>
-               <exclusion>
                   <groupId>com.fasterxml.jackson.datatype</groupId>
                   <artifactId>jackson-datatype-jdk8</artifactId>
                </exclusion>
@@ -852,10 +864,11 @@
             <artifactId>spring-plugin-core</artifactId>
             <version>${spring.plugin.core.version}</version>
          </dependency>
+         <!-- CVE-2022-31690 Remove after Spring 3.0.0 migration-->
          <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-oauth2-client</artifactId>
-            <version>${spring-security-oauth2-client.version}</version>
+            <version>${spring.security.oauth2.client.version}</version>
          </dependency>
 
          <!-- Protostuff Io -->

@@ -1443,6 +1443,130 @@ public class MgmtDistributionSetResourceTest extends AbstractManagementApiIntegr
     }
 
     @Test
+    @Description("Request to get the count of all Rollouts by status for specific Distribution set")
+    public void statisticsForRolloutsCountByStatus() throws Exception {
+        testdataFactory.createTargets("targets", 4);
+        DistributionSet ds1 = testdataFactory.createDistributionSet("DS1");
+        DistributionSet ds2 = testdataFactory.createDistributionSet("DS2");
+
+        testdataFactory.createRolloutByVariables("rollout1", "description",
+                1, "name==targets*", ds1, "50", "5", false);
+        Rollout rollout = testdataFactory.createRolloutByVariables("rollout2", "description",
+                1, "name==targets*", ds1, "50", "5", false);
+        rolloutManagement.start(rollout.getId());
+        rolloutHandler.handleAll();
+
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{ds}/statistics/rollouts", ds1.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("rollouts.READY", equalTo(1)))
+                .andExpect(jsonPath("rollouts.RUNNING", equalTo(1)))
+                .andExpect(jsonPath("rollouts.total", equalTo(2)))
+                .andExpect(jsonPath("actions").doesNotExist())
+                .andExpect(jsonPath("totalAutoAssignments").doesNotExist());
+
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{ds}/statistics/rollouts", ds2.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("rollouts").doesNotExist())
+                .andExpect(jsonPath("actions").doesNotExist())
+                .andExpect(jsonPath("totalAutoAssignments").doesNotExist());
+    }
+
+    @Test
+    @Description("Request to get the count of all Actions by status for specific Distribution set")
+    public void statisticsForActionsCountByStatus() throws Exception {
+        testdataFactory.createTargets("targets", 4);
+
+        DistributionSet ds1 = testdataFactory.createDistributionSet("DS1");
+        DistributionSet ds2 = testdataFactory.createDistributionSet("DS2");
+
+        Rollout rollout = testdataFactory.createRolloutByVariables("rollout", "description",
+                1, "name==targets*", ds1, "50", "5", false);
+        rolloutManagement.start(rollout.getId());
+        rolloutHandler.handleAll();
+
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{ds}/statistics/actions", ds1.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("actions.RUNNING", equalTo(4)))
+                .andExpect(jsonPath("actions.total", equalTo(4)))
+                .andExpect(jsonPath("rollouts").doesNotExist())
+                .andExpect(jsonPath("totalAutoAssignments").doesNotExist());
+
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{ds}/statistics/actions", ds2.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("rollouts").doesNotExist())
+                .andExpect(jsonPath("actions").doesNotExist())
+                .andExpect(jsonPath("totalAutoAssignments").doesNotExist());
+    }
+
+    @Test
+    @Description("Request to get the count of all Auto Assignments for specific Distribution set")
+    public void statisticsForAutoAssignmentsCount() throws Exception {
+        testdataFactory.createTargets("targets", 4);
+        DistributionSet ds1 = testdataFactory.createDistributionSet("DS1");
+        DistributionSet ds2 = testdataFactory.createDistributionSet("DS2");
+
+        targetFilterQueryManagement.create(
+                entityFactory.targetFilterQuery().create().name("test filter 1").autoAssignDistributionSet(ds1.getId()).query("name==targets*"));
+
+        targetFilterQueryManagement.create(
+                entityFactory.targetFilterQuery().create().name("test filter 2").autoAssignDistributionSet(ds1.getId()).query("name==targets*"));
+
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{ds}/statistics/autoassignments", ds1.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("totalAutoAssignments", equalTo(2)))
+                .andExpect(jsonPath("rollouts").doesNotExist())
+                .andExpect(jsonPath("actions").doesNotExist());
+
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{ds}/statistics/autoassignments", ds2.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("rollouts").doesNotExist())
+                .andExpect(jsonPath("actions").doesNotExist())
+                .andExpect(jsonPath("totalAutoAssignments").doesNotExist());
+    }
+
+    @Test
+    @Description("Request to get full Statistics for specific Distribution set")
+    public void statisticsForDistributionSet() throws Exception {
+        testdataFactory.createTargets("targets", 4);
+        testdataFactory.createTargets("autoAssignments", 4);
+        DistributionSet ds1 = testdataFactory.createDistributionSet("DS1");
+        DistributionSet ds2 = testdataFactory.createDistributionSet("DS2");
+
+        targetFilterQueryManagement.create(
+                entityFactory.targetFilterQuery().create().name("test filter 1").autoAssignDistributionSet(ds1.getId()).query("name==autoAssignments*"));
+
+        Rollout rollout = testdataFactory.createRolloutByVariables("rollout", "description",
+                1, "name==targets*", ds1, "50", "5", false);
+        rolloutManagement.start(rollout.getId());
+        rolloutHandler.handleAll();
+
+
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{ds}/statistics", ds1.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("totalAutoAssignments", equalTo(1)))
+                .andExpect(jsonPath("actions.RUNNING", equalTo(4)))
+                .andExpect(jsonPath("actions.total", equalTo(4)))
+                .andExpect(jsonPath("rollouts.RUNNING", equalTo(1)))
+                .andExpect(jsonPath("rollouts.total", equalTo(1)));
+
+
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/{ds}/statistics/autoassignments", ds2.getId()).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("rollouts").doesNotExist())
+                .andExpect(jsonPath("actions").doesNotExist())
+                .andExpect(jsonPath("totalAutoAssignments").doesNotExist());
+    }
+
+
+    @Test
     @Description("Verify invalidation of distribution sets that removes distribution sets from auto assignments, stops rollouts and cancels assignments")
     public void invalidateDistributionSet() throws Exception {
         final DistributionSet distributionSet = testdataFactory.createDistributionSet();

@@ -48,7 +48,6 @@ import org.eclipse.hawkbit.repository.jpa.builder.JpaTargetCreate;
 import org.eclipse.hawkbit.repository.jpa.builder.JpaTargetUpdate;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.executor.AfterTransactionCommitExecutor;
-
 import org.eclipse.hawkbit.repository.jpa.model.JpaTarget;
 import org.eclipse.hawkbit.repository.jpa.model.JpaTargetMetadata;
 import org.eclipse.hawkbit.repository.jpa.model.JpaTargetMetadata_;
@@ -144,7 +143,7 @@ public class JpaTargetManagement implements TargetManagement {
             final TenantAware tenantAware, final AfterTransactionCommitExecutor afterCommit,
             final VirtualPropertyReplacer virtualPropertyReplacer, final Database database,
             final TenantConfigurationManagement tenantConfigurationManagement,
-            final SystemSecurityContext systemSecurityContext){
+            final SystemSecurityContext systemSecurityContext) {
         this.entityManager = entityManager;
         this.distributionSetManagement = distributionSetManagement;
         this.quotaManagement = quotaManagement;

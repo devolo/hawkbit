@@ -8,13 +8,6 @@
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import javax.validation.ValidationException;
-
 import org.eclipse.hawkbit.mgmt.json.model.PagedList;
 import org.eclipse.hawkbit.mgmt.json.model.rollout.MgmtRolloutResponseBody;
 import org.eclipse.hawkbit.mgmt.json.model.rollout.MgmtRolloutRestRequestBody;
@@ -24,29 +17,18 @@ import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTarget;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRepresentationMode;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRolloutRestApi;
-import org.eclipse.hawkbit.repository.DistributionSetManagement;
-import org.eclipse.hawkbit.repository.EntityFactory;
-import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
-import org.eclipse.hawkbit.repository.RolloutGroupManagement;
-import org.eclipse.hawkbit.repository.RolloutManagement;
-import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
-import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
+import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.builder.RolloutCreate;
 import org.eclipse.hawkbit.repository.builder.RolloutGroupCreate;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.Rollout;
-import org.eclipse.hawkbit.repository.model.RolloutGroup;
-import org.eclipse.hawkbit.repository.model.RolloutGroupConditions;
-import org.eclipse.hawkbit.repository.model.Target;
+import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.utils.TenantConfigHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -54,6 +36,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import javax.validation.ValidationException;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * REST Resource handling rollout CRUD operations.
@@ -103,26 +91,17 @@ public class MgmtRolloutResource implements MgmtRolloutRestApi {
         final boolean isFullMode = parseRepresentationMode(representationModeParam) == MgmtRepresentationMode.FULL;
 
         final Pageable pageable = new OffsetBasedPageRequest(sanitizedOffsetParam, sanitizedLimitParam, sorting);
-        final Slice<Rollout> rollouts;
-        final long totalElements;
+        final Page<Rollout> rollouts;
         if (rsqlParam != null) {
-            if (isFullMode) {
-                rollouts = this.rolloutManagement.findByFiltersWithDetailedStatus(pageable, rsqlParam, false);
-                totalElements = this.rolloutManagement.countByFilters(rsqlParam);
-            } else {
-                final Page<Rollout> findRolloutsAll = this.rolloutManagement.findByRsql(pageable, rsqlParam, false);
-                totalElements = findRolloutsAll.getTotalElements();
-                rollouts = findRolloutsAll;
-            }
+            rollouts = this.rolloutManagement.findByRsql(pageable, rsqlParam, false);
         } else {
-            if (isFullMode) {
-                rollouts = this.rolloutManagement.findAllWithDetailedStatus(pageable, false);
-                totalElements = this.rolloutManagement.count();
-            } else {
-                final Page<Rollout> findRolloutsAll = this.rolloutManagement.findAll(pageable, false);
-                totalElements = findRolloutsAll.getTotalElements();
-                rollouts = findRolloutsAll;
-            }
+            rollouts = this.rolloutManagement.findAll(pageable, false);
+        }
+
+        final long totalElements = rollouts.getTotalElements();
+
+        if (isFullMode) {
+            this.rolloutManagement.setRolloutStatusDetails(rollouts);
         }
 
         final List<MgmtRolloutResponseBody> rest = MgmtRolloutMapper.toResponseRollout(rollouts.getContent(),

@@ -271,6 +271,10 @@ include::{snippets}/softwaremodules/get-artifacts/http-request.adoc[]
 
 include::{snippets}/softwaremodules/get-artifacts/path-parameters.adoc[]
 
+==== Request query parameter
+
+include::{snippets}/softwaremodules/get-artifacts-with-parameters/request-parameters.adoc[]
+
 === Response (Status 200)
 
 ==== Response fields 
@@ -416,6 +420,10 @@ include::{snippets}/softwaremodules/get-artifact/http-request.adoc[]
 ==== Request path parameter
 
 include::{snippets}/softwaremodules/get-artifact/path-parameters.adoc[]
+
+==== Request query parameter
+
+include::{snippets}/softwaremodules/get-artifact-with-parameters/request-parameters.adoc[]
 
 === Response (Status 200)
 

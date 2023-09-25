@@ -8,17 +8,6 @@
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import javax.validation.Valid;
-import javax.validation.ValidationException;
-
 import org.eclipse.hawkbit.mgmt.json.model.MgmtId;
 import org.eclipse.hawkbit.mgmt.json.model.MgmtMetadata;
 import org.eclipse.hawkbit.mgmt.json.model.MgmtMetadataBodyPut;
@@ -29,27 +18,12 @@ import org.eclipse.hawkbit.mgmt.json.model.action.MgmtActionStatus;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtActionType;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtDistributionSet;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtTargetAssignmentResponseBody;
-import org.eclipse.hawkbit.mgmt.json.model.target.MgmtDistributionSetAssignments;
-import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTarget;
-import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAttributes;
-import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAutoConfirm;
-import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAutoConfirmUpdate;
-import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetRequestBody;
+import org.eclipse.hawkbit.mgmt.json.model.target.*;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtTargetRestApi;
-import org.eclipse.hawkbit.repository.ConfirmationManagement;
-import org.eclipse.hawkbit.repository.DeploymentManagement;
-import org.eclipse.hawkbit.repository.EntityFactory;
-import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
-import org.eclipse.hawkbit.repository.TargetManagement;
-import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
+import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
-import org.eclipse.hawkbit.repository.model.Action;
-import org.eclipse.hawkbit.repository.model.ActionStatus;
-import org.eclipse.hawkbit.repository.model.DeploymentRequest;
-import org.eclipse.hawkbit.repository.model.DistributionSetAssignmentResult;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetMetadata;
+import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.utils.TenantConfigHelper;
 import org.slf4j.Logger;
@@ -64,6 +38,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import javax.validation.Valid;
+import javax.validation.ValidationException;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * REST Resource handling target CRUD operations.
@@ -144,7 +128,7 @@ public class MgmtTargetResource implements MgmtTargetRestApi {
 
     @Override
     public ResponseEntity<MgmtTarget> updateTarget(@PathVariable("targetId") final String targetId,
-            @RequestBody final MgmtTargetRequestBody targetRest) {
+                                                   @RequestBody final MgmtTargetRequestBody targetRest) {
 
         if (targetRest.isRequestAttributes() != null) {
             if (targetRest.isRequestAttributes()) {
@@ -154,10 +138,23 @@ public class MgmtTargetResource implements MgmtTargetRestApi {
             }
         }
 
-        final Target updateTarget = this.targetManagement.update(entityFactory.target().update(targetId)
-                .name(targetRest.getName()).description(targetRest.getDescription()).address(targetRest.getAddress())
-                .targetType(targetRest.getTargetType()).securityToken(targetRest.getSecurityToken())
-                .requestAttributes(targetRest.isRequestAttributes()));
+        Target updateTarget;
+
+        if (targetRest.getTargetType() != null && targetRest.getTargetType() == -1L) {
+            // if targetType in request is -1 - unassign targetType from target
+            this.targetManagement.unAssignType(targetId);
+            // update target without targetType here ...
+            updateTarget = this.targetManagement.update(entityFactory.target().update(targetId)
+                    .name(targetRest.getName()).description(targetRest.getDescription()).address(targetRest.getAddress())
+                    .securityToken(targetRest.getSecurityToken()).requestAttributes(targetRest.isRequestAttributes()));
+
+        } else {
+            updateTarget = this.targetManagement.update(
+                    entityFactory.target().update(targetId).name(targetRest.getName()).description(targetRest.getDescription())
+                            .address(targetRest.getAddress()).targetType(targetRest.getTargetType()).securityToken(targetRest.getSecurityToken())
+                            .requestAttributes(targetRest.isRequestAttributes()));
+
+        }
 
         final MgmtTarget response = MgmtTargetMapper.toResponse(updateTarget, tenantConfigHelper);
         MgmtTargetMapper.addPollStatus(updateTarget, response);

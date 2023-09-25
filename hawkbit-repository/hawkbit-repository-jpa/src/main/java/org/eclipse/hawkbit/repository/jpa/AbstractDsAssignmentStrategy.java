@@ -40,6 +40,8 @@ import org.eclipse.hawkbit.repository.model.TargetWithActionType;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.data.domain.Page;

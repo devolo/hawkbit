@@ -23,7 +23,6 @@ import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.scheduling.annotation.Async;
@@ -96,6 +95,7 @@ public class AutoAssignChecker extends AbstractAutoAssignExecutor {
                 getTenantAware().getCurrentTenant(), targetFilterQuery.getId());
         try {
             final DistributionSet distributionSet = targetFilterQuery.getAutoAssignDistributionSet();
+
             int count;
             do {
                 final List<String> controllerIds = targetManagement
@@ -110,7 +110,6 @@ public class AutoAssignChecker extends AbstractAutoAssignExecutor {
                 count = runTransactionalAssignment(targetFilterQuery, controllerIds);
 
                 LOGGER.debug("Running AutoAssignCheck. TFQ: " + targetFilterQuery.getQuery() + " with DS: " + distributionSet.getName());
-
                 LOGGER.debug(
                         "Assignment for {} auto assign targets for tenant {} and target filter query id {} finished",
                         controllerIds.size(), getTenantAware().getCurrentTenant(), targetFilterQuery.getId());
@@ -172,5 +171,4 @@ public class AutoAssignChecker extends AbstractAutoAssignExecutor {
         return targets.getContent().stream().map(t -> DeploymentManagement.deploymentRequest(t.getControllerId(), dsId)
                 .setActionType(autoAssignActionType).setWeight(weight).build()).collect(Collectors.toList());
     }
-
 }

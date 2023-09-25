@@ -223,7 +223,6 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
         // empty constructor for JPA.
     }
 
-
     /**
      * @return assigned distribution set
      */
@@ -235,7 +234,6 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     public String getControllerId() {
         return controllerId;
     }
-
 
     /**
      * @return tags
@@ -411,6 +409,7 @@ public class JpaTarget extends AbstractJpaNamedEntity implements Target, EventAw
     @Override
     public Boolean getIsCleanedUp() { return isCleanedUp; }
 
+    @Override
     public TargetType getTargetType() {
         return targetType;
     }

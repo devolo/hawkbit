@@ -128,7 +128,6 @@ public abstract class AbstractFieldNameRSQLVisitor<A extends Enum<A> & FieldName
 
         final List<String> expectedSubFieldList = Arrays.stream(fieldNameProvider.getEnumConstants())
                 .filter(enumField -> !enumField.getSubEntityAttributes().isEmpty()).flatMap(enumField -> {
-
                     final List<String> subEntity = enumField
                             .getSubEntityAttributes().stream().map(fieldName -> enumField.name().toLowerCase()
                                     + FieldNameProvider.SUB_ATTRIBUTE_SEPARATOR + fieldName)

@@ -440,9 +440,21 @@ public interface RolloutManagement {
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_DELETE)
     void delete(long rolloutId);
 
+    /**
+     * Sets target as cleaned up (i.e., action status messages) from the database
+     *
+     * @param targetId
+     *            the target for which this should be set
+     */
     @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
     void setIsCleanedUpToFalseForTargetWithId(@NotNull final long targetId);
 
+    /**
+     * Sets rollout as cleaned up from the database
+     *
+     * @param rollout
+     *            the rollout that should be marked
+     */
     @PreAuthorize(SpringEvalExpressions.IS_SYSTEM_CODE)
     void setRolloutAsCleanedUp(@NotNull final Rollout rollout);
     /**
@@ -472,4 +484,14 @@ public interface RolloutManagement {
      */
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_UPDATE)
     void triggerNextGroup(long rolloutId);
+
+    /**
+     * Enrich the rollouts Slice with additional details
+     *
+     * @param rollouts
+     *            the rollouts to be enriched.
+     *
+     */
+    @PreAuthorize(SpringEvalExpressions.HAS_AUTH_ROLLOUT_MANAGEMENT_UPDATE)
+    void setRolloutStatusDetails(final Slice<Rollout> rollouts);
 }

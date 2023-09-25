@@ -332,6 +332,7 @@ class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
         assertThat(updatedAttributes).containsAllEntriesOf(mergeAttributes);
         assertThat(updatedAttributes).containsEntry("k1", "v1_modified_again");
         attributes.remove("last_update");
+
         attributes.keySet().forEach(assertThat(updatedAttributes)::containsKey);
     }
 
@@ -380,7 +381,6 @@ class DdiConfigDataTest extends AbstractDDiApiIntegrationTest {
         // verify the initial parameters
         final Map<String, String> updatedAttributes = targetManagement
                 .getControllerAttributes(DdiConfigDataTest.TARGET1_ID);
-
         assertThat(updatedAttributes.size()).isEqualTo(attributes.size()+1);
     }
 }
