@@ -34,16 +34,13 @@ import java.util.stream.IntStream;
 
 import javax.validation.ConstraintViolationException;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.MapDifference;
-import com.google.common.collect.Maps;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.assertj.core.api.Assertions;
 import org.eclipse.hawkbit.repository.RepositoryProperties;
 import org.eclipse.hawkbit.repository.UpdateMode;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
-import org.eclipse.hawkbit.repository.builder.TargetTypeCreate;
 import org.eclipse.hawkbit.repository.event.remote.CancelTargetAssignmentEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetAssignDistributionSetEvent;
 import org.eclipse.hawkbit.repository.event.remote.TargetAttributesRequestedEvent;
@@ -67,6 +64,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.ConcurrencyFailureException;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;

@@ -16,7 +16,6 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
-import cz.jirutka.rsql.parser.ast.*;
 import org.apache.commons.lang3.text.StrLookup;
 import org.eclipse.hawkbit.repository.FieldNameProvider;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
@@ -32,6 +31,7 @@ import org.springframework.util.CollectionUtils;
 
 import cz.jirutka.rsql.parser.RSQLParser;
 import cz.jirutka.rsql.parser.RSQLParserException;
+import cz.jirutka.rsql.parser.ast.*;
 
 /**
  * A utility class which is able to parse RSQL strings into an spring data
@@ -110,11 +110,11 @@ public final class RSQLUtility {
 
     /**
      * Validates the RSQL string
-     *
+     * 
      * @param rsql
      *            RSQL string to validate
      * @param fieldNameProvider
-     *
+     * 
      * @throws RSQLParserException
      *             if RSQL syntax is invalid
      * @throws RSQLParameterUnsupportedFieldException
@@ -124,7 +124,6 @@ public final class RSQLUtility {
             final Class<A> fieldNameProvider) {
         final RSQLVisitor<Void, String> visitor = getValidationRsqlVisitor(fieldNameProvider);
         final Node rootNode = parseRsql(rsql);
-
         rootNode.accept(visitor);
     }
 

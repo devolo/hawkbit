@@ -36,7 +36,6 @@ import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 
 import com.google.common.collect.MapDifference;
-
 import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
 import org.eclipse.hawkbit.repository.event.remote.CancelTargetAssignmentEvent;
@@ -50,22 +49,16 @@ import org.eclipse.hawkbit.repository.jpa.builder.JpaActionStatusCreate;
 import org.eclipse.hawkbit.repository.jpa.configuration.Constants;
 import org.eclipse.hawkbit.repository.jpa.executor.AfterTransactionCommitExecutor;
 import org.eclipse.hawkbit.repository.jpa.model.*;
+import org.eclipse.hawkbit.repository.jpa.model.JpaActionStatus_;
+import org.eclipse.hawkbit.repository.jpa.model.JpaAction_;
+import org.eclipse.hawkbit.repository.jpa.model.JpaTarget_;
 import org.eclipse.hawkbit.repository.jpa.rsql.RsqlMatcher;
 import org.eclipse.hawkbit.repository.jpa.specifications.ActionSpecifications;
 import org.eclipse.hawkbit.repository.jpa.specifications.TargetSpecifications;
 import org.eclipse.hawkbit.repository.jpa.utils.DeploymentHelper;
 import org.eclipse.hawkbit.repository.jpa.utils.QuotaHelper;
-import org.eclipse.hawkbit.repository.model.Action;
+import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.repository.model.Action.Status;
-import org.eclipse.hawkbit.repository.model.ActionStatus;
-import org.eclipse.hawkbit.repository.model.DeploymentRequest;
-import org.eclipse.hawkbit.repository.model.AutoConfirmationStatus;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.SoftwareModule;
-import org.eclipse.hawkbit.repository.model.SoftwareModuleMetadata;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
-import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.TenantAware;
@@ -159,7 +152,6 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     @Autowired
     private TargetTypeRepository targetTypeRepository;
-
 
     public JpaControllerManagement(final ScheduledExecutorService executorService,
             final ActionRepository actionRepository, final ActionStatusRepository actionStatusRepository,
@@ -305,7 +297,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     @Override
     public Optional<Action> getActionForDownloadByTargetAndSoftwareModule(final String controllerId,
-            final long moduleId) {
+                                                                          final long moduleId) {
         throwExceptionIfTargetDoesNotExist(controllerId);
         throwExceptionIfSoftwareModuleDoesNotExist(moduleId);
 

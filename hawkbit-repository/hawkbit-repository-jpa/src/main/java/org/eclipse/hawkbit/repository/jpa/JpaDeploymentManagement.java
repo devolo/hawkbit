@@ -396,8 +396,8 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
     }
 
     private DistributionSetAssignmentResult assignDistributionSetToSingleTarget(Target target, final Long dsID,
-            final TargetWithActionType targetWithActionType, final String actionMessage,
-            final AbstractDsAssignmentStrategy assignmentStrategy) {
+                                                                                final TargetWithActionType targetWithActionType, final String actionMessage,
+                                                                                final AbstractDsAssignmentStrategy assignmentStrategy) {
 
         final JpaDistributionSet distributionSet = (JpaDistributionSet) distributionSetManagement
                                                         .getValidAndComplete(dsID);
@@ -732,10 +732,10 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
         final PageRequest pageRequest = PageRequest.of(0, limit);
         if (rolloutGroupParentId == null) {
             return actionRepository.findByRolloutIdAndRolloutGroupParentIsNullAndStatus(pageRequest, rolloutId,
-                    Action.Status.SCHEDULED);
+                    Status.SCHEDULED);
         } else {
             return actionRepository.findByRolloutIdAndRolloutGroupParentIdAndStatus(pageRequest, rolloutId,
-                    rolloutGroupParentId, Action.Status.SCHEDULED);
+                    rolloutGroupParentId, Status.SCHEDULED);
         }
     }
 
@@ -1059,7 +1059,7 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
     @Override
     public boolean hasPendingCancellations(final String controllerId) {
         return actionRepository.existsByTargetControllerIdAndStatusAndActiveIsTrue(controllerId,
-                Action.Status.CANCELING);
+                Status.CANCELING);
     }
 
     private static String getQueryForDeleteActionsByStatusAndLastModifiedBeforeString(final Database database) {

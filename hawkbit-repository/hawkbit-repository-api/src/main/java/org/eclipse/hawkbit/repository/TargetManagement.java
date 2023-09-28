@@ -91,7 +91,6 @@ public interface TargetManagement {
     @PreAuthorize(SpringEvalExpressions.HAS_AUTH_READ_TARGET)
     long countByFilters(@NotNull final FilterParams filterParams);
 
-
     /**
      * Count {@link Target}s in each update status.
      *

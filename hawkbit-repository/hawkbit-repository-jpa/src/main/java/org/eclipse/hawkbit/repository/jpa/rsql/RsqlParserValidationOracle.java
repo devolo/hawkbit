@@ -72,7 +72,6 @@ public class RsqlParserValidationOracle implements RsqlValidationOracle {
 
         try {
             RSQLUtility.validateRsqlFor(rsqlQuery, TargetFields.class);
-
             context.setSyntaxError(false);
             suggestionContext.getSuggestions().addAll(getLogicalOperatorSuggestion(rsqlQuery));
         } catch (final RSQLParameterSyntaxException | RSQLParserException ex) {

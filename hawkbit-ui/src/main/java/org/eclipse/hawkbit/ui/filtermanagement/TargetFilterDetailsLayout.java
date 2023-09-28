@@ -47,8 +47,6 @@ public class TargetFilterDetailsLayout extends AbstractGridComponentLayout {
      *            properties
      * @param rsqlValidationOracle
      *            to get RSQL validation and suggestions
-     * @param targetManagement
-     *            management to get targets matching the filters
      * @param targetFilterManagement
      *            management to CRUD target filters
      * @param targetFilterStateDataSupplier

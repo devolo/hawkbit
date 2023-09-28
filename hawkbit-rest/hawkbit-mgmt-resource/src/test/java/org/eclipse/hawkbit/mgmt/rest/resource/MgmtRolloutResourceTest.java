@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -31,7 +32,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.awaitility.Awaitility;
-import org.awaitility.Duration;
 import org.eclipse.hawkbit.exception.SpServerError;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.repository.RolloutGroupManagement;
@@ -48,6 +48,7 @@ import org.eclipse.hawkbit.repository.model.RolloutGroup.RolloutGroupSuccessCond
 import org.eclipse.hawkbit.repository.model.RolloutGroupConditionBuilder;
 import org.eclipse.hawkbit.repository.model.RolloutGroupConditions;
 import org.eclipse.hawkbit.repository.model.Target;
+import org.eclipse.hawkbit.repository.test.util.RolloutTestApprovalStrategy;
 import org.eclipse.hawkbit.repository.test.util.WithSpringAuthorityRule;
 import org.eclipse.hawkbit.repository.test.util.WithUser;
 import org.eclipse.hawkbit.rest.util.JsonBuilder;
@@ -82,6 +83,9 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
 
     @Autowired
     private RolloutGroupManagement rolloutGroupManagement;
+
+    @Autowired
+    private RolloutTestApprovalStrategy approvalStrategy;
 
     @Test
     @Description("Testing that creating rollout with wrong body returns bad request")
@@ -307,6 +311,52 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
 
         // request the list of rollouts with full representation
         mvc.perform(get("/rest/v1/rollouts?representation=full").accept(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(jsonPath("$.content", hasSize(1))).andExpect(jsonPath("$.total", equalTo(1)))
+                .andExpect(jsonPath("content[0].id", equalTo(rollout.getId().intValue())))
+                .andExpect(jsonPath("content[0].name", equalTo("rollout1")))
+                .andExpect(jsonPath("content[0].status", equalTo("running")))
+                .andExpect(jsonPath("content[0].targetFilterQuery", equalTo("controllerId==rollout*")))
+                .andExpect(jsonPath("content[0].distributionSetId", equalTo(dsA.getId().intValue())))
+                .andExpect(jsonPath("content[0].totalTargets", equalTo(20)))
+                .andExpect(jsonPath("content[0].totalTargetsPerStatus").exists())
+                .andExpect(jsonPath("content[0].totalTargetsPerStatus.running", equalTo(5)))
+                .andExpect(jsonPath("content[0].totalTargetsPerStatus.notstarted", equalTo(0)))
+                .andExpect(jsonPath("content[0].totalTargetsPerStatus.scheduled", equalTo(15)))
+                .andExpect(jsonPath("content[0].totalTargetsPerStatus.cancelled", equalTo(0)))
+                .andExpect(jsonPath("content[0].totalTargetsPerStatus.finished", equalTo(0)))
+                .andExpect(jsonPath("content[0].totalTargetsPerStatus.error", equalTo(0)))
+                .andExpect(jsonPath("content[0].deleted", equalTo(false)))
+                .andExpect(jsonPath("content[0].totalGroups", equalTo(4)))
+                .andExpect(jsonPath("content[0]._links.self.href", startsWith(HREF_ROLLOUT_PREFIX)));
+    }
+
+    @Test
+    @Description("Retrieves the list of rollouts with representation mode 'full'.")
+    void retrieveRolloutListFullRepresentationWithFilter() throws Exception {
+        testdataFactory.createTargets(20, "rollout", "rollout");
+        final DistributionSet dsA = testdataFactory.createDistributionSet("");
+
+        // create a running rollout for the created targets
+        final Rollout rollout = rolloutManagement.create(
+                entityFactory.rollout().create().name("rollout1").set(dsA.getId())
+                        .targetFilterQuery("controllerId==rollout*"),
+                4, false, new RolloutGroupConditionBuilder().withDefaults()
+                        .successCondition(RolloutGroupSuccessCondition.THRESHOLD, "100").build());
+
+        rolloutManagement.create(
+                entityFactory.rollout().create().name("rollout2").set(dsA.getId())
+                        .targetFilterQuery("controllerId==rollout*"),
+                4, false, new RolloutGroupConditionBuilder().withDefaults()
+                        .successCondition(RolloutGroupSuccessCondition.THRESHOLD, "100").build());
+
+        rolloutHandler.handleAll();
+        rolloutManagement.start(rollout.getId());
+        rolloutHandler.handleAll();
+
+        // request the list of rollouts with full representation
+        mvc.perform(get("/rest/v1/rollouts?q=name==rollout1&representation=full").accept(MediaType.APPLICATION_JSON))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
                 .andExpect(jsonPath("$.content", hasSize(1))).andExpect(jsonPath("$.total", equalTo(1)))
@@ -1097,7 +1147,7 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
     }
 
     private void awaitRunningState(final Long rolloutId) {
-        Awaitility.await().atMost(Duration.ONE_MINUTE).pollInterval(Duration.ONE_HUNDRED_MILLISECONDS).with()
+        Awaitility.await().atMost(Duration.ofMinutes(1)).pollInterval(Duration.ofMillis(100)).with()
                 .until(() -> WithSpringAuthorityRule
                         .runAsPrivileged(
                                 () -> rolloutManagement.get(rolloutId).orElseThrow(NoSuchElementException::new))
@@ -1284,6 +1334,34 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
         final List<Rollout> rollouts = rolloutManagement.findAll(PAGE, false).getContent();
         assertThat(rollouts).hasSize(1);
         assertThat(rollouts.get(0).getWeight()).get().isEqualTo(weight);
+    }
+
+    @Test
+    @Description("Check if approvalDecidedBy and approvalRemark are present when rollout is approved")
+    public void validateIfApprovalFieldsArePresentAfterApproval() throws Exception {
+        approvalStrategy.setApprovalNeeded(true);
+        approvalStrategy.setApproveDecidedBy("testUser");
+        final int amountTargets = 2;
+        final String remark = "Some remark";
+        final List<Target> targets = testdataFactory.createTargets(amountTargets, "rollout");
+        final DistributionSet dsA = testdataFactory.createDistributionSet("");
+        final Rollout rollout = createRollout("rollout1", 3, dsA.getId(), "controllerId==rollout*", false);
+
+        rolloutHandler.handleAll();
+
+        mvc.perform(get("/rest/v1/rollouts/{rolloutid}", rollout.getId())).andDo(MockMvcResultPrinter.print())
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status", equalTo("waiting_for_approval")));
+
+        rolloutManagement.approveOrDeny(rollout.getId(), Rollout.ApprovalDecision.APPROVED, remark);
+
+        mvc.perform(get("/rest/v1/rollouts/{rolloutid}", rollout.getId())).andDo(MockMvcResultPrinter.print())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status", equalTo("ready")))
+            .andExpect(jsonPath("$.approvalRemark", equalTo(remark)))
+            .andExpect(jsonPath("$.approveDecidedBy", equalTo("testUser")));
+
+        // revert
+        approvalStrategy.setApprovalNeeded(false);
     }
 
     private void postRollout(final String name, final int groupSize, final Long distributionSetId,

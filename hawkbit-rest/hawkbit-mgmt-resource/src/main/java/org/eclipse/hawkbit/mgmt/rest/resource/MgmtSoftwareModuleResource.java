@@ -15,6 +15,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import javax.validation.ValidationException;
+
+import org.eclipse.hawkbit.api.ArtifactUrlHandler;
 import org.eclipse.hawkbit.mgmt.json.model.PagedList;
 import org.eclipse.hawkbit.mgmt.json.model.artifact.MgmtArtifact;
 import org.eclipse.hawkbit.mgmt.json.model.softwaremodule.MgmtSoftwareModule;
@@ -22,6 +25,7 @@ import org.eclipse.hawkbit.mgmt.json.model.softwaremodule.MgmtSoftwareModuleMeta
 import org.eclipse.hawkbit.mgmt.json.model.softwaremodule.MgmtSoftwareModuleMetadataBodyPut;
 import org.eclipse.hawkbit.mgmt.json.model.softwaremodule.MgmtSoftwareModuleRequestBodyPost;
 import org.eclipse.hawkbit.mgmt.json.model.softwaremodule.MgmtSoftwareModuleRequestBodyPut;
+import org.eclipse.hawkbit.mgmt.rest.api.MgmtRepresentationMode;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtSoftwareModuleRestApi;
 import org.eclipse.hawkbit.repository.ArtifactManagement;
@@ -29,12 +33,14 @@ import org.eclipse.hawkbit.repository.EntityFactory;
 import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
 import org.eclipse.hawkbit.repository.SoftwareModuleManagement;
 import org.eclipse.hawkbit.repository.SoftwareModuleTypeManagement;
+import org.eclipse.hawkbit.repository.SystemManagement;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.model.Artifact;
 import org.eclipse.hawkbit.repository.model.ArtifactUpload;
 import org.eclipse.hawkbit.repository.model.SoftwareModule;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleMetadata;
 import org.eclipse.hawkbit.repository.model.SoftwareModuleType;
+import org.eclipse.hawkbit.rest.data.ResponseList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -68,13 +74,21 @@ public class MgmtSoftwareModuleResource implements MgmtSoftwareModuleRestApi {
 
     private final SoftwareModuleTypeManagement softwareModuleTypeManagement;
 
+    private final ArtifactUrlHandler artifactUrlHandler;
+
+    private final SystemManagement systemManagement;
+
     private final EntityFactory entityFactory;
 
     MgmtSoftwareModuleResource(final ArtifactManagement artifactManagement, final SoftwareModuleManagement softwareModuleManagement,
-            final SoftwareModuleTypeManagement softwareModuleTypeManagement, final EntityFactory entityFactory) {
+            final SoftwareModuleTypeManagement softwareModuleTypeManagement,
+            final ArtifactUrlHandler artifactUrlHandler, final SystemManagement systemManagement,
+            final EntityFactory entityFactory) {
         this.artifactManagement = artifactManagement;
         this.softwareModuleManagement = softwareModuleManagement;
         this.softwareModuleTypeManagement = softwareModuleTypeManagement;
+        this.artifactUrlHandler = artifactUrlHandler;
+        this.systemManagement = systemManagement;
         this.entityFactory = entityFactory;
     }
 
@@ -95,7 +109,7 @@ public class MgmtSoftwareModuleResource implements MgmtSoftwareModuleRestApi {
             fileName = file.getOriginalFilename();
         }
 
-        try (InputStream in = file.getInputStream()) {
+        try (final InputStream in = file.getInputStream()) {
             final Artifact result = artifactManagement.create(new ArtifactUpload(in, softwareModuleId, fileName,
                     md5Sum == null ? null : md5Sum.toLowerCase(), sha1Sum == null ? null : sha1Sum.toLowerCase(),
                     sha256Sum == null ? null : sha256Sum.toLowerCase(), false, file.getContentType(), file.getSize()));
@@ -112,10 +126,30 @@ public class MgmtSoftwareModuleResource implements MgmtSoftwareModuleRestApi {
 
     @Override
     public ResponseEntity<List<MgmtArtifact>> getArtifacts(
-            @PathVariable("softwareModuleId") final Long softwareModuleId) {
-
+            @PathVariable("softwareModuleId") final Long softwareModuleId, final String representationModeParam,
+            final Boolean useArtifactUrlHandler) {
         final SoftwareModule module = findSoftwareModuleWithExceptionIfNotFound(softwareModuleId, null);
-        return ResponseEntity.ok(MgmtSoftwareModuleMapper.artifactsToResponse(module.getArtifacts()));
+
+        final boolean isFullMode = parseRepresentationMode(representationModeParam) == MgmtRepresentationMode.FULL;
+
+        final List<MgmtArtifact> response = module.getArtifacts().stream().map(artifact -> {
+            final MgmtArtifact mgmtArtifact = MgmtSoftwareModuleMapper.toResponse(artifact);
+            if (isFullMode && !module.isDeleted() && Boolean.TRUE.equals(useArtifactUrlHandler)) {
+                MgmtSoftwareModuleMapper.addLinks(artifact, mgmtArtifact, artifactUrlHandler, systemManagement);
+            } else if (isFullMode && !module.isDeleted()) {
+                MgmtSoftwareModuleMapper.addLinks(artifact, mgmtArtifact);
+            }
+            return mgmtArtifact;
+        }).toList();
+        return ResponseEntity.ok(new ResponseList<>(response));
+    }
+
+    private static MgmtRepresentationMode parseRepresentationMode(final String representationModeParam) {
+        return MgmtRepresentationMode.fromValue(representationModeParam).orElseGet(() -> {
+            // no need for a 400, just apply a safe fallback
+            LOG.warn("Received an invalid representation mode: {}", representationModeParam);
+            return MgmtRepresentationMode.COMPACT;
+        });
     }
 
     @Override
@@ -125,15 +159,21 @@ public class MgmtSoftwareModuleResource implements MgmtSoftwareModuleRestApi {
     // subroutine
     @SuppressWarnings("squid:S3655")
     public ResponseEntity<MgmtArtifact> getArtifact(@PathVariable("softwareModuleId") final Long softwareModuleId,
-            @PathVariable("artifactId") final Long artifactId) {
+            @PathVariable("artifactId") final Long artifactId,
+            @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_USE_ARTIFACT_URL_HANDLER, required = false) final Boolean useArtifactUrlHandler) {
         final SoftwareModule module = findSoftwareModuleWithExceptionIfNotFound(softwareModuleId, artifactId);
 
-        final MgmtArtifact reponse = MgmtSoftwareModuleMapper.toResponse(module.getArtifact(artifactId).get());
+        final MgmtArtifact response = MgmtSoftwareModuleMapper.toResponse(module.getArtifact(artifactId).get());
         if (!module.isDeleted()) {
-            MgmtSoftwareModuleMapper.addLinks(module.getArtifact(artifactId).get(), reponse);
+            if (Boolean.TRUE.equals(useArtifactUrlHandler)) {
+                MgmtSoftwareModuleMapper.addLinks(module.getArtifact(artifactId).get(), response, artifactUrlHandler,
+                        systemManagement);
+            } else {
+                MgmtSoftwareModuleMapper.addLinks(module.getArtifact(artifactId).get(), response);
+            }
         }
 
-        return ResponseEntity.ok(reponse);
+        return ResponseEntity.ok(response);
     }
 
     @Override
@@ -161,7 +201,7 @@ public class MgmtSoftwareModuleResource implements MgmtSoftwareModuleRestApi {
         final Pageable pageable = new OffsetBasedPageRequest(sanitizedOffsetParam, sanitizedLimitParam, sorting);
 
         final Slice<SoftwareModule> findModulesAll;
-        long countModulesAll;
+        final long countModulesAll;
         if (rsqlParam != null) {
             findModulesAll = softwareModuleManagement.findByRsql(pageable, rsqlParam);
             countModulesAll = ((Page<SoftwareModule>) findModulesAll).getTotalElements();
@@ -192,7 +232,7 @@ public class MgmtSoftwareModuleResource implements MgmtSoftwareModuleRestApi {
 
         LOG.debug("creating {} softwareModules", softwareModules.size());
 
-        for (MgmtSoftwareModuleRequestBodyPost sm : softwareModules) {
+        for (final MgmtSoftwareModuleRequestBodyPost sm : softwareModules) {
             final Optional<SoftwareModuleType> opt = softwareModuleTypeManagement.getByKey(sm.getType());
             opt.ifPresent(smType -> {
                 if (smType.isDeleted()) {

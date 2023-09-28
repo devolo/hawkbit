@@ -8,42 +8,13 @@
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants.TARGET_V1_AUTO_CONFIRM;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import javax.validation.ConstraintViolationException;
-
+import com.jayway.jsonpath.JsonPath;
+import io.qameta.allure.Description;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Step;
+import io.qameta.allure.Story;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.awaitility.Awaitility;
-import org.awaitility.Duration;
 import org.eclipse.hawkbit.exception.SpServerError;
 import org.eclipse.hawkbit.im.authentication.SpPermission;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtActionType;
@@ -53,19 +24,9 @@ import org.eclipse.hawkbit.repository.Identifiable;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
 import org.eclipse.hawkbit.repository.exception.EntityAlreadyExistsException;
 import org.eclipse.hawkbit.repository.jpa.model.JpaTarget;
-import org.eclipse.hawkbit.repository.model.Action;
+import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.Action.Status;
-import org.eclipse.hawkbit.repository.model.ActionStatus;
-import org.eclipse.hawkbit.repository.model.DistributionSet;
-import org.eclipse.hawkbit.repository.model.MetaData;
-import org.eclipse.hawkbit.repository.model.NamedEntity;
-import org.eclipse.hawkbit.repository.model.Rollout;
-import org.eclipse.hawkbit.repository.model.SoftwareModule;
-import org.eclipse.hawkbit.repository.model.Target;
-import org.eclipse.hawkbit.repository.model.TargetMetadata;
-import org.eclipse.hawkbit.repository.model.TargetType;
-import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.test.util.WithUser;
 import org.eclipse.hawkbit.rest.exception.MessageNotReadableException;
 import org.eclipse.hawkbit.rest.json.model.ExceptionInfo;
@@ -90,12 +51,23 @@ import org.springframework.http.MediaType;
 import org.springframework.orm.jpa.vendor.Database;
 import org.springframework.test.web.servlet.MvcResult;
 
-import com.jayway.jsonpath.JsonPath;
+import javax.validation.ConstraintViolationException;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import io.qameta.allure.Description;
-import io.qameta.allure.Feature;
-import io.qameta.allure.Step;
-import io.qameta.allure.Story;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants.TARGET_V1_AUTO_CONFIRM;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * Spring MVC Tests against the MgmtTargetResource.
@@ -452,6 +424,75 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
         final Target findTargetByControllerID = targetManagement.getByControllerID(knownControllerId).get();
         assertThat(findTargetByControllerID.getAddress()).hasToString(knownNewAddress);
         assertThat(findTargetByControllerID.getName()).isEqualTo(knownNameNotModify);
+    }
+
+    @Test
+    @Description("Ensures that when targetType value of -1 is provided the target type is unassigned from the target.")
+    public void updateTargetAndUnnasignTargetType() throws Exception {
+        final String knownControllerId = "123";
+        final String knownNewAddress = "amqp://test123/foobar";
+        final String knownNameNotModify = "controllerName";
+        final Long unnasignTargetTypeValue = -1L;
+
+        final TargetType targetType = targetTypeManagement.create(
+                entityFactory.targetType().create().name("targettype1").description("targettypedes1"));
+
+        final String body = new JSONObject().put("targetType", unnasignTargetTypeValue).toString();
+
+        // create a target with the created TargetType
+        targetManagement.create(entityFactory.target().create().controllerId(knownControllerId).name(knownNameNotModify)
+                .address(knownNewAddress).targetType(targetType.getId()));
+
+        mvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/" + knownControllerId)
+                        .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+                .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
+                .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
+                .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
+                .andExpect(jsonPath("$.targetType").exists());
+
+        mvc.perform(put(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/" + knownControllerId).content(body)
+                        .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+                .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
+                .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
+                .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
+                .andExpect(jsonPath("$.targetType").doesNotExist());
+
+    }
+
+    @Test
+    @Description("Ensures that when targetType value of -1 is provided the target type is unassigned from the target when updating multiple fields in target object.")
+    public void updateTargetNameAndUnnasignTargetType() throws Exception {
+        final String knownControllerId = "123";
+        final String knownNewAddress = "amqp://test123/foobar";
+        final String knownNameNotModify = "controllerName";
+        final Long unnasignTargetTypeValue = -1L;
+        final String controllerNewName = "controllerNewName";
+
+        final TargetType targetType = targetTypeManagement.create(
+                entityFactory.targetType().create().name("targettype1").description("targettypedes1"));
+
+        final String body = new JSONObject()
+                .put("targetType", unnasignTargetTypeValue).put("name", "controllerNewName")
+                .toString();
+
+        // create a target with the created TargetType
+        targetManagement.create(entityFactory.target().create().controllerId(knownControllerId).name(knownNameNotModify)
+                .address(knownNewAddress).targetType(targetType.getId()));
+
+        mvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/" + knownControllerId)
+                        .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+                .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
+                .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
+                .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
+                .andExpect(jsonPath("$.targetType").exists());
+
+        //check if controller name is updated AND target type is missing (not assigned)
+        mvc.perform(put(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/" + knownControllerId).content(body)
+                        .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+                .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
+                .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
+                .andExpect(jsonPath("$.name", equalTo(controllerNewName)))
+                .andExpect(jsonPath("$.targetType").doesNotExist());
     }
 
     @Test
@@ -1263,7 +1304,7 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
                     .getAssignedEntity().stream().map(Action::getTarget).collect(Collectors.toList());
             // 2nd update
             // sleep 10ms to ensure that we can sort by reportedAt
-            Awaitility.await().atMost(Duration.ONE_HUNDRED_MILLISECONDS).atLeast(5, TimeUnit.MILLISECONDS)
+            Awaitility.await().atMost(Duration.ofMillis(100)).atLeast(5, TimeUnit.MILLISECONDS)
                     .pollInterval(10, TimeUnit.MILLISECONDS)
                     .until(() -> updatedTargets.stream().allMatch(t -> t.getLastModifiedAt() > 0L));
             assignDistributionSet(two, updatedTargets);
@@ -1273,7 +1314,7 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
                             .map(Action::getTarget).collect(Collectors.toList());
             // 2nd update
             // sleep 10ms to ensure that we can sort by reportedAt
-            Awaitility.await().atMost(Duration.ONE_HUNDRED_MILLISECONDS).atLeast(5, TimeUnit.MILLISECONDS)
+            Awaitility.await().atMost(Duration.ofMillis(100)).atLeast(5, TimeUnit.MILLISECONDS)
                     .pollInterval(10, TimeUnit.MILLISECONDS)
                     .until(() -> updatedTargets.stream().allMatch(t -> t.getLastModifiedAt() > 0L));
             assignDistributionSetWithMaintenanceWindow(two.getId(), updatedTargets.get(0).getControllerId(), schedule,
