@@ -1,15 +1,17 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.json.model.distributionset;
 
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.eclipse.hawkbit.mgmt.json.model.softwaremodule.MgmtSoftwareModuleAssigment;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -28,12 +30,15 @@ public class MgmtDistributionSetRequestBodyPost extends MgmtDistributionSetReque
     // deprecated format from the time where os, application and runtime where
     // statically defined
     @JsonProperty
+    @Schema(hidden = true)
     private MgmtSoftwareModuleAssigment os;
 
     @JsonProperty
+    @Schema(hidden = true)
     private MgmtSoftwareModuleAssigment runtime;
 
     @JsonProperty
+    @Schema(hidden = true)
     private MgmtSoftwareModuleAssigment application;
     // deprecated format - END
 
@@ -41,6 +46,7 @@ public class MgmtDistributionSetRequestBodyPost extends MgmtDistributionSetReque
     private List<MgmtSoftwareModuleAssigment> modules;
 
     @JsonProperty
+    @Schema(example = "test_default_ds_type")
     private String type;
 
     /**

@@ -439,9 +439,6 @@ public abstract class AbstractAmqpServiceIntegrationTest extends AbstractAmqpInt
 
                 attributes.remove("last_update");
                 attributes.forEach((k, v) -> assertKeyValueInMap(k, v, controllerAttributes));
-
-                assertThat(controllerAttributes.size()).isEqualTo(attributes.size());
-                assertThat(controllerAttributes).containsAllEntriesOf(attributes);
             } catch (final Exception e) {
                 throw new RuntimeException(e);
             }

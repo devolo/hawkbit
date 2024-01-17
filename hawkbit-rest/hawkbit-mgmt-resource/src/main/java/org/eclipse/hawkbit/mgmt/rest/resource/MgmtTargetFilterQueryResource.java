@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
@@ -16,6 +17,7 @@ import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtDistributionSet;
 import org.eclipse.hawkbit.mgmt.json.model.targetfilter.MgmtDistributionSetAutoAssignment;
 import org.eclipse.hawkbit.mgmt.json.model.targetfilter.MgmtTargetFilterQuery;
 import org.eclipse.hawkbit.mgmt.json.model.targetfilter.MgmtTargetFilterQueryRequestBody;
+import org.eclipse.hawkbit.mgmt.rest.api.MgmtRepresentationMode;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtTargetFilterQueryRestApi;
 import org.eclipse.hawkbit.repository.EntityFactory;
@@ -72,7 +74,7 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
         final TargetFilterQuery findTarget = findFilterWithExceptionIfNotFound(filterId);
         // to single response include poll status
         final MgmtTargetFilterQuery response = MgmtTargetFilterQueryMapper.toResponse(findTarget,
-                tenantConfigHelper.isConfirmationFlowEnabled());
+                tenantConfigHelper.isConfirmationFlowEnabled(), true);
         MgmtTargetFilterQueryMapper.addLinks(response);
 
         return ResponseEntity.ok(response);
@@ -83,7 +85,9 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
             @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_PAGING_OFFSET, defaultValue = MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_OFFSET) final int pagingOffsetParam,
             @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_PAGING_LIMIT, defaultValue = MgmtRestConstants.REQUEST_PARAMETER_PAGING_DEFAULT_LIMIT) final int pagingLimitParam,
             @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_SORTING, required = false) final String sortParam,
-            @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_SEARCH, required = false) final String rsqlParam) {
+            @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_SEARCH, required = false) final String rsqlParam,
+            @RequestParam(value = MgmtRestConstants.REQUEST_PARAMETER_REPRESENTATION_MODE, defaultValue = MgmtRestConstants.REQUEST_PARAMETER_REPRESENTATION_MODE_DEFAULT) String representationModeParam) {
+
 
         final int sanitizedOffsetParam = PagingUtility.sanitizeOffsetParam(pagingOffsetParam);
         final int sanitizedLimitParam = PagingUtility.sanitizePageLimitParam(pagingLimitParam);
@@ -101,8 +105,10 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
             countTargetsAll = filterManagement.count();
         }
 
+        final boolean isRepresentationFull = parseRepresentationMode(representationModeParam) == MgmtRepresentationMode.FULL;
+
         final List<MgmtTargetFilterQuery> rest = MgmtTargetFilterQueryMapper
-                .toResponse(findTargetFiltersAll.getContent(), tenantConfigHelper.isConfirmationFlowEnabled());
+                .toResponse(findTargetFiltersAll.getContent(), tenantConfigHelper.isConfirmationFlowEnabled(), isRepresentationFull);
         return ResponseEntity.ok(new PagedList<>(rest, countTargetsAll));
     }
 
@@ -113,7 +119,7 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
                 .create(MgmtTargetFilterQueryMapper.fromRequest(entityFactory, filter));
 
         final MgmtTargetFilterQuery response = MgmtTargetFilterQueryMapper.toResponse(createdTarget,
-                tenantConfigHelper.isConfirmationFlowEnabled());
+                tenantConfigHelper.isConfirmationFlowEnabled(), false);
         MgmtTargetFilterQueryMapper.addLinks(response);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
@@ -129,7 +135,7 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
                         .query(targetFilterRest.getQuery()));
 
         final MgmtTargetFilterQuery response = MgmtTargetFilterQueryMapper.toResponse(updateFilter,
-                tenantConfigHelper.isConfirmationFlowEnabled());
+                tenantConfigHelper.isConfirmationFlowEnabled(), false);
         MgmtTargetFilterQueryMapper.addLinks(response);
 
         return ResponseEntity.ok(response);
@@ -157,7 +163,7 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
         final TargetFilterQuery updateFilter = filterManagement.updateAutoAssignDS(update);
 
         final MgmtTargetFilterQuery response = MgmtTargetFilterQueryMapper.toResponse(updateFilter,
-                tenantConfigHelper.isConfirmationFlowEnabled());
+                tenantConfigHelper.isConfirmationFlowEnabled(), false);
         MgmtTargetFilterQueryMapper.addLinks(response);
 
         return ResponseEntity.ok(response);
@@ -195,6 +201,14 @@ public class MgmtTargetFilterQueryResource implements MgmtTargetFilterQueryRestA
     public ResponseEntity<List<String>> getResults(@PathVariable("filterId") final Long filterId) {
         final List<Target> findAll = this.targetManagement.findAllByTargetFilterQuery(filterId);
         return ResponseEntity.ok(findAll.stream().map(target -> target.getControllerId()).collect(Collectors.toList()));
+    }
+
+    private static MgmtRepresentationMode parseRepresentationMode(final String representationModeParam) {
+        return MgmtRepresentationMode.fromValue(representationModeParam).orElseGet(() -> {
+            // no need for a 400, just apply a safe fallback
+            LOG.warn("Received an invalid representation mode: {}", representationModeParam);
+            return MgmtRepresentationMode.COMPACT;
+        });
     }
 
 }

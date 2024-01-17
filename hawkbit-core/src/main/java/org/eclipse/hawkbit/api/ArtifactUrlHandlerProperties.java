@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.api;
 
@@ -30,9 +31,12 @@ public class ArtifactUrlHandlerProperties {
      */
     private final Map<String, UrlProtocol> protocols = new HashMap<>();
 
+    public Map<String, UrlProtocol> getProtocols() {
+        return protocols;
+    }
+
     /**
      * Protocol specific properties to generate URLs accordingly.
-     *
      */
     public static class UrlProtocol {
 
@@ -49,15 +53,10 @@ public class ArtifactUrlHandlerProperties {
         private String rel = "download-http";
 
         /**
-         * Hypermedia ref pattern for this protocol. Supported place holders are
-         * protocol,controllerId,targetId,targetIdBase62,ip,port,hostname,
-         * artifactFileName,artifactSHA1,
-         * artifactIdBase62,artifactId,tenant,softwareModuleId,
-         * softwareModuleIdBase62.
-         *
-         * The update server itself supports
+         * Hypermedia ref pattern for this protocol. Supported placeholders are the properties
+         * supported by {@link PropertyBasedArtifactUrlHandler}.
          */
-        private String ref = "{protocol}://{hostname}:{port}/{tenant}/controller/v1/{controllerId}/softwaremodules/{softwareModuleId}/artifacts/{artifactFileName}";
+        private String ref = PropertyBasedArtifactUrlHandler.DEFAULT_URL_PROTOCOL_REF;
 
         /**
          * Protocol name placeholder that can be used in ref pattern.
@@ -149,11 +148,5 @@ public class ArtifactUrlHandlerProperties {
         public void setProtocol(final String protocol) {
             this.protocol = protocol;
         }
-
     }
-
-    public Map<String, UrlProtocol> getProtocols() {
-        return protocols;
-    }
-
 }

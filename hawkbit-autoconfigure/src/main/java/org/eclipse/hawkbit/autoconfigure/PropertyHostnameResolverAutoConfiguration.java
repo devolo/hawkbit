@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.autoconfigure;
 
@@ -16,6 +17,7 @@ import org.eclipse.hawkbit.api.ArtifactUrlHandler;
 import org.eclipse.hawkbit.api.ArtifactUrlHandlerProperties;
 import org.eclipse.hawkbit.api.HostnameResolver;
 import org.eclipse.hawkbit.api.PropertyBasedArtifactUrlHandler;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -57,8 +59,9 @@ public class PropertyHostnameResolverAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(ArtifactUrlHandler.class)
     PropertyBasedArtifactUrlHandler propertyBasedArtifactUrlHandler(
-            final ArtifactUrlHandlerProperties urlHandlerProperties) {
-        return new PropertyBasedArtifactUrlHandler(urlHandlerProperties);
+            final ArtifactUrlHandlerProperties urlHandlerProperties,
+            @Value("${server.servlet.context-path:}") final String contextPath) {
+        return new PropertyBasedArtifactUrlHandler(urlHandlerProperties, contextPath);
     }
 
 }

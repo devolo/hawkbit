@@ -1,15 +1,17 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.ddi.json.model;
 
 import javax.validation.constraints.NotNull;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.hateoas.RepresentationModel;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -24,12 +26,14 @@ public class DdiArtifact extends RepresentationModel<DdiArtifact> {
 
     @NotNull
     @JsonProperty
+    @Schema(example = "binary.tgz")
     private String filename;
 
     @JsonProperty
     private DdiArtifactHash hashes;
 
     @JsonProperty
+    @Schema(example = "3")
     private Long size;
 
     public DdiArtifactHash getHashes() {

@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.artifact.repository;
 
@@ -13,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import org.apache.commons.io.IOUtils;
 import org.assertj.core.api.Assertions;
@@ -45,7 +47,7 @@ public class ArtifactFilesystemTest {
     @Test
     @Description("Verifies that an InputStream can be opened if file exists")
     public void getInputStreamOfExistingFile() throws IOException {
-        final File createTempFile = File.createTempFile(ArtifactFilesystemTest.class.getSimpleName(), "");
+        final File createTempFile = Files.createTempFile(ArtifactFilesystemTest.class.getSimpleName(), "").toFile();
         createTempFile.deleteOnExit();
 
         final ArtifactFilesystem underTest = new ArtifactFilesystem(createTempFile,

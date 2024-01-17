@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -33,6 +35,7 @@ import java.util.stream.Stream;
 
 import org.awaitility.Awaitility;
 import org.eclipse.hawkbit.exception.SpServerError;
+import org.eclipse.hawkbit.im.authentication.SpPermission;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.repository.RolloutGroupManagement;
 import org.eclipse.hawkbit.repository.RolloutManagement;
@@ -53,6 +56,7 @@ import org.eclipse.hawkbit.repository.test.util.WithSpringAuthorityRule;
 import org.eclipse.hawkbit.repository.test.util.WithUser;
 import org.eclipse.hawkbit.rest.util.JsonBuilder;
 import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -61,6 +65,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultMatcher;
 
@@ -376,6 +381,41 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
                 .andExpect(jsonPath("content[0].deleted", equalTo(false)))
                 .andExpect(jsonPath("content[0].totalGroups", equalTo(4)))
                 .andExpect(jsonPath("content[0]._links.self.href", startsWith(HREF_ROLLOUT_PREFIX)));
+    }
+
+    @Test
+    @Description("Handles the GET request of retrieving a single rollout.")
+    public void getRollout() throws Exception {
+        enableMultiAssignments();
+        approvalStrategy.setApprovalNeeded(true);
+        try {
+            approvalStrategy.setApproveDecidedBy("exampleUsername");
+
+            testdataFactory.createTargets(4, "rollout", "description");
+            final DistributionSet dsA = testdataFactory.createDistributionSet("");
+            // create a running rollout for the created targets
+            final Rollout rollout = rolloutManagement.create(
+                    entityFactory
+                            .rollout()
+                            .create()
+                            .name("rollout1")
+                            .set(dsA.getId())
+                            .targetFilterQuery("controllerId==rollout*"),
+                    4, false, new RolloutGroupConditionBuilder().withDefaults()
+                            .successCondition(RolloutGroupSuccessCondition.THRESHOLD, "100").build());
+
+            rolloutHandler.handleAll();
+
+            rolloutManagement.approveOrDeny(rollout.getId(), Rollout.ApprovalDecision.APPROVED, "Approved remark.");
+
+            mvc.perform(get(MgmtRestConstants.ROLLOUT_V1_REQUEST_MAPPING + "/{rolloutId}", rollout.getId())
+                            .accept(MediaTypes.HAL_JSON_VALUE))
+                    .andDo(MockMvcResultPrinter.print())
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaTypes.HAL_JSON));
+        } finally {
+            approvalStrategy.setApprovalNeeded(false);
+        }
     }
 
     @ParameterizedTest
@@ -1071,6 +1111,24 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
     }
 
     @Test
+    @Description("Handles the GET request of retrieving a all targets of a specific deploy group of a rollout.")
+    public void getRolloutDeployGroupTargetsWithParameters() throws Exception {
+        testdataFactory.createTargets(4, "rollout", "description");
+        final DistributionSet dsA = testdataFactory.createDistributionSet("");
+        final Rollout rollout = createRollout("rollout1", 2, dsA.getId(), "controllerId==rollout*");
+        final RolloutGroup firstRolloutGroup = rolloutGroupManagement
+                .findByRollout(PageRequest.of(0, 1), rollout.getId()).getContent().get(0);
+
+        mvc.perform(get(MgmtRestConstants.ROLLOUT_V1_REQUEST_MAPPING + "/{rolloutId}/deploygroups/{deployGroupId}/targets",
+                                rollout.getId(), firstRolloutGroup.getId()).param("offset", "0").param("limit", "2")
+                                .param("sort", "name:ASC").param("q", "controllerId==exampleTarget0")
+                                .accept(MediaTypes.HAL_JSON_VALUE))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaTypes.HAL_JSON));
+    }
+
+    @Test
     @Description("Testing that the targets of rollout group can be retrieved with rsql query param")
     void retrieveTargetsFromRolloutGroupWithQuery() throws Exception {
         // setup
@@ -1337,6 +1395,40 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
     }
 
     @Test
+    @Description("Handles the POST request of approving a rollout.")
+    public void approveRollout() throws Exception {
+        approvalStrategy.setApprovalNeeded(true);
+        try {
+            testdataFactory.createTargets(4, "rollout", "description");
+            final DistributionSet dsA = testdataFactory.createDistributionSet("");
+            final Rollout rollout = createRollout("rollout1", 3, dsA.getId(), "controllerId==rollout*", false);
+            mvc.perform(post(MgmtRestConstants.ROLLOUT_V1_REQUEST_MAPPING + "/{rolloutId}/approve", rollout.getId())
+                            .accept(MediaTypes.HAL_JSON_VALUE))
+                    .andDo(MockMvcResultPrinter.print())
+                    .andExpect(status().isOk());
+        } finally {
+            approvalStrategy.setApprovalNeeded(false);
+        }
+    }
+
+    @Test
+    @Description("Handles the POST request of denying a rollout. Required Permission: " + SpPermission.APPROVE_ROLLOUT)
+    public void denyRollout() throws Exception {
+        approvalStrategy.setApprovalNeeded(true);
+        try {
+            testdataFactory.createTargets(4, "rollout", "description");
+            final DistributionSet dsA = testdataFactory.createDistributionSet("");
+            final Rollout rollout = createRollout("rollout1", 3, dsA.getId(), "controllerId==rollout*", false);
+            mvc.perform(post(MgmtRestConstants.ROLLOUT_V1_REQUEST_MAPPING + "/{rolloutId}/deny", rollout.getId())
+                            .accept(MediaTypes.HAL_JSON_VALUE))
+                    .andDo(MockMvcResultPrinter.print())
+                    .andExpect(status().isOk());
+        } finally {
+            approvalStrategy.setApprovalNeeded(false);
+        }
+    }
+
+    @Test
     @Description("Check if approvalDecidedBy and approvalRemark are present when rollout is approved")
     public void validateIfApprovalFieldsArePresentAfterApproval() throws Exception {
         approvalStrategy.setApprovalNeeded(true);
@@ -1487,6 +1579,99 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
 
     }
 
+    @Test
+    @Description("Retry rollout test scenario")
+    public void retryRolloutTest() throws Exception {
+
+        final DistributionSet dsA = testdataFactory.createDistributionSet("");
+        final List<Target> successTargets = testdataFactory.createTargets("retryRolloutTargetSuccess-", 6);
+        final List<Target> failedTargets = testdataFactory.createTargets("retryRolloutTargetFailed-", 4);
+
+        final List<Target> allTargets = new ArrayList<>(successTargets);
+        allTargets.addAll(failedTargets);
+
+        postRollout("rolloutToBeRetried", 1, dsA.getId(), "id==retryRolloutTarget*", 10, Action.ActionType.FORCED);
+
+        Rollout rollout = rolloutManagement.getByName("rolloutToBeRetried").orElseThrow();
+
+        // no scheduler so invoke here
+        rolloutHandler.handleAll();
+        rolloutManagement.start(rollout.getId());
+        // no scheduler so invoke here
+        rolloutHandler.handleAll();
+
+
+        testdataFactory.sendUpdateActionStatusToTargets(successTargets, Status.FINISHED, "Finished successfully!");
+        testdataFactory.sendUpdateActionStatusToTargets(failedTargets, Status.ERROR, "Finished error!");
+
+        rolloutHandler.handleAll();
+
+        for (Target target : allTargets) {
+            final List<Action> actions = deploymentManagement.findActionsByTarget(target.getControllerId(), PAGE).getContent();
+            for (Action action : actions) {
+                if (action.getTarget().getControllerId().startsWith("retryRolloutTargetFailed")) {
+                    Assertions.assertEquals(Status.ERROR, action.getStatus());
+                } else {
+                    Assertions.assertEquals(Status.FINISHED, action.getStatus());
+                }
+                Assertions.assertEquals(rollout.getId(), action.getRollout().getId());
+            }
+        }
+
+        //retry rollout
+        mvc.perform(post("/rest/v1/rollouts/{rolloutId}/retry", rollout.getId())).andDo(MockMvcResultPrinter.print())
+            .andExpect(status().is(201));
+
+        //search for _retried suffix
+        Rollout retriedRollout = rolloutManagement.getByName(rollout.getName() + "_retry").orElseThrow();
+        //assert 4 targets involved
+        rolloutHandler.handleAll();
+
+        rolloutManagement.start(retriedRollout.getId());
+        rolloutHandler.handleAll();
+
+        for (Target target : failedTargets) {
+            // for failed targets - check for 2 actions - one from old rollout and one from the retried
+            List<Action> actions = deploymentManagement.findActionsByTarget(target.getControllerId(), PAGE).getContent();
+            Assertions.assertEquals(2, actions.size());
+            Assertions.assertEquals(Status.ERROR, actions.get(0).getStatus());
+            Assertions.assertEquals(rollout.getId(), actions.get(0).getRollout().getId());
+            Assertions.assertEquals(Status.RUNNING, actions.get(1).getStatus());
+            Assertions.assertEquals(retriedRollout.getId(), actions.get(1).getRollout().getId());
+        }
+
+        for (Target target : successTargets) {
+            //ensure no other actions from the success targets are created
+            List<Action> actions = deploymentManagement.findActionsByTarget(target.getControllerId(), PAGE).getContent();
+            Assertions.assertEquals(1, actions.size());
+            Assertions.assertEquals(rollout.getId(), actions.get(0).getRollout().getId());
+        }
+    }
+
+    @Test
+    @Description("Retrying a running rollout should not be allowed.")
+    public void retryNotFinishedRolloutShouldNotBeAllowed() throws Exception {
+        final DistributionSet dsA = testdataFactory.createDistributionSet("");
+        testdataFactory.createTargets("retryRolloutTarget-", 10);
+        postRollout("rolloutToBeRetried", 1, dsA.getId(), "id==retryRolloutTarget*", 10, Action.ActionType.FORCED);
+        Rollout rollout = rolloutManagement.getByName("rolloutToBeRetried").orElseThrow();
+        // no scheduler so invoke here
+        rolloutHandler.handleAll();
+        rolloutManagement.start(rollout.getId());
+        // no scheduler so invoke here
+        rolloutHandler.handleAll();
+
+        mvc.perform(post("/rest/v1/rollouts/{rolloutId}/retry", rollout.getId())).andDo(MockMvcResultPrinter.print())
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Description("Retrying a non-existing rollout should lead to NOT FOUND.")
+    public void retryNonExistingRolloutShouldLeadToNotFound() throws Exception {
+        mvc.perform(post("/rest/v1/rollouts/{rolloutId}/retry", 6782623)).andDo(MockMvcResultPrinter.print())
+            .andExpect(status().isNotFound());
+    }
+
     private void triggerNextGroupAndExpect(final Rollout rollout, final ResultMatcher expect) throws Exception {
         mvc.perform(post("/rest/v1/rollouts/{rolloutId}/triggerNextGroup", rollout.getId()))
                 .andDo(MockMvcResultPrinter.print()).andExpect(expect);
@@ -1504,6 +1689,10 @@ class MgmtRolloutResourceTest extends AbstractManagementApiIntegrationTest {
     private void retrieveAndCompareRolloutsContent(final DistributionSet dsA, final String urlTemplate,
             final boolean isFullRepresentation) throws Exception {
         retrieveAndCompareRolloutsContent(dsA, urlTemplate, isFullRepresentation, false, null, null);
+    }
+
+    private Rollout getRollout(final long rolloutId) {
+        return rolloutManagement.get(rolloutId).orElseThrow(NoSuchElementException::new);
     }
 
     private void retrieveAndCompareRolloutsContent(final DistributionSet dsA, final String urlTemplate,

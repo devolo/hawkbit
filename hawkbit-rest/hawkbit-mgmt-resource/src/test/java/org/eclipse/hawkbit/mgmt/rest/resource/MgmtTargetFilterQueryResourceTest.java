@@ -1,16 +1,18 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.hawkbit.rest.util.MockMvcResultPrinter.print;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -20,6 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -36,7 +39,9 @@ import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.TargetFilterQuery;
 import org.eclipse.hawkbit.rest.exception.MessageNotReadableException;
 import org.eclipse.hawkbit.rest.json.model.ExceptionInfo;
+import org.eclipse.hawkbit.rest.util.MockMvcResultPrinter;
 import org.json.JSONObject;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -49,6 +54,7 @@ import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
 import io.qameta.allure.Story;
+import org.springframework.web.util.UriUtils;
 
 /**
  * Spring MVC Tests against the MgmtTargetResource.
@@ -56,7 +62,7 @@ import io.qameta.allure.Story;
  */
 @Feature("Component Tests - Management API")
 @Story("Target Filter Query Resource")
-public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiIntegrationTest {
+public class  MgmtTargetFilterQueryResourceTest extends AbstractManagementApiIntegrationTest {
 
     private static final String JSON_PATH_ROOT = "$";
 
@@ -89,6 +95,39 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
             + JSON_PATH_FIELD_AUTO_ASSIGN_ACTION_TYPE;
     private static final String JSON_PATH_EXCEPTION_CLASS = JSON_PATH_ROOT + JSON_PATH_FIELD_EXCEPTION_CLASS;
     private static final String JSON_PATH_ERROR_CODE = JSON_PATH_ROOT + JSON_PATH_FIELD_ERROR_CODE;
+
+    @Test
+    @Description("Handles the GET request of retrieving all target filter queries within SP.")
+    public void getTargetFilterQueries() throws Exception {
+        final String filterName = "filter_01";
+        final TargetFilterQuery filterQuery = createSingleTargetFilterQuery(filterName, "name==test_01");
+
+        mvc.perform(get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING))
+                .andExpect(status().isOk())
+                .andDo(MockMvcResultPrinter.print());
+    }
+
+    @Test
+    @Description("Handles the GET request of retrieving all target filter queries within SP based by parameter. Required Permission: READ_TARGET.")
+    public void getTargetFilterQueriesWithParameters() throws Exception {
+        mvc.perform(get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "?limit=10&sort=name:ASC&offset=0&q=name==*1"))
+                .andExpect(status().isOk()).andDo(MockMvcResultPrinter.print());
+    }
+
+    @Test
+    @Description("Handles the POST request of creating a new target filter query within SP.")
+    public void createTargetFilterQuery() throws Exception {
+        final String name = "test_02";
+        final String filterQuery = "name==test_02";
+        final String body = new JSONObject()
+                .put("name", name)
+                .put("query", filterQuery).toString();
+
+        mvc.perform(post(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isCreated());
+    }
 
     @Test
     @Description("Ensures that deletion is executed if permitted.")
@@ -221,6 +260,47 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     }
 
     @Test
+    public void checkIfFullRepresentationInTargetFilterReturnsDistributionSetHrefWithFilter() throws Exception {
+        final String testQuery = "name==test";
+
+        final DistributionSet set = testdataFactory.createDistributionSet();
+        final TargetFilterQuery filterQuery = createSingleTargetFilterQuery("a", testQuery);
+        final String hrefPrefix = "http://localhost" + MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/"
+            + filterQuery.getId();
+        final String distributionsetHrefPrefix = "http://localhost" + MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING;
+
+        final String dsQuery = "?offset=0&limit=50&q=name==" + set.getName() + ";" + "version==" + set.getVersion();
+
+        mvc.perform(
+                post(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + filterQuery.getId() + "/autoAssignDS")
+                    .content("{\"id\":" + set.getId() + "}").contentType(MediaType.APPLICATION_JSON))
+            .andDo(print()).andExpect(status().isOk());
+
+        final String result = mvc.perform(
+                get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + filterQuery.getId()))
+            .andExpect(jsonPath("$._links.autoAssignDS.href", equalTo(hrefPrefix + "/autoAssignDS")))
+            .andExpect(jsonPath("$._links.DS.href", startsWith(distributionsetHrefPrefix)))
+            .andReturn().getResponse().getContentAsString();
+
+        final String multipleResult = mvc.perform(
+                get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "?representation=full"))
+            .andExpect(jsonPath("$.content", hasSize(1))).andExpect(jsonPath("$.total", equalTo(1)))
+            .andExpect(jsonPath("$.content[0]._links.DS.href", startsWith(distributionsetHrefPrefix)))
+            .andReturn().getResponse().getContentAsString();
+
+        final JSONObject singleJson = new JSONObject(result);
+        final JSONObject multipleJson = new JSONObject(multipleResult);
+
+        final String resultDSURI = singleJson.getJSONObject("_links").getJSONObject("DS").getString("href");
+        final String resultDSURIFromMultipleJson = multipleJson.getJSONArray("content").getJSONObject(0)
+            .getJSONObject("_links").getJSONObject("DS").getString("href");
+
+        Assertions.assertEquals(distributionsetHrefPrefix + dsQuery, UriUtils.decode(resultDSURI, StandardCharsets.UTF_8));
+        Assertions.assertEquals(distributionsetHrefPrefix + dsQuery,
+            UriUtils.decode(resultDSURIFromMultipleJson, StandardCharsets.UTF_8));
+    }
+
+    @Test
     @Description("Ensures that request returns list of filters in defined format in size reduced by given limit and offset parameter.")
     public void getTargetWithPagingLimitAndOffsetRequestParameter() throws Exception {
         final int knownTargetAmount = 5;
@@ -271,23 +351,6 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
                 .andExpect(jsonPath(JSON_PATH_CONFIRMATION_REQUIRED).doesNotExist())
                 .andExpect(jsonPath("$._links.self.href", equalTo(hrefPrefix)))
                 .andExpect(jsonPath("$._links.autoAssignDS.href", equalTo(hrefPrefix + "/autoAssignDS")));
-    }
-
-    @Test
-    @Description("Ensures that results for a single target filter query can be retrieved via its id.")
-    public void getSingleResults() throws Exception {
-        final String knownTarget = "test1";
-        final String knownQuery = "controllerId==test1";
-
-        final TargetFilterQuery tfq = createSingleTargetFilterQuery("results", knownQuery);
-
-        testdataFactory.createTarget(knownTarget);
-        testdataFactory.createTarget("test2");
-
-        mvc.perform(get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + tfq.getId() + "/results"))
-                .andDo(print()).andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0]", equalTo(knownTarget)));
     }
 
     @Test
@@ -349,6 +412,7 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
         // create the filter query and the distribution set
         final DistributionSet set = testdataFactory.createDistributionSet();
         final TargetFilterQuery filterQuery = createSingleTargetFilterQuery("1", "controllerId==target*");
+
 
         mvc.perform(
                 post(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/" + filterQuery.getId() + "/autoAssignDS")
@@ -564,6 +628,53 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     }
 
     @Test
+    @Description("Handles the GET request of retrieving a the auto assign distribution set of a target filter query within SP.")
+    public void getAssignDS() throws Exception {
+        final TargetFilterQuery filterQuery = createSingleTargetFilterQuery("filter_01", "name==test_01");
+        final DistributionSet ds = testdataFactory.createDistributionSet("ds");
+        targetFilterQueryManagement
+                .updateAutoAssignDS(entityFactory.targetFilterQuery()
+                .updateAutoAssign(filterQuery.getId()).ds(ds.getId()));
+
+        mvc.perform(get(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{targetFilterQueryId}/autoAssignDS",
+                        filterQuery.getId()))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @Description("Handles the POST request of setting a distribution set for auto assignment within SP.")
+    public void createAutoAssignDS() throws Exception {
+        enableMultiAssignments();
+        enableConfirmationFlow();
+
+        final String filterName = "filter_01";
+        final TargetFilterQuery filterQuery = createSingleTargetFilterQuery(filterName, "name==test_01");
+        final DistributionSet distributionSet = testdataFactory.createDistributionSet("ds");
+        final String autoAssignBody = new JSONObject().put("id", distributionSet.getId())
+                .put("type", MgmtActionType.SOFT.getName()).put("weight", 200).toString();
+
+        mvc
+                .perform(post(MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{targetFilterQueryId}/autoAssignDS",
+                                filterQuery.getId()).contentType(MediaType.APPLICATION_JSON).content(autoAssignBody.toString()))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @Description("Handles the DELETE request of deleting the auto assign distribution set from a target filter query within SP.")
+    public void deleteAutoAssignDS() throws Exception {
+        final String filterName = "filter_01";
+        final TargetFilterQuery filterQuery = createSingleTargetFilterQuery(filterName, "name==test_01");
+        mvc
+                .perform(delete(
+                        MgmtRestConstants.TARGET_FILTER_V1_REQUEST_MAPPING + "/{targetFilterQueryId}/autoAssignDS",
+                        filterQuery.getId()))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
     @Description("Ensures that the deletion of auto-assignment distribution set works as intended, deleting the auto-assignment action type as well")
     public void deleteAutoAssignDistributionSetOfTargetFilterQuery() throws Exception {
 
@@ -628,5 +739,4 @@ public class MgmtTargetFilterQueryResourceTest extends AbstractManagementApiInte
     private TargetFilterQuery createSingleTargetFilterQuery(final String name, final String query) {
         return targetFilterQueryManagement.create(entityFactory.targetFilterQuery().create().name(name).query(query));
     }
-
 }

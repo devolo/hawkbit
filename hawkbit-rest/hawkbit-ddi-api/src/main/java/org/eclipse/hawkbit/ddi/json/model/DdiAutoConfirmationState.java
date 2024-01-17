@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2022 Bosch.IO GmbH and others.
+ * Copyright (c) 2022 Bosch.IO GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.ddi.json.model;
 
@@ -13,6 +14,7 @@ import javax.validation.constraints.NotNull;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.hateoas.RepresentationModel;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -21,10 +23,14 @@ import org.springframework.hateoas.RepresentationModel;
 public class DdiAutoConfirmationState extends RepresentationModel<DdiAutoConfirmationState> {
 
     @NotNull
+    @Schema(example = "true")
     private boolean active;
+    @Schema(example = "exampleUserId")
     private String initiator;
+    @Schema(example = "exampleRemark")
     private String remark;
 
+    @Schema(example = "1691065895439")
     private Long activatedAt;
 
     /**

@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa.specifications;
 
@@ -41,8 +42,10 @@ import org.eclipse.hawkbit.repository.jpa.model.JpaTargetType_;
 import org.eclipse.hawkbit.repository.jpa.model.JpaTarget_;
 import org.eclipse.hawkbit.repository.jpa.model.RolloutTargetGroup;
 import org.eclipse.hawkbit.repository.jpa.model.RolloutTargetGroup_;
+import org.eclipse.hawkbit.repository.model.Action;
 import org.eclipse.hawkbit.repository.model.DistributionSet;
 import org.eclipse.hawkbit.repository.model.DistributionSetType;
+import org.eclipse.hawkbit.repository.model.Rollout;
 import org.eclipse.hawkbit.repository.model.RolloutGroup;
 import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.repository.model.TargetTag;
@@ -249,22 +252,6 @@ public final class TargetSpecifications {
 
     /**
      * {@link Specification} for retrieving {@link Target}s by "like
-     * controllerId or like name".
-     *
-     * @param searchText
-     *            to be filtered on
-     * @return the {@link Target} {@link Specification}
-     */
-    public static Specification<JpaTarget> likeControllerIdOrName(final String searchText) {
-        return (targetRoot, query, cb) -> {
-            final String searchTextToLower = searchText.toLowerCase();
-            return cb.or(cb.like(cb.lower(targetRoot.get(JpaTarget_.controllerId)), searchTextToLower),
-                    cb.like(cb.lower(targetRoot.get(JpaTarget_.name)), searchTextToLower));
-        };
-    }
-
-    /**
-     * {@link Specification} for retrieving {@link Target}s by "like
      * controllerId or like name or like description".
      *
      * @param searchText
@@ -277,6 +264,22 @@ public final class TargetSpecifications {
             return cb.or(cb.like(cb.lower(targetRoot.get(JpaTarget_.controllerId)), searchTextToLower),
                     cb.like(cb.lower(targetRoot.get(JpaTarget_.name)), searchTextToLower),
                     cb.like(cb.lower(targetRoot.get(JpaTarget_.description)), searchTextToLower));
+        };
+    }
+
+    /**
+     * {@link Specification} for retrieving {@link Target}s by "like
+     * controllerId or like name".
+     *
+     * @param searchText
+     *            to be filtered on
+     * @return the {@link Target} {@link Specification}
+     */
+    public static Specification<JpaTarget> likeControllerIdOrName(final String searchText) {
+        return (targetRoot, query, cb) -> {
+            final String searchTextToLower = searchText.toLowerCase();
+            return cb.or(cb.like(cb.lower(targetRoot.get(JpaTarget_.controllerId)), searchTextToLower),
+                    cb.like(cb.lower(targetRoot.get(JpaTarget_.name)), searchTextToLower));
         };
     }
 
@@ -664,6 +667,17 @@ public final class TargetSpecifications {
 
             // Spec only provides order, so no further filtering
             return query.getRestriction();
+        };
+    }
+
+    public static Specification<JpaTarget> failedActionsForRollout(final String rolloutId) {
+        return (targetRoot, query, cb) -> {
+            Join<JpaTarget, Action> targetActions =
+                targetRoot.join("actions");
+
+            return cb.and(
+                cb.equal(targetActions.get("rollout").get("id"), rolloutId),
+                cb.equal(targetActions.get("status"), Action.Status.ERROR));
         };
     }
 

@@ -1,17 +1,16 @@
 #
-# Copyright (c) 2018 Bosch Software Innovations GmbH and others.
+# Copyright (c) 2018 Bosch Software Innovations GmbH and others
 #
-# All rights reserved. This program and the accompanying materials
-# are made available under the terms of the Eclipse Public License v1.0
-# which accompanies this distribution, and is available at
-# http://www.eclipse.org/legal/epl-v10.html
+# This program and the accompanying materials are made
+# available under the terms of the Eclipse Public License 2.0
+# which is available at https://www.eclipse.org/legal/epl-2.0/
 #
-
-# This script checks if 'hugo' is installed. Afterwards, the Hugo theme is downloaded.
+# SPDX-License-Identifier: EPL-2.0
+#
 
 #!/bin/bash
 
-
+# This script checks if 'hugo' is installed. Afterwards, the Hugo theme is downloaded.
 hugo version
 if [ $? != 0 ]
 then
@@ -22,6 +21,7 @@ fi
 echo "[INFO] "
 echo "[INFO] Install Hugo Theme"
 HUGO_THEMES=themes/hugo-material-docs
+CSS_FILE=themes/hugo-material-docs/static/stylesheets/application.css
 
 if [ ! -d ${HUGO_THEMES} ]
 then
@@ -29,6 +29,15 @@ then
     echo "[INFO] ... done"
 else
     echo "[INFO] ... theme already installed in: ${HUGO_THEMES}"
+fi
+
+# This script uses 'awk' to replace 1200px with 1500px in the application.css file from 'hugo'
+if [ -f ${CSS_FILE} ]
+then
+    awk '{gsub(/max-width:1200px/, "max-width:1500px"); print}' "${CSS_FILE}" > tmp_hawkbit_doc && mv tmp_hawkbit_doc "${CSS_FILE}"
+    echo "[INFO] CSS updated content successfully!"
+else
+    echo "[WARN] CSS file not found!"
 fi
 
 echo "[INFO] "

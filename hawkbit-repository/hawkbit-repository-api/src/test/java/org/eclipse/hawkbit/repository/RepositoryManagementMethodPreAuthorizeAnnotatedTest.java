@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository;
 
@@ -40,7 +41,7 @@ public class RepositoryManagementMethodPreAuthorizeAnnotatedTest {
     }
 
     @Test
-    @Description("Verfies that repository methods are @PreAuthorize annotated")
+    @Description("Verifies that repository methods are @PreAuthorize annotated")
     public void repositoryManagementMethodsArePreAuthorizedAnnotated()
             throws ClassNotFoundException, URISyntaxException, IOException {
         final List<Class<?>> findInterfacesInPackage = findInterfacesInPackage(getClass().getPackage(),
@@ -48,10 +49,10 @@ public class RepositoryManagementMethodPreAuthorizeAnnotatedTest {
 
         assertThat(findInterfacesInPackage).isNotEmpty();
         for (final Class<?> interfaceToCheck : findInterfacesInPackage) {
-            assertDeclaredMethodsContainsPreAuthorizeAnnotaions(interfaceToCheck);
+            assertDeclaredMethodsContainsPreAuthorizeAnnotations(interfaceToCheck);
         }
 
-        // all exclusion should be used, otherwise the method exlusion should be
+        // all exclusion should be used, otherwise the method exclusion should be
         // cleaned up again
         assertThat(METHOD_SECURITY_EXCLUSION).isEmpty();
     }
@@ -65,7 +66,7 @@ public class RepositoryManagementMethodPreAuthorizeAnnotatedTest {
      * @param clazz
      *            the class to retrieve the public declared methods
      */
-    private static void assertDeclaredMethodsContainsPreAuthorizeAnnotaions(final Class<?> clazz) {
+    private static void assertDeclaredMethodsContainsPreAuthorizeAnnotations(final Class<?> clazz) {
         final Method[] declaredMethods = clazz.getDeclaredMethods();
         for (final Method method : declaredMethods) {
             final boolean methodExcluded = METHOD_SECURITY_EXCLUSION.contains(method);

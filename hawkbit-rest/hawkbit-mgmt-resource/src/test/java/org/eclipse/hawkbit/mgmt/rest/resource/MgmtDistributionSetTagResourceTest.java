@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
@@ -74,7 +75,19 @@ public class MgmtDistributionSetTagResourceTest extends AbstractManagementApiInt
     }
 
     @Test
-    @Description("Verfies that a paged result list of DS tags reflects the content on the repository side when filtered by distribution set id.")
+    @Description("Handles the GET request of retrieving all distribution set tags based by parameter")
+    public void getDistributionSetTagsWithParameters() throws Exception {
+        final List<DistributionSetTag> tags = testdataFactory.createDistributionSetTags(2);
+        final DistributionSetTag assigned = tags.get(0);
+        final DistributionSetTag unassigned = tags.get(1);
+        mvc.perform(get(MgmtRestConstants.DISTRIBUTIONSET_TAG_V1_REQUEST_MAPPING
+                        + "?limit=10&sort=name:ASC&offset=0&q=name==DsTag"))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @Description("Verifies that a paged result list of DS tags reflects the content on the repository side when filtered by distribution set id.")
     public void getDistributionSetTagsByDistributionSetId() throws Exception {
         final List<DistributionSetTag> tags = testdataFactory.createDistributionSetTags(2);
         final DistributionSetTag tag1 = tags.get(0);

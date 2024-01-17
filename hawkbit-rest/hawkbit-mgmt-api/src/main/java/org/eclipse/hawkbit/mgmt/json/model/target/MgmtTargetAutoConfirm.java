@@ -1,16 +1,18 @@
 /**
- * Copyright (c) 2022 Bosch.IO GmbH and others.
+ * Copyright (c) 2022 Bosch.IO GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.json.model.target;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.hateoas.RepresentationModel;
 
 import javax.validation.constraints.NotNull;
@@ -23,9 +25,13 @@ import javax.validation.constraints.NotNull;
 @JsonPropertyOrder({ "active", "initiator", "remark", "activatedAt" })
 public class MgmtTargetAutoConfirm extends RepresentationModel<MgmtTargetAutoConfirm> {
     @NotNull
+    @Schema(example = "true")
     private boolean active;
+    @Schema(example = "custom_initiator_value")
     private String initiator;
+    @Schema(example = "custom_remark")
     private String remark;
+    @Schema(example = "1691065938576")
     private Long activatedAt;
 
     /**

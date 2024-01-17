@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository;
 
@@ -228,6 +229,9 @@ public final class RolloutHelper {
         if (StringUtils.isEmpty(group.getTargetFilterQuery())) {
             return baseFilter;
         }
+        if (isRolloutRetried(baseFilter)) {
+            return baseFilter;
+        }
         return concatAndTargetFilters(baseFilter, group.getTargetFilterQuery());
     }
 
@@ -251,5 +255,13 @@ public final class RolloutHelper {
             throw new RolloutIllegalStateException("Rollout can only be started in state ready but current state is "
                     + rollout.getStatus().name().toLowerCase());
         }
+    }
+
+    public static boolean isRolloutRetried(final String targetFilter) {
+        return targetFilter.contains("failedrollout");
+    }
+
+    public static String getIdFromRetriedTargetFilter(final String targetFilter) {
+        return targetFilter.substring("failedrollout==".length());
     }
 }

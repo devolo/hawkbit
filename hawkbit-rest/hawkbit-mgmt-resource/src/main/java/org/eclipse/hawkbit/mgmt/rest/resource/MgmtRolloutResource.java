@@ -1,12 +1,20 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import javax.validation.ValidationException;
 
 import org.eclipse.hawkbit.mgmt.json.model.PagedList;
 import org.eclipse.hawkbit.mgmt.json.model.rollout.MgmtRolloutResponseBody;
@@ -17,12 +25,24 @@ import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTarget;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRepresentationMode;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRolloutRestApi;
-import org.eclipse.hawkbit.repository.*;
+import org.eclipse.hawkbit.repository.DistributionSetManagement;
+import org.eclipse.hawkbit.repository.EntityFactory;
+import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
+import org.eclipse.hawkbit.repository.RolloutGroupManagement;
+import org.eclipse.hawkbit.repository.RolloutManagement;
+import org.eclipse.hawkbit.repository.TargetFilterQueryManagement;
+import org.eclipse.hawkbit.repository.TargetManagement;
+import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
 import org.eclipse.hawkbit.repository.builder.RolloutCreate;
 import org.eclipse.hawkbit.repository.builder.RolloutGroupCreate;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterSyntaxException;
-import org.eclipse.hawkbit.repository.model.*;
+import org.eclipse.hawkbit.repository.model.DistributionSet;
+import org.eclipse.hawkbit.repository.model.Rollout;
+import org.eclipse.hawkbit.repository.model.RolloutGroup;
+import org.eclipse.hawkbit.repository.model.RolloutGroupConditionBuilder;
+import org.eclipse.hawkbit.repository.model.RolloutGroupConditions;
+import org.eclipse.hawkbit.repository.model.Target;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.utils.TenantConfigHelper;
 import org.slf4j.Logger;
@@ -96,7 +116,7 @@ public class MgmtRolloutResource implements MgmtRolloutRestApi {
             rollouts = this.rolloutManagement.findByRsql(pageable, rsqlParam, false);
         } else {
             rollouts = this.rolloutManagement.findAll(pageable, false);
-        }
+         }
 
         final long totalElements = rollouts.getTotalElements();
 
@@ -296,6 +316,28 @@ public class MgmtRolloutResource implements MgmtRolloutRestApi {
     public ResponseEntity<Void> triggerNextGroup(@PathVariable("rolloutId") final Long rolloutId) {
         this.rolloutManagement.triggerNextGroup(rolloutId);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<MgmtRolloutResponseBody> retryRollout(final Long rolloutId) {
+        final Rollout rolloutForRetry = this.rolloutManagement.get(rolloutId)
+                .orElseThrow(() -> new EntityNotFoundException(Rollout.class, rolloutId));
+
+        if (rolloutForRetry.isDeleted()) {
+            throw new EntityNotFoundException(Rollout.class, rolloutId);
+        }
+
+        if (!rolloutForRetry.getStatus().equals(Rollout.RolloutStatus.FINISHED)) {
+            throw new ValidationException("Rollout must be finished in order to be retried!");
+        }
+
+        final RolloutCreate create = MgmtRolloutMapper.fromRetriedRollout(entityFactory, rolloutForRetry);
+        final RolloutGroupConditions groupConditions = new RolloutGroupConditionBuilder().withDefaults().build();
+
+        final Rollout retriedRollout = rolloutManagement.create(create, 1, false,
+            groupConditions);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(MgmtRolloutMapper.toResponseRollout(retriedRollout, true));
     }
 
     private static MgmtRepresentationMode parseRepresentationMode(final String representationModeParam) {

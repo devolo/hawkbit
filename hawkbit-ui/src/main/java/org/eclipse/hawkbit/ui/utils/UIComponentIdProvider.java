@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 
 package org.eclipse.hawkbit.ui.utils;
@@ -1579,12 +1580,6 @@ public final class UIComponentIdProvider {
      * {@link TenantConfigurationKey#TARGET_SEARCH_ATTRIBUTES_ENABLED}
      */
     public static final String TARGET_SEARCH_ATTRIBUTES = "target.search.attributes.checkbox";
-
-    /**
-     * Configuration checkbox for
-     * {@link TenantConfigurationKey#TRIGGER_AUTO_ASSIGN_CHECK_BY_TARGET}
-     */
-    public static final String TRIGGER_AUTOASSIGN_CHECK_BY_TARGET = "trigger.autoassign.check.checkbox";
 
     /**
      * Id of the rollout approval remark field

@@ -1,14 +1,16 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.json.model.artifact;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Hashes for given Artifact.
@@ -18,12 +20,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class MgmtArtifactHash {
 
     @JsonProperty
+    @Schema(example = "2d86c2a659e364e9abba49ea6ffcd53dd5559f05")
     private String sha1;
 
     @JsonProperty
+    @Schema(example = "0d1b08c34858921bc7c662b228acb7ba")
     private String md5;
 
     @JsonProperty
+    @Schema(example = "a03b221c6c6eae7122ca51695d456d5222e524889136394944b2f9763b483615")
     private String sha256;
 
     /**

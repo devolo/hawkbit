@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa;
 
@@ -58,7 +59,6 @@ import org.eclipse.hawkbit.repository.jpa.specifications.TargetSpecifications;
 import org.eclipse.hawkbit.repository.jpa.utils.DeploymentHelper;
 import org.eclipse.hawkbit.repository.jpa.utils.QuotaHelper;
 import org.eclipse.hawkbit.repository.model.*;
-import org.eclipse.hawkbit.repository.model.Action.Status;
 import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.tenancy.TenantAware;
@@ -552,7 +552,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         case ERROR:
         case CANCEL_REJECTED:
             // Cancellation rejected. Back to running.
-            action.setStatus(Status.RUNNING);
+            action.setStatus(Action.Status.RUNNING);
             break;
         default:
             // information status entry - check for a potential DOS attack
@@ -571,7 +571,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         // in case of successful cancellation we also report the success at
         // the canceled action itself.
         actionStatus.addMessage(
-                RepositoryConstants.SERVER_MESSAGE_PREFIX + "Cancellation completion is finished sucessfully.");
+                RepositoryConstants.SERVER_MESSAGE_PREFIX + "Cancellation completion is finished successfully.");
         DeploymentHelper.successCancellation(action, actionRepository, targetRepository);
     }
 
@@ -640,7 +640,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     private void handleErrorOnAction(final JpaAction mergedAction, final JpaTarget mergedTarget) {
         mergedAction.setActive(false);
-        mergedAction.setStatus(Status.ERROR);
+        mergedAction.setStatus(Action.Status.ERROR);
         mergedTarget.setAssignedDistributionSet(null);
 
         targetRepository.save(mergedTarget);
@@ -659,7 +659,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
     private Optional<String> handleFinishedAndStoreInTargetStatus(final JpaAction action) {
         final JpaTarget target = (JpaTarget) action.getTarget();
         action.setActive(false);
-        action.setStatus(Status.FINISHED);
+        action.setStatus(Action.Status.FINISHED);
         final JpaDistributionSet ds = (JpaDistributionSet) entityManager.merge(action.getDistributionSet());
 
         target.setInstalledDistributionSet(ds);
@@ -924,7 +924,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
      * @param message
      *            for the status
      * @return the updated action in case the status has been changed to
-     *         {@link Status#RETRIEVED}
+     *         {@link Action.Status#RETRIEVED}
      */
     private Action handleRegisterRetrieved(final Long actionId, final String message) {
         final JpaAction action = getActionAndThrowExceptionIfNotFound(actionId);
@@ -951,17 +951,17 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         // retrieves after the other we don't want to store to protect to
         // overflood action status in
         // case controller retrieves a action multiple times.
-        if (resultList.isEmpty() || (Status.RETRIEVED != resultList.get(0)[1])) {
+        if (resultList.isEmpty() || (Action.Status.RETRIEVED != resultList.get(0)[1])) {
             // document that the status has been retrieved
             actionStatusRepository
-                    .save(new JpaActionStatus(action, Status.RETRIEVED, System.currentTimeMillis(), message));
+                    .save(new JpaActionStatus(action, Action.Status.RETRIEVED, System.currentTimeMillis(), message));
 
             // don't change the action status itself in case the action is in
             // canceling state otherwise
             // we modify the action status and the controller won't get the
             // cancel job anymore.
             if (!action.isCancelingOrCanceled()) {
-                action.setStatus(Status.RETRIEVED);
+                action.setStatus(Action.Status.RETRIEVED);
                 return actionRepository.save(action);
             }
         }
@@ -1102,7 +1102,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     /**
      * Cancels given {@link Action} for this {@link Target}. The method will
-     * immediately add a {@link Status#CANCELED} status to the action. However,
+     * immediately add a {@link Action.Status#CANCELED} status to the action. However,
      * it might be possible that the controller will continue to work on the
      * cancellation. The controller needs to acknowledge or reject the
      * cancellation using {@link DdiRootController#postCancelActionFeedback}.
@@ -1131,11 +1131,11 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
         }
 
         if (action.isActive()) {
-            LOG.debug("action ({}) was still active. Change to {}.", action, Status.CANCELING);
-            action.setStatus(Status.CANCELING);
+            LOG.debug("action ({}) was still active. Change to {}.", action, Action.Status.CANCELING);
+            action.setStatus(Action.Status.CANCELING);
 
             // document that the status has been retrieved
-            actionStatusRepository.save(new JpaActionStatus(action, Status.CANCELING, System.currentTimeMillis(),
+            actionStatusRepository.save(new JpaActionStatus(action, Action.Status.CANCELING, System.currentTimeMillis(),
                     "manual cancelation requested"));
             final Action saveAction = actionRepository.save(action);
             cancelAssignDistributionSetEvent(action);
@@ -1204,7 +1204,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
                 .multiselect(actionRoot.get(JpaAction_.id))
                 .where(cb.and(
                         cb.equal(actionRoot.get(JpaAction_.target).get(JpaTarget_.id), targetId),
-                        cb.notEqual(actionRoot.get(JpaAction_.status), Status.ERROR)
+                        cb.notEqual(actionRoot.get(JpaAction_.status), Action.Status.ERROR)
                 )).orderBy(cb.desc(actionRoot.get(JpaAction_.createdAt)));
 
         return entityManager.createQuery(query).getResultList();

@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
@@ -13,11 +14,48 @@ import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Step;
 import io.qameta.allure.Story;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants.*;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import javax.validation.ConstraintViolationException;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.awaitility.Awaitility;
 import org.eclipse.hawkbit.exception.SpServerError;
 import org.eclipse.hawkbit.im.authentication.SpPermission;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtActionType;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAutoConfirmUpdate;
 import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
 import org.eclipse.hawkbit.repository.ActionFields;
 import org.eclipse.hawkbit.repository.Identifiable;
@@ -27,6 +65,16 @@ import org.eclipse.hawkbit.repository.jpa.model.JpaTarget;
 import org.eclipse.hawkbit.repository.model.*;
 import org.eclipse.hawkbit.repository.model.Action.ActionType;
 import org.eclipse.hawkbit.repository.model.Action.Status;
+import org.eclipse.hawkbit.repository.model.ActionStatus;
+import org.eclipse.hawkbit.repository.model.DistributionSet;
+import org.eclipse.hawkbit.repository.model.MetaData;
+import org.eclipse.hawkbit.repository.model.NamedEntity;
+import org.eclipse.hawkbit.repository.model.Rollout;
+import org.eclipse.hawkbit.repository.model.SoftwareModule;
+import org.eclipse.hawkbit.repository.model.Target;
+import org.eclipse.hawkbit.repository.model.TargetMetadata;
+import org.eclipse.hawkbit.repository.model.TargetType;
+import org.eclipse.hawkbit.repository.model.TargetUpdateStatus;
 import org.eclipse.hawkbit.repository.test.util.WithUser;
 import org.eclipse.hawkbit.rest.exception.MessageNotReadableException;
 import org.eclipse.hawkbit.rest.json.model.ExceptionInfo;
@@ -105,6 +153,8 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
     private static final String JSON_PATH_LAST_REQUEST_AT = JSON_PATH_ROOT + JSON_PATH_FIELD_LAST_REQUEST_AT;
     private static final String JSON_PATH_TYPE = JSON_PATH_ROOT + JSON_PATH_FIELD_TARGET_TYPE;
 
+    @Autowired
+    private ObjectMapper objectMapper;
     @Autowired
     private JpaProperties jpaProperties;
 
@@ -435,27 +485,27 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
         final Long unnasignTargetTypeValue = -1L;
 
         final TargetType targetType = targetTypeManagement.create(
-                entityFactory.targetType().create().name("targettype1").description("targettypedes1"));
+            entityFactory.targetType().create().name("targettype1").description("targettypedes1"));
 
         final String body = new JSONObject().put("targetType", unnasignTargetTypeValue).toString();
 
         // create a target with the created TargetType
         targetManagement.create(entityFactory.target().create().controllerId(knownControllerId).name(knownNameNotModify)
-                .address(knownNewAddress).targetType(targetType.getId()));
+            .address(knownNewAddress).targetType(targetType.getId()));
 
         mvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/" + knownControllerId)
-                        .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
-                .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
-                .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
-                .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
-                .andExpect(jsonPath("$.targetType").exists());
+                .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
+            .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
+            .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
+            .andExpect(jsonPath("$.targetType").exists());
 
         mvc.perform(put(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/" + knownControllerId).content(body)
-                        .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
-                .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
-                .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
-                .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
-                .andExpect(jsonPath("$.targetType").doesNotExist());
+                .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
+            .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
+            .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
+            .andExpect(jsonPath("$.targetType").doesNotExist());
 
     }
 
@@ -469,30 +519,30 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
         final String controllerNewName = "controllerNewName";
 
         final TargetType targetType = targetTypeManagement.create(
-                entityFactory.targetType().create().name("targettype1").description("targettypedes1"));
+            entityFactory.targetType().create().name("targettype1").description("targettypedes1"));
 
         final String body = new JSONObject()
-                .put("targetType", unnasignTargetTypeValue).put("name", "controllerNewName")
-                .toString();
+        .put("targetType", unnasignTargetTypeValue).put("name", "controllerNewName")
+            .toString();
 
         // create a target with the created TargetType
         targetManagement.create(entityFactory.target().create().controllerId(knownControllerId).name(knownNameNotModify)
-                .address(knownNewAddress).targetType(targetType.getId()));
+            .address(knownNewAddress).targetType(targetType.getId()));
 
         mvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/" + knownControllerId)
-                        .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
-                .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
-                .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
-                .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
-                .andExpect(jsonPath("$.targetType").exists());
+                .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
+            .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
+            .andExpect(jsonPath("$.name", equalTo(knownNameNotModify)))
+            .andExpect(jsonPath("$.targetType").exists());
 
         //check if controller name is updated AND target type is missing (not assigned)
         mvc.perform(put(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/" + knownControllerId).content(body)
-                        .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
-                .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
-                .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
-                .andExpect(jsonPath("$.name", equalTo(controllerNewName)))
-                .andExpect(jsonPath("$.targetType").doesNotExist());
+                .contentType(MediaType.APPLICATION_JSON)).andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.controllerId", equalTo(knownControllerId)))
+            .andExpect(jsonPath("$.address", equalTo(knownNewAddress)))
+            .andExpect(jsonPath("$.name", equalTo(controllerNewName)))
+            .andExpect(jsonPath("$.targetType").doesNotExist());
     }
 
     @Test
@@ -1052,8 +1102,8 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
     }
 
     @Test
-    @Description("Ensures that the expected response of geting actions of a target is returned.")
-    void getMultipleActions() throws Exception {
+    @Description("Ensures that the expected response of getting actions of a target is returned.")
+    void getActions() throws Exception {
         final String knownTargetId = "targetId";
         final List<Action> actions = generateTargetWithTwoUpdatesWithOneOverride(knownTargetId);
 
@@ -1077,7 +1127,7 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
 
     @Test
     @Description("Ensures that the expected response of getting actions with maintenance window of a target is returned.")
-    void getMultipleActionsWithMaintenanceWindow() throws Exception {
+    void getActionsWithMaintenanceWindow() throws Exception {
         final String knownTargetId = "targetId";
         final String schedule = getTestSchedule(10);
         final String duration = getTestDuration(10);
@@ -1115,7 +1165,7 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
 
     @Test
     @Description("Verifies that the API returns the status list with expected content.")
-    void getMultipleActionStatus() throws Exception {
+    void getActionsStatus() throws Exception {
         final String knownTargetId = "targetId";
         final Action action = generateTargetWithTwoUpdatesWithOneOverride(knownTargetId).get(0);
         // retrieve list in default descending order for actionstaus entries
@@ -1143,7 +1193,7 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
 
     @Test
     @Description("Verifies that the API returns the status list with expected content sorted by reportedAt field.")
-    void getMultipleActionStatusSortedByReportedAt() throws Exception {
+    void getActionsStatusSortedByReportedAt() throws Exception {
         final String knownTargetId = "targetId";
         final Action action = generateTargetWithTwoUpdatesWithOneOverride(knownTargetId).get(0);
         final List<ActionStatus> actionStatus = deploymentManagement.findActionStatusByAction(PAGE, action.getId())
@@ -1189,7 +1239,7 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
 
     @Test
     @Description("Verifies that the API returns the status list with expected content split into two pages.")
-    void getMultipleActionStatusWithPagingLimitRequestParameter() throws Exception {
+    void getActionsStatusWithPagingLimitRequestParameter() throws Exception {
         final String knownTargetId = "targetId";
 
         final Action action = generateTargetWithTwoUpdatesWithOneOverride(knownTargetId).get(0);
@@ -1229,7 +1279,7 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
 
     @Test
     @Description("Verifies getting multiple actions with the paging request parameter.")
-    void getMultipleActionsWithPagingLimitRequestParameter() throws Exception {
+    void getActionsWithPagingLimitRequestParameter() throws Exception {
         final String knownTargetId = "targetId";
         final List<Action> actions = generateTargetWithTwoUpdatesWithOneOverride(knownTargetId);
 
@@ -1679,7 +1729,7 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
     }
 
     @Test
-    void getControllerAttributesViaTargetResourceReturnsAttributesWithOk() throws Exception {
+    void getControllerAttributesReturnsAttributesWithOk() throws Exception {
         // create target with attributes
         final String knownTargetId = "targetIdWithAttributes";
         final Map<String, String> knownControllerAttrs = new HashMap<>();
@@ -1753,6 +1803,21 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertThat(targetManagement.isControllerAttributesRequested(knownTargetId)).isTrue();
+    }
+
+    @Test
+    @Description("Handles the GET request of retrieving all targets within SP..")
+    public void getTargets() throws Exception {
+        enableConfirmationFlow();
+        mvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING)).andExpect(status().isOk())
+                .andDo(MockMvcResultPrinter.print());
+    }
+
+    @Test
+    @Description("Handles the GET request of retrieving all targets within SP based by parameter.")
+    public void getTargetsWithParameters() throws Exception {
+        mvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "?limit=10&sort=name:ASC&offset=0&q=name==a"))
+                .andExpect(status().isOk()).andDo(MockMvcResultPrinter.print());
     }
 
     @Test
@@ -1935,8 +2000,8 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
     }
 
     @Test
-    @Description("Ensures that a metadata entry selection through API reflectes the repository content.")
-    void getSingleMetadata() throws Exception {
+    @Description("Ensures that a metadata entry selection through API reflects the repository content.")
+    void getMetadataKey() throws Exception {
         final String knownControllerId = "targetIdWithMetadata";
 
         // prepare and create metadata for deletion
@@ -1948,6 +2013,24 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
         mvc.perform(get("/rest/v1/targets/{targetId}/metadata/{key}", knownControllerId, knownKey))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
                 .andExpect(jsonPath("key", equalTo(knownKey))).andExpect(jsonPath("value", equalTo(knownValue)));
+    }
+
+    @Test
+    @Description("Get a paged list of meta data for a target with standard page size.")
+    public void getMetadata() throws Exception {
+        final int totalMetadata = 4;
+        final String knownKeyPrefix = "knownKey";
+        final String knownValuePrefix = "knownValue";
+        final Target testTarget = testdataFactory.createTarget("targetId");
+        for (int index = 0; index < totalMetadata; index++) {
+            targetManagement.createMetaData(testTarget.getControllerId(), Lists.newArrayList(
+                    entityFactory.generateTargetMetadata(knownKeyPrefix + index, knownValuePrefix + index)));
+        }
+
+        mvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/metadata", testTarget.getControllerId()))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaTypes.HAL_JSON));
     }
 
     @Test
@@ -2495,6 +2578,33 @@ class MgmtTargetResourceTest extends AbstractManagementApiIntegrationTest {
         mvc.perform(get(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}", knownTargetId))
                 .andDo(MockMvcResultPrinter.print()).andExpect(status().isOk())
                 .andExpect(jsonPath("autoConfirmActive").exists()).andExpect(jsonPath("_links.autoConfirm").exists());
+    }
+
+    @Test
+    @Description("Handles the POST request to activate auto-confirm on a target. Payload can be provided to specify more details about the operation.")
+    public void postActivateAutoConfirm() throws Exception {
+        final Target testTarget = testdataFactory.createTarget("targetId");
+
+        final MgmtTargetAutoConfirmUpdate body = new MgmtTargetAutoConfirmUpdate("custom_initiator_value",
+                "custom_remark_value");
+
+        mvc.perform(post(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + TARGET_V1_AUTO_CONFIRM + "/"
+                        + TARGET_V1_ACTIVATE_AUTO_CONFIRM, testTarget.getControllerId())
+                        .content(objectMapper.writeValueAsString(body)).contentType(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @Description("Handles the POST request to deactivate auto-confirm on a target.")
+    public void postDeactivateAutoConfirm() throws Exception {
+        final Target testTarget = testdataFactory.createTarget("targetId");
+        confirmationManagement.activateAutoConfirmation(testTarget.getControllerId(), null, null);
+
+        mvc.perform(post(MgmtRestConstants.TARGET_V1_REQUEST_MAPPING + "/{targetId}/" + TARGET_V1_AUTO_CONFIRM + "/"
+                        + TARGET_V1_DEACTIVATE_AUTO_CONFIRM, testTarget.getControllerId()))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk());
     }
 
     @Test
