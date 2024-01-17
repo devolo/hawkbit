@@ -1,12 +1,24 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
+
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
+import javax.validation.ValidationException;
 
 import org.eclipse.hawkbit.mgmt.json.model.MgmtId;
 import org.eclipse.hawkbit.mgmt.json.model.MgmtMetadata;
@@ -24,6 +36,27 @@ import org.eclipse.hawkbit.mgmt.rest.api.MgmtTargetRestApi;
 import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
 import org.eclipse.hawkbit.repository.model.*;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtDistributionSetAssignments;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTarget;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAttributes;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAutoConfirm;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetAutoConfirmUpdate;
+import org.eclipse.hawkbit.mgmt.json.model.target.MgmtTargetRequestBody;
+import org.eclipse.hawkbit.mgmt.rest.api.MgmtRestConstants;
+import org.eclipse.hawkbit.mgmt.rest.api.MgmtTargetRestApi;
+import org.eclipse.hawkbit.repository.ConfirmationManagement;
+import org.eclipse.hawkbit.repository.DeploymentManagement;
+import org.eclipse.hawkbit.repository.EntityFactory;
+import org.eclipse.hawkbit.repository.OffsetBasedPageRequest;
+import org.eclipse.hawkbit.repository.TargetManagement;
+import org.eclipse.hawkbit.repository.TenantConfigurationManagement;
+import org.eclipse.hawkbit.repository.exception.EntityNotFoundException;
+import org.eclipse.hawkbit.repository.model.Action;
+import org.eclipse.hawkbit.repository.model.ActionStatus;
+import org.eclipse.hawkbit.repository.model.DeploymentRequest;
+import org.eclipse.hawkbit.repository.model.DistributionSetAssignmentResult;
+import org.eclipse.hawkbit.repository.model.Target;
+import org.eclipse.hawkbit.repository.model.TargetMetadata;
 import org.eclipse.hawkbit.security.SystemSecurityContext;
 import org.eclipse.hawkbit.utils.TenantConfigHelper;
 import org.slf4j.Logger;
@@ -145,14 +178,14 @@ public class MgmtTargetResource implements MgmtTargetRestApi {
             this.targetManagement.unAssignType(targetId);
             // update target without targetType here ...
             updateTarget = this.targetManagement.update(entityFactory.target().update(targetId)
-                    .name(targetRest.getName()).description(targetRest.getDescription()).address(targetRest.getAddress())
-                    .securityToken(targetRest.getSecurityToken()).requestAttributes(targetRest.isRequestAttributes()));
+                .name(targetRest.getName()).description(targetRest.getDescription()).address(targetRest.getAddress())
+                .securityToken(targetRest.getSecurityToken()).requestAttributes(targetRest.isRequestAttributes()));
 
         } else {
             updateTarget = this.targetManagement.update(
-                    entityFactory.target().update(targetId).name(targetRest.getName()).description(targetRest.getDescription())
-                            .address(targetRest.getAddress()).targetType(targetRest.getTargetType()).securityToken(targetRest.getSecurityToken())
-                            .requestAttributes(targetRest.isRequestAttributes()));
+                entityFactory.target().update(targetId).name(targetRest.getName()).description(targetRest.getDescription())
+                    .address(targetRest.getAddress()).targetType(targetRest.getTargetType()).securityToken(targetRest.getSecurityToken())
+                    .requestAttributes(targetRest.isRequestAttributes()));
 
         }
 

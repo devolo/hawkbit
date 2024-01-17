@@ -1,13 +1,15 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.json.model.targetfilter;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.eclipse.hawkbit.mgmt.json.model.MgmtBaseEntity;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtActionType;
 
@@ -26,24 +28,30 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class MgmtTargetFilterQuery extends MgmtBaseEntity {
 
     @JsonProperty(value = "id", required = true)
+    @Schema(example = "2")
     private Long filterId;
 
     @JsonProperty
+    @Schema(example = "filterName")
     private String name;
 
     @JsonProperty
+    @Schema(example = "name==*")
     private String query;
 
     @JsonProperty
+    @Schema(example = "15")
     private Long autoAssignDistributionSet;
 
     @JsonProperty
     private MgmtActionType autoAssignActionType;
 
     @JsonProperty
+    @Schema(example = "")
     private Integer autoAssignWeight;
 
     @JsonProperty
+    @Schema(example = "false")
     private Boolean confirmationRequired;
 
     public Long getFilterId() {

@@ -1,16 +1,18 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.json.model.rollout;
 
 import java.util.List;
 import java.util.Optional;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.eclipse.hawkbit.mgmt.json.model.distributionset.MgmtActionType;
 import org.eclipse.hawkbit.mgmt.json.model.rolloutgroup.MgmtRolloutGroup;
 
@@ -27,19 +29,26 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MgmtRolloutRestRequestBody extends AbstractMgmtRolloutConditionsEntity {
 
+    @Schema(example = "id==targets-*")
     private String targetFilterQuery;
+    @Schema(example = "6")
     private long distributionSetId;
 
+    @Schema(example = "5")
     private Integer amountGroups;
 
+    @Schema(example = "1691065781929")
     private Long forcetime;
 
+    @Schema(example = "1691065780929")
     private Long startAt;
 
     @JsonProperty(required = false)
+    @Schema(example = "400")
     private Integer weight;
 
     @JsonProperty(required = false)
+    @Schema(example = "false")
     private Boolean confirmationRequired;
 
     private MgmtActionType type;

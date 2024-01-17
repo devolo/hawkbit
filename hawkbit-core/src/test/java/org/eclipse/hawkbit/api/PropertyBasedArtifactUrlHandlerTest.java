@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.api;
 
@@ -61,7 +62,7 @@ public class PropertyBasedArtifactUrlHandlerTest {
     @BeforeEach
     public void setup() {
         properties = new ArtifactUrlHandlerProperties();
-        urlHandlerUnderTest = new PropertyBasedArtifactUrlHandler(properties);
+        urlHandlerUnderTest = new PropertyBasedArtifactUrlHandler(properties, "");
 
     }
 
@@ -87,7 +88,7 @@ public class PropertyBasedArtifactUrlHandlerTest {
         proto.setPort(5683);
         proto.setProtocol(TEST_PROTO);
         proto.setRel(TEST_REL);
-        proto.setSupports(Arrays.asList(ApiType.DMF));
+        proto.setSupports(List.of(ApiType.DMF));
         proto.setRef("{protocol}://{ip}:{port}/fw/{tenant}/{controllerId}/sha1/{artifactSHA1}");
         properties.getProtocols().put(TEST_PROTO, proto);
 
@@ -108,7 +109,7 @@ public class PropertyBasedArtifactUrlHandlerTest {
         proto.setPort(5683);
         proto.setProtocol(TEST_PROTO);
         proto.setRel(TEST_REL);
-        proto.setSupports(Arrays.asList(ApiType.DMF));
+        proto.setSupports(List.of(ApiType.DMF));
         proto.setRef("{protocol}://{ip}:{port}/fws/{tenant}/{targetIdBase62}/{artifactIdBase62}");
         properties.getProtocols().put("ftp", proto);
 
@@ -131,7 +132,7 @@ public class PropertyBasedArtifactUrlHandlerTest {
         proto.setPort(5683);
         proto.setProtocol(TEST_PROTO);
         proto.setRel(TEST_REL);
-        proto.setSupports(Arrays.asList(ApiType.DDI));
+        proto.setSupports(List.of(ApiType.DDI));
         proto.setRef("{protocol}://{hostnameRequest}:{port}/fws/{tenant}/{targetIdBase62}/{artifactIdBase62}");
         properties.getProtocols().put("ftp", proto);
 
@@ -140,6 +141,21 @@ public class PropertyBasedArtifactUrlHandlerTest {
 
         assertThat(urls).containsExactly(new ArtifactUrl(TEST_PROTO.toUpperCase(), TEST_REL, TEST_PROTO + "://"
                 + testHost + ":5683/fws/" + TENANT + "/" + TARGETID_BASE62 + "/" + ARTIFACTID_BASE62));
+    }
+    @Test
+    @Description("Verfies that the protocol of the statically defined hostname is replaced with the protocol of the request.")
+    public void urlGenerationWithProtocolFromRequest() throws URISyntaxException {
+        final String testHost = "ddi.host.com";
+
+        final UrlProtocol proto = new UrlProtocol();
+        proto.setRef("{protocolRequest}://{hostname}:{port}/fws/{tenant}/{targetIdBase62}/{artifactIdBase62}");
+        properties.getProtocols().put("download-http", proto);
+
+        final List<ArtifactUrl> urls = urlHandlerUnderTest.getUrls(placeholder, ApiType.DDI,
+                new URI("https://" + testHost));
+
+        assertThat(urls).containsExactly(new ArtifactUrl("http".toUpperCase(), "download-http",
+                "https://localhost:8080/fws/" + TENANT + "/" + TARGETID_BASE62 + "/" + ARTIFACTID_BASE62));
     }
 
     @Test

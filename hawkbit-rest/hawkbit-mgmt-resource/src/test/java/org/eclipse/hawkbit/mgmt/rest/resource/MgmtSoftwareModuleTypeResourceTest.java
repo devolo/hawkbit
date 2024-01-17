@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
@@ -92,6 +93,20 @@ public class MgmtSoftwareModuleTypeResourceTest extends AbstractManagementApiInt
                 .andExpect(jsonPath("$.content.[?(@.key=='test123')].maxAssignments", contains(5)))
                 .andExpect(jsonPath("$.content.[?(@.key=='test123')].key", contains("test123")))
                 .andExpect(jsonPath("$.total", equalTo(4)));
+    }
+
+    @Test
+    @WithUser(principal = "uploadTester", allSpPermissions = true)
+    @Description("Handles the GET request of retrieving all software module types within SP with parameters. In this case the first 10 result in ascending order by name where the name starts with 'a'.")
+    public void getSoftwareModuleTypesWithParameters() throws Exception {
+        final SoftwareModuleType testType = testdataFactory.findOrCreateSoftwareModuleType("test123");
+        softwareModuleTypeManagement
+                .update(entityFactory.softwareModuleType().update(testType.getId()).description("Desc1234").colour("rgb(106,178,83)"));
+
+        mvc.perform(get(MgmtRestConstants.SOFTWAREMODULETYPE_V1_REQUEST_MAPPING + "?limit=10&sort=name:ASC&offset=0&q=name==a")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk());
     }
 
     private SoftwareModuleType createTestType() {

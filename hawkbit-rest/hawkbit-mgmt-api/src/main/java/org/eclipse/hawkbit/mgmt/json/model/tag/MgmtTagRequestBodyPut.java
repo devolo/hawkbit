@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.json.model.tag;
 
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Request Body for PUT/POST.
@@ -22,12 +24,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class MgmtTagRequestBodyPut {
 
     @JsonProperty
+    @Schema(example = "rgb(0,255,0)")
     private String colour;
 
     @JsonProperty
+    @Schema(example = "Example name")
     private String name;
 
     @JsonProperty
+    @Schema(example = "Example description")
     private String description;
 
     public String getName() {

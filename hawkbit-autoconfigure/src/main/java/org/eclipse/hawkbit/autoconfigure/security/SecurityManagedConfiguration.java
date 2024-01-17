@@ -179,7 +179,7 @@ public class SecurityManagedConfiguration {
         public FilterRegistrationBean<DosFilter> dosFilterDDI(final HawkbitSecurityProperties securityProperties) {
             final FilterRegistrationBean<DosFilter> filterRegBean =
                     dosFilter(List.of(DDI_ANT_MATCHERS),
-                            securityProperties.getDos().getFilter(), securityProperties.getClients());
+                        securityProperties.getDos().getFilter(), securityProperties.getClients());
             filterRegBean.setOrder(DOS_FILTER_ORDER);
             filterRegBean.setName("dosDDiFilter");
 
@@ -321,10 +321,10 @@ public class SecurityManagedConfiguration {
 
             if (ddiSecurityConfiguration.getAuthentication().getAnonymous().isEnabled()) {
                 LOG.info(
-                        """
-                        ******************
-                        ** Anonymous controller security enabled, should only be used for developing purposes **
-                        ******************""");
+                    """
+                    ******************
+                    ** Anonymous controller security enabled, should only be used for developing purposes **
+                    ******************""");
 
                 final AnonymousAuthenticationFilter anonymousFilter = new AnonymousAuthenticationFilter(
                         "controllerAnonymousFilter", "anonymous",
@@ -399,8 +399,8 @@ public class SecurityManagedConfiguration {
     }
 
     private static FilterRegistrationBean<DosFilter> dosFilter(final Collection<String> includeAntPaths,
-                                                               final HawkbitSecurityProperties.Dos.Filter filterProperties,
-                                                               final HawkbitSecurityProperties.Clients clientProperties) {
+            final HawkbitSecurityProperties.Dos.Filter filterProperties,
+            final HawkbitSecurityProperties.Clients clientProperties) {
         final FilterRegistrationBean<DosFilter> filterRegBean = new FilterRegistrationBean<>();
 
         filterRegBean.setFilter(new DosFilter(includeAntPaths, filterProperties.getMaxRead(),
@@ -482,7 +482,8 @@ public class SecurityManagedConfiguration {
                 @Lazy
                 final UserAuthenticationFilter userAuthenticationFilter,
                 @Autowired(required = false)
-                final OidcBearerTokenAuthenticationFilter oidcBearerTokenAuthenticationFilter,
+                final OidcUserManagementAutoConfiguration.OidcBearerTokenAuthenticationFilter
+                        oidcBearerTokenAuthenticationFilter,
                 @Autowired(required = false)
                 final InMemoryClientRegistrationRepository clientRegistrationRepository,
                 final SystemManagement systemManagement,
@@ -494,9 +495,9 @@ public class SecurityManagedConfiguration {
                     .authorizeHttpRequests(amrmRegistry ->
                             amrmRegistry
                                     .antMatchers(MgmtRestConstants.BASE_SYSTEM_MAPPING + "/admin/**")
-                                    .hasAnyAuthority(SpPermission.SYSTEM_ADMIN)
+                                        .hasAnyAuthority(SpPermission.SYSTEM_ADMIN)
                                     .anyRequest()
-                                    .authenticated())
+                                        .authenticated())
                     .addFilterAfter(
                             // Servlet filter to create metadata after successful authentication over RESTful.
                             (request, response, chain) -> {

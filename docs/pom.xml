@@ -1,11 +1,12 @@
 <!--
 
-    Copyright (c) 2018 Bosch Software Innovations GmbH and others.
+    Copyright (c) 2018 Bosch Software Innovations GmbH and others
 
-    All rights reserved. This program and the accompanying materials
-    are made available under the terms of the Eclipse Public License v1.0
-    which accompanies this distribution, and is available at
-    http://www.eclipse.org/legal/epl-v10.html
+    This program and the accompanying materials are made
+    available under the terms of the Eclipse Public License 2.0
+    which is available at https://www.eclipse.org/legal/epl-2.0/
+
+    SPDX-License-Identifier: EPL-2.0
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -60,21 +61,32 @@
             <artifactId>maven-dependency-plugin</artifactId>
             <executions>
                <execution>
-                  <id>unpack-api-docs</id>
+                  <id>copy-openapi</id>
                   <phase>prepare-package</phase>
                   <goals>
-                     <goal>unpack</goal>
+                     <goal>copy</goal>
                   </goals>
                   <configuration>
                      <artifactItems>
                         <artifactItem>
                            <groupId>org.eclipse.hawkbit</groupId>
-                           <artifactId>hawkbit-rest-docs</artifactId>
+                           <artifactId>hawkbit-update-server</artifactId>
                            <version>${project.version}</version>
-                           <type>jar</type>
+                           <classifier>mgmt-openapi</classifier>
+                           <type>yaml</type>
                            <overWrite>true</overWrite>
-                           <outputDirectory>${basedir}/content/</outputDirectory>
-                           <includes>**/*.html</includes>
+                           <outputDirectory>${basedir}/content/rest-api</outputDirectory>
+                           <destFileName>mgmt.yaml</destFileName>
+                        </artifactItem>
+                        <artifactItem>
+                           <groupId>org.eclipse.hawkbit</groupId>
+                           <artifactId>hawkbit-update-server</artifactId>
+                           <version>${project.version}</version>
+                           <classifier>ddi-openapi</classifier>
+                           <type>yaml</type>
+                           <overWrite>true</overWrite>
+                           <outputDirectory>${basedir}/content/rest-api</outputDirectory>
+                           <destFileName>ddi.yaml</destFileName>
                         </artifactItem>
                      </artifactItems>
                   </configuration>
@@ -86,6 +98,21 @@
             <artifactId>exec-maven-plugin</artifactId>
             <version>${exec-maven-plugin.version}</version>
             <executions>
+               <execution>
+                  <id>build-htmls</id>
+                  <goals>
+                     <goal>exec</goal>
+                  </goals>
+                  <phase>install</phase>
+                  <configuration>
+                     <executable>${shell}</executable>
+                     <workingDirectory>${project.basedir}</workingDirectory>
+                     <arguments>
+                        <argument>${shell.option}</argument>
+                        <argument>build-htmls.${batch.ext}</argument>
+                     </arguments>
+                  </configuration>
+               </execution>
                <execution>
                   <id>install-hugo-theme</id>
                   <goals>

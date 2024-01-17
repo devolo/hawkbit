@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa;
 
@@ -209,10 +210,20 @@ public class JpaRolloutManagement implements RolloutManagement {
 
     private JpaRollout createRollout(final JpaRollout rollout) {
         WeightValidationHelper.usingContext(systemSecurityContext, tenantConfigurationManagement).validate(rollout);
-        final Long totalTargets = targetManagement.countByRsqlAndCompatible(rollout.getTargetFilterQuery(),
+        long totalTargets;
+        String errMsg;
+        if (RolloutHelper.isRolloutRetried(rollout.getTargetFilterQuery())) {
+            totalTargets = targetManagement.countByFailedInRollout(
+                RolloutHelper.getIdFromRetriedTargetFilter(rollout.getTargetFilterQuery()),
                 rollout.getDistributionSet().getType().getId());
+            errMsg = "No failed targets in Rollout";
+         } else {
+            totalTargets = targetManagement.countByRsqlAndCompatible(rollout.getTargetFilterQuery(),
+                rollout.getDistributionSet().getType().getId());
+            errMsg = "Rollout does not match any existing targets";
+        }
         if (totalTargets == 0) {
-            throw new ValidationException("Rollout does not match any existing targets");
+            throw new ValidationException(errMsg);
         }
         rollout.setTotalTargets(totalTargets);
         return rolloutRepository.save(rollout);
@@ -623,7 +634,6 @@ public class JpaRolloutManagement implements RolloutManagement {
 
         return fromCache;
     }
-    
     @Override
     public void setRolloutStatusDetails(final Slice<Rollout> rollouts) {
         final List<Long> rolloutIds = rollouts.getContent().stream().map(Rollout::getId).collect(Collectors.toList());
@@ -666,10 +676,19 @@ public class JpaRolloutManagement implements RolloutManagement {
     private RolloutGroupsValidation validateTargetsInGroups(final List<RolloutGroup> groups, final String baseFilter,
             final long totalTargets, final Long dsTypeId) {
         final List<Long> groupTargetCounts = new ArrayList<>(groups.size());
-        final Map<String, Long> targetFilterCounts = groups.stream()
+        Map<String, Long> targetFilterCounts;
+        if (!RolloutHelper.isRolloutRetried(baseFilter)) {
+            targetFilterCounts = groups.stream()
                 .map(group -> RolloutHelper.getGroupTargetFilter(baseFilter, group)).distinct()
                 .collect(Collectors.toMap(Function.identity(),
-                        groupTargetFilter -> targetManagement.countByRsqlAndCompatible(groupTargetFilter, dsTypeId)));
+                    groupTargetFilter -> targetManagement.countByRsqlAndCompatible(groupTargetFilter, dsTypeId)));
+        } else {
+            targetFilterCounts = groups.stream()
+                .map(group -> RolloutHelper.getGroupTargetFilter(baseFilter, group)).distinct()
+                .collect(Collectors.toMap(Function.identity(),
+                    groupTargetFilter -> targetManagement.countByFailedInRollout(
+                        RolloutHelper.getIdFromRetriedTargetFilter(baseFilter), dsTypeId)));
+        }
 
         long unusedTargetsCount = 0;
 
@@ -723,8 +742,11 @@ public class JpaRolloutManagement implements RolloutManagement {
 
     private long calculateRemainingTargets(final List<RolloutGroup> groups, final String targetFilter,
             final Long createdAt, final Long dsTypeId) {
-        final String baseFilter = RolloutHelper.getTargetFilterQuery(targetFilter, createdAt);
-        final long totalTargets = targetManagement.countByRsqlAndCompatible(baseFilter, dsTypeId);
+
+        final TargetCount targets = calculateTargets(targetFilter, createdAt, dsTypeId);
+        long totalTargets = targets.total();
+        final String baseFilter = targets.filter();
+
         if (totalTargets == 0) {
             throw new ConstraintDeclarationException("Rollout target filter does not match any targets");
         }
@@ -739,9 +761,9 @@ public class JpaRolloutManagement implements RolloutManagement {
     public ListenableFuture<RolloutGroupsValidation> validateTargetsInGroups(final List<RolloutGroupCreate> groups,
             final String targetFilter, final Long createdAt, final Long dsTypeId) {
 
-        final String baseFilter = RolloutHelper.getTargetFilterQuery(targetFilter, createdAt);
-
-        final long totalTargets = targetManagement.countByRsqlAndCompatible(baseFilter, dsTypeId);
+        final TargetCount targets = calculateTargets(targetFilter, createdAt, dsTypeId);
+        long totalTargets = targets.total();
+        final String baseFilter = targets.filter();
 
         if (totalTargets == 0) {
             throw new ConstraintDeclarationException("Rollout target filter does not match any targets");
@@ -777,5 +799,22 @@ public class JpaRolloutManagement implements RolloutManagement {
 
         startNextRolloutGroupAction.exec(rollout, latestRunning);
     }
+
+    private TargetCount calculateTargets(final String targetFilter, final Long createdAt, final Long dsTypeId) {
+        String baseFilter;
+        long totalTargets;
+        if (!RolloutHelper.isRolloutRetried(targetFilter)) {
+            baseFilter = RolloutHelper.getTargetFilterQuery(targetFilter, createdAt);
+            totalTargets = targetManagement.countByRsqlAndCompatible(baseFilter, dsTypeId);
+        } else {
+            totalTargets = targetManagement.countByFailedInRollout(
+                RolloutHelper.getIdFromRetriedTargetFilter(targetFilter), dsTypeId);
+            baseFilter = targetFilter;
+        }
+
+        return new TargetCount(totalTargets, baseFilter);
+    }
+
+    private record TargetCount(long total, String filter) {}
 
 }

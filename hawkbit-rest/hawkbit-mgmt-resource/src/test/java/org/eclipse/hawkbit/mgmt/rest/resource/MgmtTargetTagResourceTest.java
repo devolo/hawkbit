@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
@@ -76,7 +77,17 @@ public class MgmtTargetTagResourceTest extends AbstractManagementApiIntegrationT
     }
 
     @Test
-    @Description("Verfies that a paged result list of target tags reflects on the content of assigned tags for specific controller/target ID")
+    @Description("Handles the GET request of retrieving all targets tags within SP based by parameter")
+    public void getTargetTagsWithParameters() throws Exception {
+        final List<TargetTag> tags = testdataFactory.createTargetTags(2, "");
+        final TargetTag assigned = tags.get(0);
+        final TargetTag unassigned = tags.get(1);
+        mvc.perform(get(MgmtRestConstants.TARGET_TAG_V1_REQUEST_MAPPING + "?limit=10&sort=name:ASC&offset=0&q=name==targetTag"))
+                .andExpect(status().isOk()).andDo(MockMvcResultPrinter.print());
+    }
+
+    @Test
+    @Description("Verifies that a paged result list of target tags reflects on the content of assigned tags for specific controller/target ID")
     public void getTargetTagsByTargetId() throws Exception {
         final String controllerId1 = "controllerTestId1";
         final String controllerId2 = "controllerTestId2";

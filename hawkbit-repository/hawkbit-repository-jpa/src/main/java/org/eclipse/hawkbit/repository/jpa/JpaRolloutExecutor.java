@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2021 Bosch.IO GmbH and others.
+ * Copyright (c) 2021 Bosch.IO GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa;
 
@@ -54,7 +55,6 @@ import org.eclipse.hawkbit.repository.model.helper.EventPublisherHolder;
 import org.eclipse.hawkbit.tenancy.TenantAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
@@ -528,10 +528,18 @@ public class JpaRolloutExecutor implements RolloutExecutor {
         final List<Long> readyGroups = RolloutHelper.getGroupsByStatusIncludingGroup(rollout.getRolloutGroups(),
                 RolloutGroupStatus.READY, group);
 
-        final long targetsInGroupFilter = DeploymentHelper.runInNewTransaction(txManager,
+        long targetsInGroupFilter;
+        if (!RolloutHelper.isRolloutRetried(rollout.getTargetFilterQuery())) {
+            targetsInGroupFilter = DeploymentHelper.runInNewTransaction(txManager,
                 "countAllTargetsByTargetFilterQueryAndNotInRolloutGroups",
                 count -> targetManagement.countByRsqlAndNotInRolloutGroupsAndCompatible(readyGroups, groupTargetFilter,
-                        rollout.getDistributionSet().getType()));
+                    rollout.getDistributionSet().getType()));
+        } else {
+            targetsInGroupFilter = DeploymentHelper.runInNewTransaction(txManager,
+                "countByFailedRolloutAndNotInRolloutGroupsAndCompatible",
+                count -> targetManagement.countByFailedRolloutAndNotInRolloutGroups(readyGroups,
+                    RolloutHelper.getIdFromRetriedTargetFilter(rollout.getTargetFilterQuery())));
+        }
         final long expectedInGroup = Math
                 .round((double) (group.getTargetPercentage() / 100) * (double) targetsInGroupFilter);
         final long currentlyInGroup = DeploymentHelper.runInNewTransaction(txManager,
@@ -550,7 +558,7 @@ public class JpaRolloutExecutor implements RolloutExecutor {
             long targetsLeftToAdd = expectedInGroup - currentlyInGroup;
 
             do {
-                // Add up to maxTargetsPerTransaction of the left targets
+                // Add up to TRANSACTION_TARGETS of the left targets
                 // In case a TransactionException is thrown this loop aborts
                 targetsLeftToAdd -= assignTargetsToGroupInNewTransaction(rollout, group, groupTargetFilter,
                         Math.min(maxTargetsPerTransaction, targetsLeftToAdd));
@@ -575,10 +583,17 @@ public class JpaRolloutExecutor implements RolloutExecutor {
             final PageRequest pageRequest = PageRequest.of(0, Math.toIntExact(limit));
             final List<Long> readyGroups = RolloutHelper.getGroupsByStatusIncludingGroup(rollout.getRolloutGroups(),
                     RolloutGroupStatus.READY, group);
-            final Slice<Target> targets = targetManagement.findByTargetFilterQueryAndNotInRolloutGroupsAndCompatible(
+            Slice<Target> targets;
+            if (!RolloutHelper.isRolloutRetried(rollout.getTargetFilterQuery())) {
+                targets = targetManagement.findByTargetFilterQueryAndNotInRolloutGroupsAndCompatible(
                     pageRequest, readyGroups, targetFilter, rollout.getDistributionSet().getType());
+            } else {
+                targets = targetManagement.findByFailedRolloutAndNotInRolloutGroups(
+                    pageRequest, readyGroups, RolloutHelper.getIdFromRetriedTargetFilter(rollout.getTargetFilterQuery()));
+            }
 
             createAssignmentOfTargetsToGroup(targets, group);
+
             return Long.valueOf(targets.getNumberOfElements());
         });
     }
@@ -675,8 +690,8 @@ public class JpaRolloutExecutor implements RolloutExecutor {
             action.setRolloutGroup(rolloutGroup);
             action.setInitiatedBy(rollout.getCreatedBy());
             rollout.getWeight().ifPresent(action::setWeight);
-
             rolloutManagement.setIsCleanedUpToFalseForTargetWithId(target.getId());
+
             actionRepository.save(action);
         });
     }

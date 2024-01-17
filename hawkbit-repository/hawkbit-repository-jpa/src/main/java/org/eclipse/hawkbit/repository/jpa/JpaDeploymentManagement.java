@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa;
 
@@ -143,6 +144,7 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
     private final TenantAware tenantAware;
     private final Database database;
     private final RetryTemplate retryTemplate;
+    private final TargetManagement targetManagement;
 
     protected JpaDeploymentManagement(final EntityManager entityManager, final ActionRepository actionRepository,
                                       final DistributionSetManagement distributionSetManagement, final DistributionSetRepository distributionSetRepository,
@@ -153,6 +155,7 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
                                       final QuotaManagement quotaManagement, final SystemSecurityContext systemSecurityContext,
                                       final TenantAware tenantAware, final Database database,
                                       final RepositoryProperties repositoryProperties, final TargetManagement targetManagement) {
+
         super(actionRepository, actionStatusRepository, quotaManagement, repositoryProperties);
         this.entityManager = entityManager;
         this.distributionSetRepository = distributionSetRepository;
@@ -161,6 +164,7 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
         this.auditorProvider = auditorProvider;
         this.virtualPropertyReplacer = virtualPropertyReplacer;
         this.txManager = txManager;
+        this.targetManagement = targetManagement;
 
         onlineDsAssignmentStrategy = new OnlineDsAssignmentStrategy(targetRepository, targetManagement, afterCommit, eventPublisherHolder,
                 actionRepository, actionStatusRepository, quotaManagement, this::isMultiAssignmentsEnabled, this::isConfirmationFlowEnabled);
@@ -1059,7 +1063,7 @@ public class JpaDeploymentManagement extends JpaActionManagement implements Depl
     @Override
     public boolean hasPendingCancellations(final String controllerId) {
         return actionRepository.existsByTargetControllerIdAndStatusAndActiveIsTrue(controllerId,
-                Status.CANCELING);
+                Action.Status.CANCELING);
     }
 
     private static String getQueryForDeleteActionsByStatusAndLastModifiedBeforeString(final Database database) {

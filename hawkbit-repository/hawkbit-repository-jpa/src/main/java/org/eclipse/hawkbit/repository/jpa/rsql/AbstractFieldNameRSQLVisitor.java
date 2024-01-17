@@ -1,14 +1,13 @@
 /**
- * Copyright (c) 2020 devolo GmbH and others.
+ * Copyright (c) 2020 devolo GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa.rsql;
-
-import cz.jirutka.rsql.parser.ast.ComparisonNode;
 
 import java.util.Arrays;
 import java.util.List;
@@ -16,6 +15,7 @@ import java.util.stream.Collectors;
 
 import javax.validation.constraints.NotNull;
 
+import cz.jirutka.rsql.parser.ast.ComparisonNode;
 import org.eclipse.hawkbit.repository.FieldNameProvider;
 import org.eclipse.hawkbit.repository.exception.RSQLParameterUnsupportedFieldException;
 import org.slf4j.Logger;
@@ -46,6 +46,7 @@ public abstract class AbstractFieldNameRSQLVisitor<A extends Enum<A> & FieldName
     }
 
     protected String getAndValidatePropertyFieldName(final A propertyEnum, final ComparisonNode node) {
+
         final String[] graph = propertyEnum.getSubAttributes(node.getSelector());
 
         validateMapParameter(propertyEnum, node, graph);

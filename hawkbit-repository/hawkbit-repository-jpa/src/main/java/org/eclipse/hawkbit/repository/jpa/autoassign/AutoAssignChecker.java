@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa.autoassign;
 
@@ -94,8 +95,6 @@ public class AutoAssignChecker extends AbstractAutoAssignExecutor {
         LOGGER.debug("Auto assign check call for tenant {} and target filter query id {} started",
                 getTenantAware().getCurrentTenant(), targetFilterQuery.getId());
         try {
-            final DistributionSet distributionSet = targetFilterQuery.getAutoAssignDistributionSet();
-
             int count;
             do {
                 final List<String> controllerIds = targetManagement
@@ -109,7 +108,7 @@ public class AutoAssignChecker extends AbstractAutoAssignExecutor {
 
                 count = runTransactionalAssignment(targetFilterQuery, controllerIds);
 
-                LOGGER.debug("Running AutoAssignCheck. TFQ: " + targetFilterQuery.getQuery() + " with DS: " + distributionSet.getName());
+                LOGGER.debug("Running AutoAssignCheck. TFQ: " + targetFilterQuery.getQuery() + " with DS: " + targetFilterQuery.getAutoAssignDistributionSet().getName());
                 LOGGER.debug(
                         "Assignment for {} auto assign targets for tenant {} and target filter query id {} finished",
                         controllerIds.size(), getTenantAware().getCurrentTenant(), targetFilterQuery.getId());

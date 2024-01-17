@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa;
 
@@ -752,6 +753,17 @@ public class JpaTargetManagement implements TargetManagement {
     }
 
     @Override
+    public Slice<Target> findByFailedRolloutAndNotInRolloutGroups(Pageable pageRequest, Collection<Long> groups,
+        String rolloutId) {
+        final List<Specification<JpaTarget>> specList = Arrays.asList(
+            TargetSpecifications.failedActionsForRollout(rolloutId),
+            TargetSpecifications.isNotInRolloutGroups(groups)
+        );
+
+        return JpaManagementHelper.findAllWithCountBySpec(targetRepository, pageRequest, specList);
+    }
+
+    @Override
     public Slice<Target> findByInRolloutGroupWithoutAction(final Pageable pageRequest, final long group) {
         if (!rolloutGroupRepository.existsById(group)) {
             throw new EntityNotFoundException(RolloutGroup.class, group);
@@ -769,6 +781,15 @@ public class JpaTargetManagement implements TargetManagement {
                         database),
                 TargetSpecifications.isNotInRolloutGroups(groups),
                 TargetSpecifications.isCompatibleWithDistributionSetType(dsType.getId()));
+
+        return JpaManagementHelper.countBySpec(targetRepository, specList);
+    }
+
+    @Override
+    public long countByFailedRolloutAndNotInRolloutGroups(Collection<Long> groups, String rolloutId) {
+        final List<Specification<JpaTarget>> specList = Arrays.asList(
+            TargetSpecifications.failedActionsForRollout(rolloutId),
+            TargetSpecifications.isNotInRolloutGroups(groups));
 
         return JpaManagementHelper.countBySpec(targetRepository, specList);
     }
@@ -850,6 +871,14 @@ public class JpaTargetManagement implements TargetManagement {
         final List<Specification<JpaTarget>> specList = Arrays.asList(RSQLUtility
                 .buildRsqlSpecification(targetFilterQuery, TargetFields.class, virtualPropertyReplacer, database),
                 TargetSpecifications.isCompatibleWithDistributionSetType(dsTypeId));
+
+        return JpaManagementHelper.countBySpec(targetRepository, specList);
+    }
+
+    @Override
+    public long countByFailedInRollout(final String rolloutId, final Long dsTypeId) {
+        final List<Specification<JpaTarget>> specList = List.of(
+            TargetSpecifications.failedActionsForRollout(rolloutId));
 
         return JpaManagementHelper.countBySpec(targetRepository, specList);
     }

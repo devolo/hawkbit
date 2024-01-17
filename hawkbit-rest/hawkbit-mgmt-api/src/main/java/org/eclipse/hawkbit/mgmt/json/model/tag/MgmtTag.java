@@ -1,13 +1,15 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.json.model.tag;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.eclipse.hawkbit.mgmt.json.model.MgmtNamedEntity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -25,9 +27,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class MgmtTag extends MgmtNamedEntity {
 
     @JsonProperty(value = "id", required = true)
+    @Schema(example = "2")
     private Long tagId;
 
     @JsonProperty
+    @Schema(example = "rgb(255,0,0)")
     private String colour;
 
     @JsonIgnore

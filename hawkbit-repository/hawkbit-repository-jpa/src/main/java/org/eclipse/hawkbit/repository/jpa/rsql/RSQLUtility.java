@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.repository.jpa.rsql;
 
@@ -31,7 +32,10 @@ import org.springframework.util.CollectionUtils;
 
 import cz.jirutka.rsql.parser.RSQLParser;
 import cz.jirutka.rsql.parser.RSQLParserException;
-import cz.jirutka.rsql.parser.ast.*;
+import cz.jirutka.rsql.parser.ast.ComparisonOperator;
+import cz.jirutka.rsql.parser.ast.Node;
+import cz.jirutka.rsql.parser.ast.RSQLOperators;
+import cz.jirutka.rsql.parser.ast.RSQLVisitor;
 
 /**
  * A utility class which is able to parse RSQL strings into an spring data
@@ -144,44 +148,6 @@ public final class RSQLUtility {
         }
     }
 
-    private static final class ValidationRSQLVisitor<A extends Enum<A> & FieldNameProvider>
-            extends AbstractFieldNameRSQLVisitor<A> implements RSQLVisitor<Boolean, String> {
-
-
-        public ValidationRSQLVisitor(final Class<A> fieldNameProvider) {
-            super(fieldNameProvider);
-        }
-
-        @Override
-        public Boolean visit(AndNode node, String param) {
-            return visitNode(node, param);
-        }
-
-        @Override
-        public Boolean visit(OrNode node, String param) {
-            return visitNode(node, param);
-        }
-
-        @Override
-        public Boolean visit(ComparisonNode node, String param) {
-            try {
-                final A fieldName = (A) getFieldEnumByName(node);
-                getAndValidatePropertyFieldName(fieldName, node);
-            } catch (final RSQLParameterUnsupportedFieldException | IllegalArgumentException e) {
-                return false;
-            }
-            return true;
-        }
-
-        private Boolean visitNode(LogicalNode node, String param) {
-            for (Node child : node.getChildren()) {
-                if (!child.accept(this, param))
-                    return false;
-            }
-            return true;
-        }
-    }
-
     private static final class RSQLSpecification<A extends Enum<A> & FieldNameProvider, T> implements Specification<T> {
 
         private static final long serialVersionUID = 1L;
@@ -215,4 +181,5 @@ public final class RSQLUtility {
 
         }
     }
+
 }

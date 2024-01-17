@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2022 Bosch.IO GmbH and others.
+ * Copyright (c) 2022 Bosch.IO GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.mgmt.rest.resource;
 
@@ -342,6 +343,28 @@ class MgmtActionResourceTest extends AbstractManagementApiIntegrationTest {
     }
 
     @Test
+    @Description("Handles the GET request of retrieving a specific action.")
+    public void getAction() throws Exception {
+        final String knownTargetId = "targetId";
+        // prepare ds
+        final DistributionSet ds = testdataFactory.createDistributionSet();
+        // rollout
+        final Target target = testdataFactory.createTarget(knownTargetId);
+        final Rollout rollout = testdataFactory.createRolloutByVariables("TestRollout", "TestDesc", 1,
+                "name==" + target.getName(), ds, "50", "5");
+        rolloutManagement.start(rollout.getId());
+        rolloutHandler.handleAll();
+
+        final List<Action> actions = deploymentManagement.findActionsByTarget(target.getControllerId(), PAGE)
+                .getContent();
+        assertThat(actions).hasSize(1);
+
+        mvc.perform(get(MgmtRestConstants.ACTION_V1_REQUEST_MAPPING + "/{actionId}", actions.get(0).getId()))
+                .andDo(MockMvcResultPrinter.print())
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @Description("Verifies paging is respected as expected.")
     void getMultipleActionsWithPagingLimitRequestParameter() throws Exception {
         final String knownTargetId = "targetId";
@@ -483,5 +506,4 @@ class MgmtActionResourceTest extends AbstractManagementApiIntegrationTest {
         return "http://localhost" + MgmtRestConstants.DISTRIBUTIONSET_V1_REQUEST_MAPPING + "/"
                 + action.getDistributionSet().getId();
     }
-
 }

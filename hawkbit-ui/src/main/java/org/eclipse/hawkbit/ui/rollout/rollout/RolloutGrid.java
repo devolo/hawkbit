@@ -1,10 +1,11 @@
 /**
- * Copyright (c) 2015 Bosch Software Innovations GmbH and others.
+ * Copyright (c) 2015 Bosch Software Innovations GmbH and others
  *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  */
 package org.eclipse.hawkbit.ui.rollout.rollout;
 
@@ -223,6 +224,10 @@ public class RolloutGrid extends AbstractGrid<ProxyRollout, String> {
         return isDeletionAllowed(status) && status != RolloutStatus.CREATING;
     }
 
+    private static boolean isRolloutRetried(final String targetFilter) {
+        return targetFilter.contains("failedrollout");
+    }
+
     private static boolean isEditingAllowed(final RolloutStatus status) {
         final List<RolloutStatus> statesThatAllowEditing = Arrays.asList(RolloutStatus.PAUSED, RolloutStatus.READY,
                 RolloutStatus.RUNNING, RolloutStatus.STARTING, RolloutStatus.STOPPED);
@@ -360,14 +365,16 @@ public class RolloutGrid extends AbstractGrid<ProxyRollout, String> {
                 clickEvent -> updateRollout(rollout), VaadinIcons.EDIT, UIMessageIdProvider.TOOLTIP_ROLLOUT_UPDATE,
                 SPUIStyleDefinitions.STATUS_ICON_NEUTRAL,
                 UIComponentIdProvider.ROLLOUT_UPDATE_BUTTON_ID + "." + rollout.getId(),
-                permissionChecker.hasRolloutUpdatePermission() && isEditingAllowed(rollout.getStatus()));
+                permissionChecker.hasRolloutUpdatePermission() && isEditingAllowed(rollout.getStatus())
+                                && !isRolloutRetried(rollout.getTargetFilterQuery()));
         actionColumns.add(GridComponentBuilder.addIconColumn(this, updateButton, UPDATE_BUTTON_ID, null));
 
         final ValueProvider<ProxyRollout, Button> copyButton = rollout -> GridComponentBuilder.buildActionButton(i18n,
                 clickEvent -> copyRollout(rollout), VaadinIcons.COPY, UIMessageIdProvider.TOOLTIP_ROLLOUT_COPY,
                 SPUIStyleDefinitions.STATUS_ICON_NEUTRAL,
                 UIComponentIdProvider.ROLLOUT_COPY_BUTTON_ID + "." + rollout.getId(),
-                permissionChecker.hasRolloutCreatePermission() && isCopyingAllowed(rollout.getStatus()));
+                permissionChecker.hasRolloutCreatePermission() && isCopyingAllowed(rollout.getStatus())
+                            && !isRolloutRetried(rollout.getTargetFilterQuery()));
         actionColumns.add(GridComponentBuilder.addIconColumn(this, copyButton, COPY_BUTTON_ID, null));
 
         actionColumns.add(GridComponentBuilder.addDeleteColumn(this, i18n, DELETE_BUTTON_ID, rolloutDeleteSupport,
@@ -494,6 +501,23 @@ public class RolloutGrid extends AbstractGrid<ProxyRollout, String> {
         }
     }
 
+    private ConfirmationDialog createTriggerNextGroupDialog(final Long rolloutId) {
+        final String caption = i18n.getMessage("caption.rollout.confirm.trigger.next");
+        final String question = i18n.getMessage("message.rollout.confirm.trigger.next");
+
+        return ConfirmationDialog.newBuilder(i18n, UIComponentIdProvider.ROLLOUT_TRIGGER_NEXT_CONFIRMATION_DIALOG)
+                .caption(caption).question(question).onSaveOrUpdate(() -> {
+                    try {
+                        rolloutManagement.triggerNextGroup(rolloutId);
+                        uiNotification.displaySuccess(i18n.getMessage("message.rollout.trigger.next.group.success"));
+                    } catch (final RolloutIllegalStateException e) {
+                        LOGGER.warn("Error on manually triggering next rollout group: {}", e.getMessage());
+                        uiNotification
+                                .displayValidationError(i18n.getMessage("message.rollout.trigger.next.group.error"));
+                    }
+                }).build();
+    }
+
     private String getDistributionCellStyle(final ProxyRollout rollout) {
         if (!rollout.getDsInfo().isValid()) {
             return SPUIDefinitions.INVALID_DISTRIBUTION;
@@ -518,22 +542,5 @@ public class RolloutGrid extends AbstractGrid<ProxyRollout, String> {
             UI.getCurrent().addWindow(triggerNextDialog.getWindow());
             triggerNextDialog.getWindow().bringToFront();
         }
-    }
-
-    private ConfirmationDialog createTriggerNextGroupDialog(final Long rolloutId) {
-        final String caption = i18n.getMessage("caption.rollout.confirm.trigger.next");
-        final String question = i18n.getMessage("message.rollout.confirm.trigger.next");
-
-        return ConfirmationDialog.newBuilder(i18n, UIComponentIdProvider.ROLLOUT_TRIGGER_NEXT_CONFIRMATION_DIALOG)
-                .caption(caption).question(question).onSaveOrUpdate(() -> {
-                    try {
-                        rolloutManagement.triggerNextGroup(rolloutId);
-                        uiNotification.displaySuccess(i18n.getMessage("message.rollout.trigger.next.group.success"));
-                    } catch (final RolloutIllegalStateException e) {
-                        LOGGER.warn("Error on manually triggering next rollout group: {}", e.getMessage());
-                        uiNotification
-                                .displayValidationError(i18n.getMessage("message.rollout.trigger.next.group.error"));
-                    }
-                }).build();
     }
 }
