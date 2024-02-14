@@ -137,7 +137,7 @@ public class PropertyBasedArtifactUrlHandlerTest {
         properties.getProtocols().put("ftp", proto);
 
         final List<ArtifactUrl> urls = urlHandlerUnderTest.getUrls(placeholder, ApiType.DDI,
-                new URI("https://" + testHost));
+                new URI("https://" + testHost), false);
 
         assertThat(urls).containsExactly(new ArtifactUrl(TEST_PROTO.toUpperCase(), TEST_REL, TEST_PROTO + "://"
                 + testHost + ":5683/fws/" + TENANT + "/" + TARGETID_BASE62 + "/" + ARTIFACTID_BASE62));
@@ -152,7 +152,7 @@ public class PropertyBasedArtifactUrlHandlerTest {
         properties.getProtocols().put("download-http", proto);
 
         final List<ArtifactUrl> urls = urlHandlerUnderTest.getUrls(placeholder, ApiType.DDI,
-                new URI("https://" + testHost));
+                new URI("https://" + testHost), false);
 
         assertThat(urls).containsExactly(new ArtifactUrl("http".toUpperCase(), "download-http",
                 "https://localhost:8080/fws/" + TENANT + "/" + TARGETID_BASE62 + "/" + ARTIFACTID_BASE62));
@@ -168,7 +168,7 @@ public class PropertyBasedArtifactUrlHandlerTest {
         properties.getProtocols().put("download-http", proto);
 
         final List<ArtifactUrl> ddiUrls = urlHandlerUnderTest.getUrls(placeholder, ApiType.DDI,
-                new URI("http://anotherHost.com:8083"));
+                new URI("http://anotherHost.com:8083"), false);
 
         assertThat(ddiUrls).containsExactly(new ArtifactUrl("http".toUpperCase(), "download-http",
                 "http://localhost:8083/" + TENANT + "/controller/v1/" + CONTROLLER_ID + "/softwaremodules/"
@@ -192,7 +192,7 @@ public class PropertyBasedArtifactUrlHandlerTest {
         properties.getProtocols().put("download-http", proto);
 
         final List<ArtifactUrl> ddiUrls = urlHandlerUnderTest.getUrls(placeholder, ApiType.DDI,
-                new URI("http://anotherHost.com:8083"));
+                new URI("http://anotherHost.com:8083"), false);
         assertThat(ddiUrls).containsExactly(
                 new ArtifactUrl("http".toUpperCase(), "download-http", "http://host.com/" + TENANT + "/controller/v1/"
                         + CONTROLLER_ID + "/softwaremodules/" + SOFTWAREMODULEID + "/artifacts/" + FILENAME_ENCODE));

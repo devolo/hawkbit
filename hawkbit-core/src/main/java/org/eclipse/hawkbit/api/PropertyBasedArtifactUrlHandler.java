@@ -12,13 +12,8 @@ package org.eclipse.hawkbit.api;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.hawkbit.api.ArtifactUrlHandlerProperties.UrlProtocol;
@@ -82,17 +77,16 @@ public class PropertyBasedArtifactUrlHandler implements ArtifactUrlHandler {
 
     @Override
     public List<ArtifactUrl> getUrls(final URLPlaceholder placeholder, final ApiType api) {
-        return getUrls(placeholder, api, null);
+        return getUrls(placeholder, api, null, false);
     }
 
     @Override
-    public List<ArtifactUrl> getUrls(final URLPlaceholder placeholder, final ApiType api, final URI requestUri) {
+    public List<ArtifactUrl> getUrls(final URLPlaceholder placeholder, final ApiType api, final URI requestUri, final boolean requiresMigration) {
         return urlHandlerProperties.getProtocols().values().stream()
-                .filter(urlProtocol -> urlProtocol.getSupports().contains(api) && urlProtocol.isEnabled())
-                .map(urlProtocol -> new ArtifactUrl(urlProtocol.getProtocol().toUpperCase(), urlProtocol.getRel(),
+                .filter(urlProtocol -> urlProtocol.getSupports().contains(api) && urlProtocol.isEnabled() && (requiresMigration ? urlProtocol.isUsedForMigration() : !urlProtocol.isUsedForMigration()))
+                .map(urlProtocol -> new ArtifactUrl(urlProtocol.getProtocol().toUpperCase(), urlProtocol.getRel().replace("migrate-", ""),
                         generateUrl(urlProtocol, placeholder, requestUri)))
                 .collect(Collectors.toList());
-
     }
 
     private String generateUrl(final UrlProtocol protocol, final URLPlaceholder placeholder,

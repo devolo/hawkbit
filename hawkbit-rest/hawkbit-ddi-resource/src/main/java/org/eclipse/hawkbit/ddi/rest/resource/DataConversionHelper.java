@@ -110,12 +110,16 @@ public final class DataConversionHelper {
         file.setFilename(artifact.getFilename());
         file.setSize(artifact.getSize());
 
+        // Check if we should use migration server or traditional server
+        final boolean requiresMigration = target.getControllerAttributes() != null && target.getControllerAttributes().containsKey("firmware_version") && target.getControllerAttributes().get("firmware_version").contains("7.8.");
+
         artifactUrlHandler
                 .getUrls(new URLPlaceholder(systemManagement.getTenantMetadata().getTenant(),
                         systemManagement.getTenantMetadata().getId(), target.getControllerId(), target.getId(),
                         new SoftwareData(artifact.getSoftwareModule().getId(), artifact.getFilename(), artifact.getId(),
                                 artifact.getSha1Hash())),
-                        ApiType.DDI, request.getURI())
+                        ApiType.DDI, request.getURI(),
+                        requiresMigration)
                 .forEach(entry -> file.add(Link.of(entry.getRef()).withRel(entry.getRel()).expand()));
 
         return file;
