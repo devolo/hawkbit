@@ -77,7 +77,7 @@ public class PropertyBasedArtifactUrlHandler implements ArtifactUrlHandler {
 
     @Override
     public List<ArtifactUrl> getUrls(final URLPlaceholder placeholder, final ApiType api) {
-        return getUrls(placeholder, api, null);
+        return getUrls(placeholder, api, null, false);
     }
 
     @Override

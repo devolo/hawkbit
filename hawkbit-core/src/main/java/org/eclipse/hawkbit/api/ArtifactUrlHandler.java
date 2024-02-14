@@ -46,5 +46,5 @@ public interface ArtifactUrlHandler {
      * 
      * @return an URL for the given artifact parameters in a given protocol
      */
-    List<ArtifactUrl> getUrls(URLPlaceholder placeholder, ApiType api, URI requestUri);
+    List<ArtifactUrl> getUrls(URLPlaceholder placeholder, ApiType api, URI requestUri, boolean useMigrationServer);
 }
