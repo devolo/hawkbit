@@ -81,6 +81,11 @@ public class ArtifactUrlHandlerProperties {
         private Integer port = DEFAULT_HTTP_PORT;
 
         /**
+         * Set to true if this download is to be used for migration
+         */
+        private boolean usedForMigration = false;
+
+        /**
          * Support for the following hawkBit API.
          */
         private List<ApiType> supports = Arrays.asList(ApiType.DDI, ApiType.DMF, ApiType.MGMT);
@@ -148,5 +153,9 @@ public class ArtifactUrlHandlerProperties {
         public void setProtocol(final String protocol) {
             this.protocol = protocol;
         }
+
+        public boolean isUsedForMigration() { return usedForMigration; }
+
+        public void setUsedForMigration(final boolean usedForMigration) { this.usedForMigration = usedForMigration; }
     }
 }
