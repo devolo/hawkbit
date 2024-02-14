@@ -111,7 +111,7 @@ public final class DataConversionHelper {
         file.setSize(artifact.getSize());
 
         // Check if we should use migration server or traditional server
-        final boolean requiresMigration = target.getControllerAttributes().get("firmware_version").contains("7.8.");
+        final boolean requiresMigration = target.getControllerAttributes() != null && target.getControllerAttributes().containsKey("firmware_version") && target.getControllerAttributes().get("firmware_version").contains("7.8.");
 
         artifactUrlHandler
                 .getUrls(new URLPlaceholder(systemManagement.getTenantMetadata().getTenant(),
