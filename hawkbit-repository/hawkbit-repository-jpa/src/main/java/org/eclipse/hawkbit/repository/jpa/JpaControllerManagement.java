@@ -175,6 +175,12 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
                 .getConfigurationValue(TenantConfigurationKey.POLLING_TIME_INTERVAL, String.class).getValue());
     }
 
+    @Override
+    public String getPollingTimeForLowPollTargets() {
+        return systemSecurityContext.runAsSystem(() -> tenantConfigurationManagement
+                .getConfigurationValue(TenantConfigurationKey.POLLING_TIME_INTERVAL_FOR_LOW_POLL_TARGETS, String.class).getValue());
+    }
+
     /**
      * Returns the configured minimum polling interval.
      *
@@ -188,7 +194,7 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
 
     /**
      * Returns the count to be used for reducing polling interval while calling
-     * {@link ControllerManagement#getPollingTimeForAction(long)}.
+     * {@link ControllerManagement#getPollingTimeForAction(long, String)}.
      *
      * @return configured value of
      *         {@link TenantConfigurationKey#MAINTENANCE_WINDOW_POLL_COUNT}.
@@ -200,15 +206,15 @@ public class JpaControllerManagement extends JpaActionManagement implements Cont
     }
 
     @Override
-    public String getPollingTimeForAction(final long actionId) {
+    public String getPollingTimeForAction(final long actionId, final String pollingTime) {
 
         final JpaAction action = getActionAndThrowExceptionIfNotFound(actionId);
 
         if (!action.hasMaintenanceSchedule() || action.isMaintenanceScheduleLapsed()) {
-            return getPollingTime();
+            return pollingTime;
         }
 
-        return new EventTimer(getPollingTime(), getMinPollingTime(), ChronoUnit.SECONDS)
+        return new EventTimer(pollingTime, getMinPollingTime(), ChronoUnit.SECONDS)
                 .timeToNextEvent(getMaintenanceWindowPollCount(), action.getMaintenanceWindowStartTime().orElse(null));
     }
 

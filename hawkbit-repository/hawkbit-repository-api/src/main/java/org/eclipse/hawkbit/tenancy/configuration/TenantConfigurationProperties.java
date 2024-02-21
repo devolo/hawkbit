@@ -96,6 +96,12 @@ public class TenantConfigurationProperties {
 
         /**
          * See system default in
+         * {@link ControllerPollProperties#getPollingTimeForLowPollTargets()}.
+         */
+        public static final String POLLING_TIME_INTERVAL_FOR_LOW_POLL_TARGETS = "pollingTimeForLowPollTargets";
+
+        /**
+         * See system default in
          * {@link ControllerPollProperties#getMinPollingTime()}.
          */
         public static final String MIN_POLLING_TIME_INTERVAL = "minPollingTime";
