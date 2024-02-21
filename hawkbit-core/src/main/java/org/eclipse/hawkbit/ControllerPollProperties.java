@@ -54,7 +54,7 @@ public class ControllerPollProperties implements Serializable {
      * Controller polling time for targets marked for low poll that can be configured systemwide and by tenant
      * in HH:MM:SS notation.
      */
-    private String pollingTimeForLowPollTargets = "00:00:10";
+    private String pollingTimeForLowPollTargets = "00:10:00";
 
     /**
      * This configuration value is used to change the polling interval so that
