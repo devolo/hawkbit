@@ -51,6 +51,12 @@ public class ControllerPollProperties implements Serializable {
     private String pollingOverdueTime = "00:05:00";
 
     /**
+     * Controller polling time for targets marked for low poll that can be configured systemwide and by tenant
+     * in HH:MM:SS notation.
+     */
+    private String pollingTimeForLowPollTargets = "00:00:10";
+
+    /**
      * This configuration value is used to change the polling interval so that
      * controller tries to poll at least these many times between the last
      * polling and before start of maintenance window. The polling interval is
@@ -74,6 +80,14 @@ public class ControllerPollProperties implements Serializable {
 
     public void setPollingOverdueTime(final String pollingOverdueTime) {
         this.pollingOverdueTime = pollingOverdueTime;
+    }
+
+    public String getPollingTimeForLowPollTargets() {
+        return pollingTimeForLowPollTargets;
+    }
+
+    public void setPollingTimeForLowPollTargets(final String pollingTimeForLowPollTargets) {
+        this.pollingTimeForLowPollTargets = pollingTimeForLowPollTargets;
     }
 
     public String getMaxPollingTime() {

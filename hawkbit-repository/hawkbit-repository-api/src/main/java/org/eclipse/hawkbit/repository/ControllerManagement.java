@@ -266,6 +266,15 @@ public interface ControllerManagement {
     String getPollingTime();
 
     /**
+     * Returns configured polling interval for low poll targets at which the controller polls hawkBit
+     * server.
+     *
+     * @return current {@link TenantConfigurationKey#POLLING_TIME_INTERVAL}.
+     */
+    @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
+    String getPollingTimeForLowPollTargets();
+
+    /**
      * Returns the configured minimum polling interval.
      *
      * @return current {@link TenantConfigurationKey#MIN_POLLING_TIME_INTERVAL}.
@@ -275,7 +284,7 @@ public interface ControllerManagement {
 
     /**
      * Returns the count to be used for reducing polling interval while calling
-     * {@link ControllerManagement#getPollingTimeForAction(long)}.
+     * {@link ControllerManagement#getPollingTimeForAction(long, String)}.
      *
      * @return configured value of
      *         {@link TenantConfigurationKey#MAINTENANCE_WINDOW_POLL_COUNT}.
@@ -300,7 +309,7 @@ public interface ControllerManagement {
      * @return current {@link TenantConfigurationKey#POLLING_TIME_INTERVAL}.
      */
     @PreAuthorize(SpringEvalExpressions.IS_CONTROLLER)
-    String getPollingTimeForAction(long actionId);
+    String getPollingTimeForAction(long actionId, String pollingTime);
 
     /**
      * Checks if a given target has currently or has even been assigned to the

@@ -43,13 +43,7 @@ import org.eclipse.hawkbit.ddi.json.model.DdiResult.FinalResult;
 import org.eclipse.hawkbit.ddi.json.model.DdiUpdateMode;
 import org.eclipse.hawkbit.ddi.rest.api.DdiRestConstants;
 import org.eclipse.hawkbit.ddi.rest.api.DdiRootControllerRestApi;
-import org.eclipse.hawkbit.repository.ArtifactManagement;
-import org.eclipse.hawkbit.repository.ConfirmationManagement;
-import org.eclipse.hawkbit.repository.ControllerManagement;
-import org.eclipse.hawkbit.repository.EntityFactory;
-import org.eclipse.hawkbit.repository.RepositoryConstants;
-import org.eclipse.hawkbit.repository.SystemManagement;
-import org.eclipse.hawkbit.repository.UpdateMode;
+import org.eclipse.hawkbit.repository.*;
 import org.eclipse.hawkbit.repository.builder.ActionStatusCreate;
 import org.eclipse.hawkbit.repository.event.remote.DownloadProgressEvent;
 import org.eclipse.hawkbit.repository.exception.ArtifactBinaryNotFoundException;
@@ -169,10 +163,13 @@ public class DdiRootController implements DdiRootControllerRestApi {
 
         checkAndCancelExpiredAction(activeAction);
 
+        // Set polling time depending on whether target has the tag "low-poll"
+        String pollingTime = target.getTags().stream().anyMatch(tag -> tag.getName().matches("low-poll")) ? controllerManagement.getPollingTimeForLowPollTargets() : controllerManagement.getPollingTime();
+        LOG.debug("target {} has a poll interval of {}", target.getControllerId(), pollingTime);
+
         // activeAction
         return new ResponseEntity<>(DataConversionHelper.fromTarget(target, installedAction, activeAction,
-                activeAction == null ? controllerManagement.getPollingTime()
-                        : controllerManagement.getPollingTimeForAction(activeAction.getId()),
+                activeAction == null ? pollingTime : controllerManagement.getPollingTimeForAction(activeAction.getId(), pollingTime),
                 tenantAware), HttpStatus.OK);
     }
 
