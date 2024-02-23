@@ -165,7 +165,7 @@ public class DdiRootController implements DdiRootControllerRestApi {
 
         // Set polling time depending on whether target has the tag "low-poll"
         String pollingTime = target.getTags().stream().anyMatch(tag -> tag.getName().matches("low-poll")) ? controllerManagement.getPollingTimeForLowPollTargets() : controllerManagement.getPollingTime();
-        LOG.debug("target {} has a poll interval of {}", target.getControllerId(), pollingTime);
+        LOG.debug("target {} has a poll interval of {}; pollingTimeForLowPollTargets: {}; target has low-poll tag: {}", target.getControllerId(), pollingTime, controllerManagement.getPollingTimeForLowPollTargets(), target.getTags().stream().anyMatch(tag -> tag.getName().matches("low-poll")));
 
         // activeAction
         return new ResponseEntity<>(DataConversionHelper.fromTarget(target, installedAction, activeAction,
