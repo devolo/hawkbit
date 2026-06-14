@@ -8,14 +8,20 @@
  * SPDX-License-Identifier: EPL-2.0
  */
 //Standard colors
-$hawkbit-primary-color: #551f62;
-$hawkbit-primary-color-light: #551f62;
+$hawkbit-primary-color: #0072B4;
+$hawkbit-primary-color-light: #0072B4;
 
 //Logo image for the top right corner
 $logo-image: url('images/hawkbit_logo.png');
 
 //Logo image postion
 $logo-position: right 8px top 8px;
+
+//devolo logo image for the top left corner
+$devolo-logo-image: url('images/devolo_logo.svg');
+
+//devolo logo position
+$devolo-logo-position: left 12px top 12px;
 
 //Application text font size.All widget text style are computed based on this
 $app-text-font-size: 16px;
@@ -27,22 +33,22 @@ $app-font-family: "Open Sans", sans-serif;
 $app-background-color: #fafafa;
 
 //Font color for individual selection overlay list items
-$app-selection-item-selection-color: #551f62;
+$app-selection-item-selection-color: #0072B4;
 
 //Color of the focus outline/border for focusable elements
-$app-focus-color: #551f62;
+$app-focus-color: #0072B4;
 
 //Color for any selection highlights in the application
-$app-selection-color: #551f62;
+$app-selection-color: #0072B4;
 
 //Tag button caption color
-$tag-text-color: #551f62;
+$tag-text-color: #333333;
 
 //Tabsheet tab caption color
-$tab-sheet-caption-color: #551f62;
+$tab-sheet-caption-color: #333333;
 
 //Table details widget text color
-$table-details-tab-font-color: #551f62;
+$table-details-tab-font-color: #333333;
 
 //All widgets background
 $widget-bg: #fff;
@@ -51,22 +57,22 @@ $widget-bg: #fff;
 $widget-border-color: #d4d4d4;
 
 //Widget header caption color
-$widget-caption-color: #551f62;
+$widget-caption-color: #333333;
 
 //Text color of menu items and links in menu
-$menu-text-color: #a5a5a5;
+$menu-text-color: #FFFFFF;
 
 //Menu background color
-$valo-menu-background-color: #4b4b4b;
+$valo-menu-background-color: #0072B4;
 
 //Size of menu icon when icon is displayed with menu description
 $menu-with-description-font-icon-size: 14px;
 
 //Menu title background color
-$menu-title-bg-color: #551f62;
+$menu-title-bg-color: #0072B4;
 
 //Color of icons like add ,config,search etc
-$button-icon-color: #551f62;
+$button-icon-color: #0072B4;
 
 
 //Color of installed distribution,when target is selected
@@ -76,7 +82,7 @@ $installed-row-color: $dark-green-color;
 $assigned-row-color: $lighter-orange-color;
 
 // Background color of accordion caption in confirmation popup
-$accordion-action-history-title-color: #551f62;
+$accordion-action-history-title-color: #0072B4;
 
 //Success icon color on valid target filter query
 $success-icon-color: #008000;

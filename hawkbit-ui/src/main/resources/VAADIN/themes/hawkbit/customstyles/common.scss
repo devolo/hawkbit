@@ -88,8 +88,9 @@
     }
 
     .view-header:after {
-      background: $logo-image no-repeat right top;
-      background-position: $logo-position;
+      background: $devolo-logo-image no-repeat $devolo-logo-position,
+                  $logo-image no-repeat $logo-position;
+      background-size: auto 30px, auto auto;
       content: "";
       height: 70px;
       position: absolute;
