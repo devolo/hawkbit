@@ -39,7 +39,7 @@ body {
 	font-family: Helvetica, Arial, sans-serif;
 	font-size: 25px;
 	font-weight: normal;
-		color: #551f62; d
+		color: #0072B4;
 }
 
 .reveal .controls {
@@ -102,7 +102,7 @@ body {
 
 
 .reveal .intro {
-   color: #551f62;
+   color: #0072B4;
 }
 
 .noborder img {
@@ -112,7 +112,7 @@ body {
 }
 
 .intro {
-    color: #551f62;
+    color: #0072B4;
     position: relative;
     top: 250px;
     left: 0px;

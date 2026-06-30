@@ -67,3 +67,7 @@ docs/public/**
 docs/content/rest-api/*.html
 docs/.hugo_build.lock
 .gitmodules
+TASKS.md
+.superpowers/
+.github/copilot-instructions.md
+hawkbit_dev.*.dump/
